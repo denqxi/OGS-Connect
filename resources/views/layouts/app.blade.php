@@ -10,9 +10,9 @@
 <body class="bg-gray-50 font-sans">
     <div class="flex">
         <!-- Sidebar -->
-        <aside class="w-72 bg-white h-screen shadow-md">
+        <div class="group h-full bg-white shadow-lg border-r border-gray-200 transition-all duration-300 w-20 hover:w-72">
             @include('layouts.sidebar')
-        </aside>
+        </div>
 
         <!-- Main Content -->
         <main class="flex-1 bg-gray-50 p-6">
