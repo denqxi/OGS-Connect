@@ -1,6 +1,6 @@
 @if(request('day'))
     {{-- Show the daily schedule view --}}
-    @include('schedules.tabs.views.per-day-schedule', ['date' => request('day')])
+    @include('schedules.tabs.views.day-view', ['date' => request('day')])
 @else
     <!-- Page Title -->
     <div class="bg-white border-b border-gray-200 px-6 py-4">
@@ -59,12 +59,10 @@
                     <td class="px-6 py-4 text-sm">
                         <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Partially Assigned</span>
                     </td>
-                    
                     <td class="px-6 py-4 text-sm">
-                        <a href="{{ route('schedules.index', ['tab' => 'class', 'day' => '2025-09-02']) }}"
-                            class="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded hover:bg-blue-200">
+                        <button class="w-8 h-8 bg-blue-100 text-blue-600 rounded hover:bg-blue-200">
                             <i class="fas fa-search text-xs"></i>
-                        </a>
+                        </button>
                     </td>
                 </tr>
                 <tr class="hover:bg-gray-50">
@@ -77,9 +75,10 @@
                         <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Fully Assigned</span>
                     </td>
                     <td class="px-6 py-4 text-sm">
-                        <button class="w-8 h-8 bg-blue-100 text-blue-600 rounded hover:bg-blue-200">
+                        <a href="{{ route('schedules.index', ['tab' => 'class', 'day' => '2025-09-02']) }}"
+                        class="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded hover:bg-blue-200">
                             <i class="fas fa-search text-xs"></i>
-                        </button>
+                        </a>
                     </td>
                 </tr>
             </tbody>
