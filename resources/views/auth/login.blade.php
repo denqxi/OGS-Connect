@@ -1,47 +1,130 @@
-<x-guest-layout>
-    <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OGS Connect - Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'mint': '#65DB7F',
+            'mint-light': '#7EFFF5',
+            'teal': '#26A69A',
+            'ogs-navy': '#0A2A4A'   
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="min-h-screen bg-gradient-to-b from-emerald-300 to-[#7CA6D7] flex">
 
-    <form method="POST" action="{{ route('login') }}">
-        @csrf
+  <!-- Left Divider -->
+  <div class="flex-1 flex flex-col items-center justify-center pl-12 pt-28">
+    
+    <!-- Home page button fixed top-left -->
+    <div class="fixed top-8 left-8 z-50">
+      <a href="{{ url('/') }}"
+        class="flex items-center text-ogs-navy font-bold hover:text-slate-700 transition-colors">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 19l-7-7 7-7"></path>
+        </svg>
+        Home page
+      </a>
+    </div>
 
-        <!-- Email Address -->
-        <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
+    <!-- Welcome Text -->
+    <div class="w-[714px] h-36 text-blue-950 text-6xl font-extrabold">
+      WELCOME TO <br/>OGS CONNECT
+    </div>
+    <div class="w-[662px] h-11 justify-start text-green-900 text-2xl font-medium">
+      A Centralized Management System
+    </div>
+    <img class="w-[580px] h-[580px]" src="{{ asset('images/login-image.png') }}" />
+  </div>
+
+  <!-- Right Divider (Login Form) -->
+  <div class="flex-1 flex items-center justify-center relative">
+
+    <!-- Login Card -->
+    <div class="h-[850px] w-[1000px] max-w-xl bg-neutral-100 rounded-3xl shadow-2xl p-16 flex flex-col justify-center">
+      <div class="w-full flex flex-col items-center mb-12">
+        <!-- Header text -->
+        <div class="text-center mt-2 flex flex-row">
+          <div>
+            <img class="w-20 h-20" src="{{ asset('images/logo.png') }}" alt="Logo" />
+          </div>
+          <div>
+            <span class="text-blue-950 text-2xl font-bold block">
+              OUTSOURCING
+            </span>
+            <span class="text-blue-950 text-base font-bold block">
+              GLOBAL SOLUTIONS
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="w-[520px] h-11 justify-start text-blue-950 text-4xl font-bold">
+        Log in to your Account
+      </div>
+      <p class="text-neutral-800 text-sm font-medium mb-8 leading-relaxed">
+        Provide your login details below to securely access your OGS Connect account.
+      </p>
+
+      <!-- Login Form -->
+      <form class="space-y-5">
+        <!-- Email -->
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 8l7.89 7.89a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+            </svg>
+          </div>
+          <input type="email" placeholder="Email" required
+                  class="w-full pl-12 pr-4 py-5 bg-white border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all duration-200">
         </div>
 
         <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
-
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+            </svg>
+          </div>
+          <input type="password" placeholder="Password" required
+                  class="w-full pl-12 pr-12 py-5 bg-white border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all duration-200">
+          <div class="absolute inset-y-0 right-0 pr-4 flex items-center">
+            <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+              </svg>
+            </button>
+          </div>
         </div>
 
-        <!-- Remember Me -->
-        <div class="block mt-4">
-            <label for="remember_me" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox" class="rounded dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-indigo-600 shadow-sm focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:focus:ring-offset-gray-800" name="remember">
-                <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Remember me') }}</span>
-            </label>
+        <!-- Forgot Password -->
+        <div class="flex justify-end">
+          <a href="#" class="text-ogs-navy font-semibold text-sm hover:underline">Forgot Password?</a>
         </div>
 
-        <div class="flex items-center justify-end mt-4">
-            @if (Route::has('password.request'))
-                <a class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800" href="{{ route('password.request') }}">
-                    {{ __('Forgot your password?') }}
-                </a>
-            @endif
+        <!-- Login Button -->
+        <button type="submit"
+                class="w-full py-5 rounded-xl bg-mint hover:bg-teal text-ogs-navy font-bold text-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]">
+          LOG IN
+        </button>
+      </form>
+    </div>
+  </div>
 
-            <x-primary-button class="ms-3">
-                {{ __('Log in') }}
-            </x-primary-button>
-        </div>
-    </form>
-</x-guest-layout>
+</body>
+</html>
