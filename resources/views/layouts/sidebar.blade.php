@@ -11,7 +11,7 @@
     </div>
 
     <!-- Navigation Menu -->
-    <nav class="mt-6">
+    <nav class="mt-6">  
         <ul class="space-y-2 px-4">
             <li>
                 <a href="/dashboard" class="flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
@@ -21,24 +21,28 @@
             </li>
             <li>
                 <a href="/hiring" class="flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+
                     <i class="fas fa-user-plus text-lg"></i>
                     <span class="font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">Hiring</span>
                 </a>
             </li>
             <li>
                 <a href="/onboarding" class="flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+
                     <i class="fas fa-clipboard-check text-lg"></i>
                     <span class="font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">Onboarding</span>
                 </a>
             </li>
             <li>
                 <a href="/employees" class="flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+
                     <i class="fas fa-users text-lg"></i>
                     <span class="font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">Employees</span>
                 </a>
             </li>
             <li>
                 <a href="/scheduling" class="flex items-center space-x-3 px-4 py-3 text-white bg-slate-700 rounded-lg">
+
                     <i class="fas fa-calendar-alt text-lg"></i>
                     <span class="font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">GLS Scheduling</span>
                 </a>
