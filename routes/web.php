@@ -11,10 +11,21 @@ Route::get('/login', function () {
     return view('auth.login');
 })->name('login');
 
+//APPLICATION FORM ROUTES START
+
 Route::get('/application-form', function () {
     return view('application_form.application');
 })->name('application.form');
 
+Route::get('/application-form/cancel', function () {
+    return view('application_form.cancel'); // cancel.blade.php
+})->name('application.form.cancel');
+
+Route::get('/application-form/submit', function () {
+    return view('application_form.submit'); // submit.blade.php
+})->name('application.form.submit');
+
+//APPLICATION FORM ROUTES END
 Route::get('/scheduling', function () {
     return view('schedules.index');
 })->name('schedules.index');

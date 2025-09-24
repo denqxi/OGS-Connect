@@ -37,7 +37,7 @@
 
             <!-- Desktop Buttons -->
             <div class="hidden sm:flex items-center space-x-4">
-                <a href="{{ route('landing') }}">
+                <a>
                     <button
                         class="px-6 text-xs py-2 border border-ogs-navy text-ogs-navy rounded-full hover:bg-ogs-navy hover:text-white transition-colors">
                         HOME
@@ -214,17 +214,20 @@
                             <label class="text-sm font-normal text-gray-500 font-semibold">Work Setup:</label>
                         </div>
 
-                        <!-- Row 3: Checkboxes -->
+                        <!-- Row 3: Radio Buttons -->
                         <div class="flex space-x-6 md:col-span-2">
                             <label class="inline-flex items-center">
-                                <input type="checkbox" id="workFromHome" class="form-checkbox text-ogs-green">
+                                <input type="radio" name="workType" id="workFromHome"
+                                    class="form-radio text-ogs-green">
                                 <span class="ml-2">Work from Home</span>
                             </label>
                             <label class="inline-flex items-center">
-                                <input type="checkbox" id="workAtSite" class="form-checkbox text-ogs-green">
+                                <input type="radio" name="workType" id="workAtSite"
+                                    class="form-radio text-ogs-green">
                                 <span class="ml-2">Work at Site</span>
                             </label>
                         </div>
+
 
                         <!-- Row 4: Speedtest & Device Specs (enabled only if Work from Home is checked) -->
                         <div class="grid md:grid-cols-3 gap-4 mt-4 md:col-span-2">
@@ -252,23 +255,27 @@
                                     disabled>
                             </div>
                         </div>
-
                     </div>
                 </div>
 
-                <!-- Script to enable fields only if Work from Home is checked -->
+                <!-- Script to enable fields only if Work from Home is selected -->
                 <script>
                     const workFromHome = document.getElementById('workFromHome');
+                    const workAtSite = document.getElementById('workAtSite');
                     const speedtest = document.getElementById('speedtest');
                     const mainDevice = document.getElementById('mainDevice');
                     const backupDevice = document.getElementById('backupDevice');
 
-                    workFromHome.addEventListener('change', () => {
+                    function updateDeviceFields() {
                         const enabled = workFromHome.checked;
                         speedtest.disabled = !enabled;
                         mainDevice.disabled = !enabled;
                         backupDevice.disabled = !enabled;
-                    });
+                    }
+
+                    // Listen to both radio buttons
+                    workFromHome.addEventListener('change', updateDeviceFields);
+                    workAtSite.addEventListener('change', updateDeviceFields);
                 </script>
 
 
@@ -473,18 +480,178 @@
 
                             <!-- Buttons -->
                             <div class="flex flex-col mt-6 space-y-3">
-                                <button type="reset"
+                                <button type="button" id="cancelBtn"
                                     class="w-full px-6 py-2 rounded-full border border-ogs-navy text-ogs-navy hover:bg-ogs-navy hover:text-white transition-colors">
                                     CANCEL
                                 </button>
-                                <button type="submit"
+                                <button type="submit" id="submitBtn"
                                     class="w-full shadow-lg px-6 py-2 rounded-full bg-ogs-green text-white hover:bg-ogs-dark-green transition-colors shadow-md">
                                     SUBMIT
                                 </button>
                             </div>
+                            <!-- Cancel Confirmation Modal -->
+                            <div id="cancelModal"
+                                class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center hidden z-50 p-4">
+                                <div class="bg-white rounded-2xl p-6 w-full max-w-sm sm:max-w-md text-left shadow-lg">
+
+                                    <!-- Row 1: Header -->
+                                    <h3
+                                        class="text-base sm:text-lg font-bold text-gray-900 mb-2 text-center sm:text-left">
+                                        Do you want to cancel your application?
+                                    </h3>
+
+                                    <!-- Row 2: Subheading -->
+                                    <p class="text-sm sm:text-base text-gray-700 mb-6 text-center sm:text-left">
+                                        Your entered information will not be saved if you cancel. Do you want to
+                                        continue?
+                                    </p>
+
+                                    <!-- Row 3: Buttons -->
+                                    <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4">
+                                        <button id="goBackBtn"
+                                            class="w-full sm:w-auto px-6 py-2 rounded-full bg-[#9CA3AF] text-white font-semibold text-sm hover:bg-[#7B8790] hover:scale-105 transition-transform duration-200">
+                                            GO BACK
+                                        </button>
+                                        <button id="confirmCancelBtn"
+                                            class="w-full sm:w-auto px-6 py-2 rounded-full bg-[#EF4444] text-white font-semibold text-sm hover:bg-[#B91C1C] hover:scale-105 transition-transform duration-200">
+                                            CANCEL
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Fullscreen Dim Overlay for Cancel -->
+                            <div id="cancelOverlay"
+                                class="fixed inset-0 bg-black bg-opacity-60 flex flex-col items-center justify-center hidden z-50">
+                                <p class="text-white font-semibold text-lg mb-4">Cancelling...</p>
+                                <div class="w-3/4 max-w-sm bg-gray-200 rounded-full h-3 overflow-hidden">
+                                    <div id="cancelProgressBar"
+                                        class="bg-red-500 h-3 w-0 transition-all duration-100 ease-linear"></div>
+                                </div>
+                            </div>
+
+                            <script>
+                                const cancelBtn = document.getElementById('cancelBtn');
+                                const cancelModal = document.getElementById('cancelModal');
+                                const goBackBtn = document.getElementById('goBackBtn');
+                                const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+                                const cancelOverlay = document.getElementById('cancelOverlay');
+                                const cancelProgressBar = document.getElementById('cancelProgressBar');
+
+                                // Show modal on cancel button click
+                                cancelBtn.addEventListener('click', () => {
+                                    cancelModal.classList.remove('hidden');
+                                });
+
+                                // Close modal when Go Back is clicked
+                                goBackBtn.addEventListener('click', () => {
+                                    cancelModal.classList.add('hidden');
+                                });
+
+                                // Cancel modal redirect with progress bar
+                                confirmCancelBtn.addEventListener('click', () => {
+                                    // Hide modal
+                                    cancelModal.classList.add('hidden');
+
+                                    // Show overlay
+                                    cancelOverlay.classList.remove('hidden');
+
+                                    // Animate progress bar
+                                    let progress = 0;
+                                    const interval = setInterval(() => {
+                                        progress += 5;
+                                        cancelProgressBar.style.width = progress + "%";
+
+                                        if (progress >= 100) {
+                                            clearInterval(interval);
+                                            window.location.href = "{{ route('application.form.cancel') }}";
+                                        }
+                                    }, 100); // ~2 seconds
+                                });
+                            </script>
+
+                            <!-- Submit Confirmation Modal -->
+                            <div id="submitModal"
+                                class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center hidden z-50 p-4">
+                                <div class="bg-white rounded-2xl p-6 w-full max-w-sm sm:max-w-md text-left shadow-lg">
+
+                                    <!-- Row 1: Header -->
+                                    <h3
+                                        class="text-base sm:text-lg font-bold text-gray-900 mb-2 text-center sm:text-left">
+                                        Submit Application?
+                                    </h3>
+
+                                    <!-- Row 2: Subheading -->
+                                    <p class="text-sm sm:text-base text-gray-700 mb-6 text-center sm:text-left">
+                                        Once submitted, you cannot edit your information. Do you want to continue?
+                                    </p>
+
+                                    <!-- Row 3: Buttons -->
+                                    <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4">
+                                        <button id="goBackSubmitBtn"
+                                            class="w-full sm:w-auto px-6 py-2 rounded-full bg-[#9CA3AF] text-white font-semibold text-sm hover:bg-[#7B8790] hover:scale-105 transition-transform duration-200">
+                                            GO BACK
+                                        </button>
+                                        <button id="confirmSubmitBtn"
+                                            class="w-full sm:w-auto px-6 py-2 rounded-full bg-[#65DB7F] text-white font-semibold text-sm hover:bg-[#3CB45C] hover:scale-105 transition-transform duration-200">
+                                            SUBMIT
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <!-- Loading Overlay with Progress Bar -->
+                            <div id="loadingOverlay"
+                                class="hidden fixed inset-0 bg-black/60 flex flex-col items-center justify-center z-50 text-white">
+                                <p class="mb-4 text-lg font-medium">Submitting your application...</p>
+                                <div class="w-64 bg-gray-300 rounded-full h-3 overflow-hidden">
+                                    <div id="progressBar" class="bg-[#65DB7F] h-3 w-0"></div>
+                                </div>
+                            </div>
+
+                            <script>
+                                const submitBtn = document.getElementById('submitBtn');
+                                const submitModal = document.getElementById('submitModal');
+                                const goBackSubmitBtn = document.getElementById('goBackSubmitBtn');
+                                const confirmSubmitBtn = document.getElementById('confirmSubmitBtn');
+                                const loadingOverlay = document.getElementById('loadingOverlay');
+                                const progressBar = document.getElementById('progressBar');
+
+                                // Show modal on submit button click
+                                submitBtn.addEventListener('click', (e) => {
+                                    e.preventDefault(); // Prevent form submission until confirmed
+                                    submitModal.classList.remove('hidden');
+                                });
+
+                                // Close modal when Go Back is clicked
+                                goBackSubmitBtn.addEventListener('click', () => {
+                                    submitModal.classList.add('hidden');
+                                });
+
+                                // Submit modal redirect with progress bar
+                                confirmSubmitBtn.addEventListener('click', () => {
+                                    // Hide modal
+                                    submitModal.classList.add('hidden');
+
+                                    // Show overlay
+                                    loadingOverlay.classList.remove('hidden');
+
+                                    // Animate progress bar
+                                    let progress = 0;
+                                    const interval = setInterval(() => {
+                                        progress += 5;
+                                        progressBar.style.width = progress + "%";
+
+                                        if (progress >= 100) {
+                                            clearInterval(interval);
+                                            window.location.href = "{{ route('application.form.submit') }}";
+                                        }
+                                    }, 100); // progress fills in ~2 seconds
+                                });
+                            </script>
 
                         </div>
-
                     </div>
                 </div>
             </form>
@@ -492,4 +659,5 @@
     </main>
 
 </body>
+
 </html>
