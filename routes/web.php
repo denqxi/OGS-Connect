@@ -11,6 +11,10 @@ Route::get('/login', function () {
     return view('auth.login');
 })->name('login');
 
+Route::get('/application-form', function () {
+    return view('application_form.application');
+})->name('application.form');
+
 Route::get('/scheduling', function () {
     return view('schedules.index');
 })->name('schedules.index');
