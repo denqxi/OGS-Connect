@@ -13,11 +13,15 @@ Route::get('/login', function () {
     return view('auth.login');
 })->name('login');
 
+//APPLICATION FORM ROUTES START
+
 Route::get('/application-form', function () {
     return view('application_form.application');
 })->name('application.form');
 
-Route::get('/scheduling', [App\Http\Controllers\ScheduleController::class, 'index'])->name('schedules.index');
+Route::get('/scheduling', function () {
+    return view('schedules.index');
+})->name('schedules.index');
 
 Route::get('/class-scheduling', function () {
     return view('schedules.class-scheduling');
