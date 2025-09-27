@@ -9,6 +9,7 @@ class TutorAssignment extends Model
     protected $fillable = [
         'daily_data_id',
         'tutor_id',
+        'is_backup',
         'assigned_at',
         'similarity_score',
         'status'
@@ -16,7 +17,8 @@ class TutorAssignment extends Model
 
     protected $casts = [
         'assigned_at' => 'datetime',
-        'similarity_score' => 'float'
+        'similarity_score' => 'float',
+        'is_backup' => 'boolean'
     ];
 
     public function dailyData()

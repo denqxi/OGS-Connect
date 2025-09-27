@@ -20,12 +20,15 @@ class DailyData extends Model
         'time_jst',
         'time_pht',
         'number_required',
+        'schedule_status',
+        'finalized_at',
     ];
 
     protected $casts = [
         'date' => 'date',
         'time_jst' => 'datetime:H:i:s',
-        'time_pht' => 'datetime:H:i:s'
+        'time_pht' => 'datetime:H:i:s',
+        'finalized_at' => 'datetime'
     ];
 
     // ADD THIS RELATIONSHIP

@@ -85,6 +85,9 @@ Route::get('/check-assignments/{date?}', function ($date = null) {
 // API route to get available tutors
 Route::get('/api/available-tutors', [ScheduleController::class, 'getAvailableTutors'])->name('api.available-tutors');
 
+// API route to get class tutors (main and backup)
+Route::get('/api/class-tutors/{classId}', [ScheduleController::class, 'getClassTutors'])->name('api.class-tutors');
+
 // API route to save tutor assignments
 Route::post('/api/save-tutor-assignments', [ScheduleController::class, 'saveTutorAssignments'])->name('api.save-tutor-assignments');
 
@@ -97,6 +100,15 @@ Route::post('/schedules/auto-assign/{date}', [ScheduleController::class, 'autoAs
 Route::post('/schedules/auto-assign/{date}/{day}', [ScheduleController::class, 'autoAssignTutorsForSpecific'])->name('schedules.auto-assign.specific');
 Route::post('/schedules/auto-assign-class/{class}', [ScheduleController::class, 'autoAssignTutorsForClass'])->name('schedules.auto-assign.class');
 Route::delete('/schedules/remove-assignment/{assignment}', [ScheduleController::class, 'removeTutorAssignment'])->name('schedules.remove-assignment');
+
+// Schedule status routes
+Route::post('/schedules/save-as-partial/{date}', [ScheduleController::class, 'saveAsPartial'])->name('schedules.save-as-partial');
+Route::post('/schedules/save-as-final/{date}', [ScheduleController::class, 'saveAsFinal'])->name('schedules.save-as-final');
+
+// Export routes
+Route::get('/schedules/export-tentative', [ScheduleController::class, 'exportTentativeSchedule'])->name('schedules.export-tentative');
+Route::get('/schedules/export-final', [ScheduleController::class, 'exportFinalSchedule'])->name('schedules.export-final');
+Route::post('/schedules/export-selected', [ScheduleController::class, 'exportSelectedSchedules'])->name('schedules.export-selected');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

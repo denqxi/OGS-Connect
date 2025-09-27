@@ -124,9 +124,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     tutorGrid.appendChild(div);
                 });
             }
-            
-            // Refresh dropdown to show newly available tutors
-            fetchAvailableTutors();
         }
     }
 
@@ -134,6 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.removeTutor = function(index) {
         tutors.splice(index, 1);
         renderTutors();
+        fetchAvailableTutors(); // Update dropdowns when tutor is removed
     }
 
     if (addTutorSelect) {
@@ -156,6 +154,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     username: selectedOption.dataset.username
                 });
                 renderTutors();
+                fetchAvailableTutors(); // Update dropdowns when tutor is added
             }
             this.value = "";
         });
@@ -164,17 +163,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Backup tutor selection handler
     if (backupTutorSelect) {
         backupTutorSelect.addEventListener("change", function() {
-            const selectedTutor = this.value;
+            const selectedFullName = this.value; // This is the full name
             const selectedOption = this.options[this.selectedIndex];
             
-            if (selectedTutor) {
+            console.log('Backup tutor selection details:');
+            console.log('- Selected value:', selectedFullName);
+            console.log('- Selected option:', selectedOption);
+            console.log('- Option dataset:', selectedOption.dataset);
+            console.log('- Username from dataset:', selectedOption.dataset.username);
+            
+            if (selectedFullName) {
                 backupTutor = {
-                    fullName: selectedTutor,
-                    username: selectedOption.dataset.username
+                    fullName: selectedFullName,
+                    username: selectedOption.dataset.username // This is the actual username
                 };
                 console.log('Backup tutor selected:', backupTutor);
             } else {
                 backupTutor = null;
+                console.log('Backup tutor cleared');
             }
         });
     }
@@ -202,66 +208,92 @@ document.addEventListener('DOMContentLoaded', function() {
                 backupTutorSelect.value = "";
             }
             
-            // Load currently assigned tutors for this class (full names from data attribute)
-            const assignedTutorsString = btn.dataset.assignedTutors;
-            if (assignedTutorsString) {
-                const fullNames = assignedTutorsString.split(',').filter(t => t.trim() !== '');
-                // We'll fetch the tutor mapping to get usernames for existing assignments
-                fetchTutorMapping(fullNames);
-            } else {
-                renderTutors(); // This will also call fetchAvailableTutors()
-            }
+            console.log('Loading tutors for class ID:', currentClassId);
+            
+            // Load tutors using the new API that properly separates main and backup tutors
+            loadClassTutors(currentClassId);
             
             if (modal) {
                 modal.classList.remove("hidden");
-                console.log('Modal should be visible now');
+                console.log('Modal opened');
+            } else {
+                console.warn('Modal element not found');
             }
         }
     });
 
-    // Fetch tutor mapping to convert full names to username objects
-    function fetchTutorMapping(fullNames) {
-        fetch('/api/available-tutors', {
+    /**
+     * Load tutors for a specific class using the API
+     */
+    function loadClassTutors(classId) {
+        console.log('Loading tutors for class:', classId);
+        
+        fetch(`/api/class-tutors/${classId}`, {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success && data.tutors) {
-                // Create a mapping from full names to tutor objects
-                const tutorMap = {};
-                data.tutors.forEach(tutor => {
-                    tutorMap[tutor.full_name] = tutor;
-                });
-
-                // Convert full names to tutor objects
-                tutors = fullNames.map(fullName => {
-                    const tutor = tutorMap[fullName];
-                    if (tutor) {
-                        return {
-                            fullName: tutor.full_name,
-                            username: tutor.username
-                        };
-                    }
-                    return fullName; // Fallback to string if not found
-                }).filter(Boolean);
-
+            console.log('Class tutors response:', data);
+            
+            if (data.success) {
+                // Load main tutors
+                tutors = data.main_tutors.map(tutor => ({
+                    fullName: tutor.full_name,
+                    username: tutor.username
+                }));
+                
+                // Load backup tutor (if any)
+                if (data.backup_tutors && data.backup_tutors.length > 0) {
+                    const firstBackup = data.backup_tutors[0];
+                    backupTutor = {
+                        fullName: firstBackup.full_name,
+                        username: firstBackup.username
+                    };
+                    console.log('Loaded backup tutor:', backupTutor);
+                }
+                
+                console.log('Loaded main tutors:', tutors);
+                console.log('Loaded backup tutor:', backupTutor);
+                
+                // Render the tutors and fetch available tutors for dropdowns
                 renderTutors();
+                fetchAvailableTutors();
+                
+                // Set backup tutor dropdown after a short delay to ensure options are loaded
+                if (backupTutor) {
+                    setTimeout(() => {
+                        if (backupTutorSelect) {
+                            const backupOptions = Array.from(backupTutorSelect.options);
+                            const matchingOption = backupOptions.find(option => 
+                                option.value === backupTutor.fullName ||
+                                option.dataset.username === backupTutor.username
+                            );
+                            if (matchingOption) {
+                                backupTutorSelect.value = matchingOption.value;
+                                console.log('Set backup tutor dropdown to:', matchingOption.value);
+                            }
+                        }
+                    }, 200);
+                }
             } else {
-                console.error('Failed to fetch tutors for mapping:', data.message);
-                // Fallback: just use the full names as strings
-                tutors = fullNames;
+                console.error('Failed to load class tutors:', data.message);
+                // Fallback to empty state
+                tutors = [];
+                backupTutor = null;
                 renderTutors();
+                fetchAvailableTutors();
             }
         })
         .catch(error => {
-            console.error('Error fetching tutor mapping:', error);
-            // Fallback: just use the full names as strings
-            tutors = fullNames;
+            console.error('Error loading class tutors:', error);
+            // Fallback to empty state
+            tutors = [];
+            backupTutor = null;
             renderTutors();
+            fetchAvailableTutors();
         });
     }
 
@@ -298,6 +330,8 @@ document.addEventListener('DOMContentLoaded', function() {
             saveBtn.textContent = 'Saving...';
             saveBtn.disabled = true;
 
+            console.log('Debug - Original tutors array:', tutors);
+            
             // Convert tutor objects to usernames for the API
             const tutorUsernames = tutors.map(tutor => {
                 if (typeof tutor === 'object' && tutor.username) {
@@ -305,7 +339,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 // Fallback for any string entries (shouldn't happen with new structure)
                 return tutor;
-            }).filter(username => username && username.trim() !== '');
+            }).filter(username => {
+                // Make sure it's a string and not empty
+                return username && typeof username === 'string' && username.trim() !== '';
+            });
 
             // Prepare backup tutor for saving (if database field exists)
             const backupTutorData = backupTutor ? {
@@ -314,6 +351,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } : null;
             
             console.log('Saving assignments - Main tutors:', tutorUsernames, 'Backup tutor:', backupTutorData);
+            console.log('Class ID:', currentClassId);
 
             // Send tutor assignments to server
             fetch('/api/save-tutor-assignments', {
@@ -329,24 +367,94 @@ document.addEventListener('DOMContentLoaded', function() {
                     backup_tutor: backupTutorData // Include backup tutor in the save request
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return response.text().then(text => {
+                    console.log('Response text:', text);
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('JSON parse error:', e);
+                        throw new Error('Invalid JSON response: ' + text);
+                    }
+                });
+            })
             .then(data => {
+                console.log('Parsed response:', data);
                 if (data.success) {
                     alert('Tutor assignments saved successfully!');
                     if (modal) modal.classList.add("hidden");
                     location.reload(); // Refresh to show updated assignments
                 } else {
-                    alert('Error saving assignments: ' + data.message);
+                    alert('Error saving assignments: ' + (data.message || 'Unknown error'));
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('Error saving assignments. Please try again.');
+                console.error('Full error:', error);
+                alert('Error saving assignments: ' + error.message);
             })
             .finally(() => {
+                console.log('Save operation completed');
                 saveBtn.textContent = originalText;
                 saveBtn.disabled = false;
             });
         });
     }
 });
+
+/**
+ * Save schedule as partial or final
+ */
+function saveScheduleAs(status, date) {
+    const statusText = status === 'partial' ? 'Partial' : 'Final';
+    const confirmMessage = status === 'final' 
+        ? `Are you sure you want to finalize the schedule for ${date}? This will archive it and it cannot be modified.`
+        : `Save the schedule for ${date} as ${statusText}?`;
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+
+    const button = event.target;
+    const originalText = button.textContent;
+    button.textContent = 'Saving...';
+    button.disabled = true;
+
+    fetch(`/schedules/save-as-${status}/${date}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            if (status === 'final') {
+                // Redirect back to class scheduling after finalizing
+                window.location.href = '/scheduling?tab=class';
+            } else {
+                // Just reload the current page for partial save
+                window.location.reload();
+            }
+        } else {
+            alert('Error saving schedule: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving schedule. Please try again.');
+    })
+    .finally(() => {
+        button.textContent = originalText;
+        button.disabled = false;
+    });
+}

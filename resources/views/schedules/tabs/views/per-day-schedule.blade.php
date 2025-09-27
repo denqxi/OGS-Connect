@@ -43,6 +43,7 @@
             </button>
 
             <button
+                onclick="exportSchedule('tentative', '{{ $date }}')"
                 class="flex items-center space-x-2 bg-[#0E335D] text-white px-4 py-2 rounded-full text-sm font-medium 
                         hover:bg-[#184679] transform transition duration-200 hover:scale-105">
                 <i class="fas fa-file-excel"></i>
@@ -59,7 +60,11 @@
             <span class="text-sm text-gray-500 uppercase tracking-wide">Status:</span>
             @php
                 $totalRequired = $dayClasses->sum('number_required');
-                $totalAssigned = $dayClasses->sum(function($class) { return $class->tutorAssignments->count(); });
+                $totalAssigned = $dayClasses->sum(function($class) { 
+                    return $class->tutorAssignments->filter(function($assignment) {
+                        return !$assignment->is_backup;
+                    })->count();
+                });
                 
                 if ($totalAssigned == 0) {
                     $statusText = 'Not Assigned';
@@ -125,16 +130,25 @@
                     @endphp
                     
                     @php
-                        // Get assigned tutors for this class with full names
-                        $assignedTutors = $class->tutorAssignments->map(function($assignment) {
+                        // Get assigned tutors for this class separated by type
+                        $mainTutors = $class->tutorAssignments->filter(function($assignment) {
+                            return !$assignment->is_backup; // Use ! instead of where()
+                        })->map(function($assignment) {
                             return $assignment->tutor->full_name;
-                        })->toArray();
-                        $assignedCount = count($assignedTutors);
+                        })->values()->toArray();
                         
-                        // Create tutor slots with assigned tutors first, then empty slots
+                        $backupTutors = $class->tutorAssignments->filter(function($assignment) {
+                            return $assignment->is_backup; // Use filter instead of where()
+                        })->map(function($assignment) {
+                            return $assignment->tutor->full_name;
+                        })->values()->toArray();
+                        
+                        $mainTutorCount = count($mainTutors);
+                        
+                        // Create tutor slots with main tutors only (backup shown separately)
                         $tutorSlots = [];
                         for ($i = 0; $i < $requiredTutors; $i++) {
-                            $tutorSlots[] = $assignedTutors[$i] ?? null;
+                            $tutorSlots[] = $mainTutors[$i] ?? null;
                         }
                         
                         // Split into columns
@@ -175,10 +189,37 @@
                     </div>
                 </div>
 
+                <!-- Backup Tutor Section -->
+                @if(count($backupTutors) > 0)
+                <div class="mb-4">
+                    <div class="text-center text-sm text-gray-700 font-medium mb-3">BACKUP TUTOR</div>
+                    <div class="space-y-2">
+                        @foreach($backupTutors as $backupTutor)
+                            <div class="py-3 px-4 bg-green-50 border border-green-200 rounded-lg">
+                                <div class="flex items-center justify-center space-x-2">
+                                    <div class="flex items-center bg-white px-3 py-2 rounded-full border border-green-300 shadow-sm">
+                                        <i class="fas fa-user-graduate text-green-600 text-sm mr-2"></i>
+                                        <span class="text-gray-800 font-medium text-base">{{ $backupTutor }}</span>
+                                        <span class="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">Ready</span>
+                                    </div>
+                                </div>
+                                <div class="text-center text-xs text-gray-500 mt-2">Available if needed</div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
                 <!-- Bottom section - Always at bottom -->
                 <div class="flex items-center justify-between border-t pt-3 mt-auto">
-                    <span class="text-sm text-gray-600">
-                        Slots: {{ $class->tutorAssignments->count() }}/{{ $class->number_required ?? 0 }}
+                    <span class="text-sm text-gray-700 font-medium">
+                        Teachers: {{ count($mainTutors) }}/{{ $class->number_required ?? 0 }}
+                        @if(count($backupTutors) > 0)
+                            <span class="inline-flex items-center ml-3 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-300">
+                                <i class="fas fa-user-clock mr-1 text-xs"></i>
+                                +{{ count($backupTutors) }} on standby
+                            </span>
+                        @endif
                     </span>
                     <button
                         class="editBtn text-[#F6B40E] hover:text-[#C88F00] transform transition duration-200 hover:scale-110"
@@ -188,7 +229,8 @@
                         data-school="{{ $class->school }}"
                         data-required="{{ $class->number_required }}"
                         data-class-id="{{ $class->id }}"
-                        data-assigned-tutors="{{ $class->tutorAssignments->map(function($assignment) { return $assignment->tutor->full_name; })->implode(',') }}">
+                        data-assigned-tutors="{{ implode(',', $mainTutors) }}"
+                        data-backup-tutor="{{ count($backupTutors) > 0 ? $backupTutors[0] : '' }}">
                         <i class="fas fa-edit"></i>
                     </button>
                 </div>
@@ -207,13 +249,13 @@
     <!-- Action Buttons -->
     @if($dayClasses->count() > 0)
     <div class="flex items-center justify-center space-x-4">
-        <button
+        <button onclick="saveScheduleAs('partial', '{{ $date }}')"
             class="bg-[#F6B40E] hover:bg-[#C88F00] text-white px-6 py-2 rounded-full font-medium 
                     transform transition duration-200 hover:scale-105">
             Save as Partial
         </button>
 
-        <button
+        <button onclick="saveScheduleAs('final', '{{ $date }}')"
             class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-full font-medium 
                     transform transition duration-200 hover:scale-105">
             Save as Final
