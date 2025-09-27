@@ -1,10 +1,27 @@
-@if (request('day'))
+@if (request('view_date'))
     {{-- Show the daily schedule view --}}
-    @include('schedules.tabs.views.per-day-schedule', ['date' => request('day')])
+    @include('schedules.tabs.views.per-day-schedule', ['date' => request('view_date')])
 @else
-    <!-- Page Title -->
+    <!-- Page Title with Upload Button -->
     <div class="bg-white border-b border-gray-200 px-6 py-4">
-        <h2 class="text-xl font-semibold text-gray-800">Class Scheduling</h2>
+        <div class="flex items-center justify-between">
+            <h2 class="text-xl font-semibold text-gray-800">Class Scheduling</h2>
+            
+            <!-- Upload Excel Button -->
+            <div class="relative">
+                <input type="file" 
+                       id="excelFileInput" 
+                       accept=".xlsx,.xls,.csv" 
+                       class="hidden"
+                       onchange="uploadExcelFile()">
+                <button onclick="document.getElementById('excelFileInput').click()"
+                        class="flex items-center space-x-2 bg-[#0E335D] text-white px-4 py-2 rounded-full text-sm font-medium 
+                              hover:bg-[#184679] transform transition duration-200 hover:scale-105">
+                    <i class="fas fa-file-excel"></i>
+                    <span>Upload Excel</span>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Search Filters -->
@@ -12,27 +29,71 @@
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
         </div>
-        <div class="flex items-center space-x-4">
-            <div class="relative flex-1 max-w-md">
-                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                <input type="text" 
-                    placeholder="search school..." 
-                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+        <form method="GET" action="{{ route('schedules.index') }}" id="filterForm">
+            <input type="hidden" name="tab" value="class">
+            <div class="flex justify-between items-center space-x-4">
+                <!-- Left Group: Search + Filters -->
+                <div class="flex items-center space-x-4 flex-1 max-w-3xl">
+                    <div class="relative flex-1 max-w-md">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" 
+                               id="realTimeSearch"
+                               name="search"
+                               value="{{ request('search') }}"
+                               placeholder="Search schools..." 
+                               class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md text-sm 
+                                      focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
+                                      focus:ring-0 focus:shadow-xl">
+                        <!-- Spinner -->
+                        <div id="searchSpinner" class="absolute right-8 top-1/2 transform -translate-y-1/2 hidden">
+                            <i class="fas fa-spinner fa-spin text-gray-400"></i>
+                        </div>
+                        <!-- Clear button -->
+                        <button type="button" id="clearSearch" 
+                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 {{ request('search') ? '' : 'hidden' }}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <select name="date" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+                        <option value="">All Dates</option>
+                        @foreach($availableDates ?? [] as $date)
+                            <option value="{{ $date }}" {{ request('date') == $date ? 'selected' : '' }}>
+                                {{ \Carbon\Carbon::parse($date)->format('M d, Y') }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <select name="day" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+                        <option value="">All Days</option>
+                        <option value="Monday" {{ request('day') == 'Monday' ? 'selected' : '' }}>Monday</option>
+                        <option value="Tuesday" {{ request('day') == 'Tuesday' ? 'selected' : '' }}>Tuesday</option>
+                        <option value="Wednesday" {{ request('day') == 'Wednesday' ? 'selected' : '' }}>Wednesday</option>
+                        <option value="Thursday" {{ request('day') == 'Thursday' ? 'selected' : '' }}>Thursday</option>
+                        <option value="Friday" {{ request('day') == 'Friday' ? 'selected' : '' }}>Friday</option>
+                        <option value="Saturday" {{ request('day') == 'Saturday' ? 'selected' : '' }}>Saturday</option>
+                        <option value="Sunday" {{ request('day') == 'Sunday' ? 'selected' : '' }}>Sunday</option>
+                    </select>
+                    <select name="status" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+                        <option value="">All Status</option>
+                        <option value="assigned" {{ request('status') == 'assigned' ? 'selected' : '' }}>Fully Assigned</option>
+                        <option value="partial" {{ request('status') == 'partial' ? 'selected' : '' }}>Partially Assigned</option>
+                        <option value="unassigned" {{ request('status') == 'unassigned' ? 'selected' : '' }}>Unassigned</option>
+                    </select>
+                    <button type="submit" class="bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-teal-700 transition-colors">
+                        Filter
+                    </button>
+                    @if(request()->hasAny(['search', 'date', 'day', 'status']))
+                    <a href="{{ route('schedules.index', ['tab' => 'class']) }}" 
+                       class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors">
+                        Clear
+                    </a>
+                    @endif
+                </div>
             </div>
-            <select class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
-                <option>Date</option>
-            </select>
-            <select class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
-                <option>Day</option>
-            </select>
-            <select class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
-                <option>Status</option>
-            </select>
-        </div>
+        </form>
     </div>
 
     <!-- Class Scheduling Table -->
-    <div class="bg-white overflow-x-auto">
+    <div class="bg-white overflow-x-auto" id="tableContainer">
         <table class="w-full">
             <thead class="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -41,47 +102,37 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Schools</th>
                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Classes</th>
                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Total Required</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                @forelse($dailyData ?? [] as $data)
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4 text-sm font-medium text-gray-900">September 2, 2025</td>
-                    <td class="px-6 py-4 text-sm text-gray-500">Tuesday</td>
-                    <td class="px-6 py-4 text-sm text-gray-900 font-medium">TOKOGAWA</td>
-                    <td class="px-6 py-4 text-sm text-center text-gray-500">15</td>
-                    <td class="px-6 py-4 text-sm text-center text-gray-500">15</td>
-                    <td class="px-6 py-4 text-sm">
-                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Partially Assigned</span>
-                    </td>
-                    
-                    <td class="px-6 py-4 text-sm">
-                        <a href="{{ route('schedules.index', ['tab' => 'class', 'day' => $data->date]) }}"
-                            class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-sm hover:bg-blue-200 transition-colors">
-                            <i class="fas fa-eye mr-1"></i>
-                            View Details
-                        </a>
-                    </td>
-                </tr>
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4 text-sm font-medium text-gray-900">September 3, 2025</td>
-                    <td class="px-6 py-4 text-sm text-gray-500">Wednesday</td>
-                    <td class="px-6 py-4 text-sm text-gray-900 font-medium">TOKOGAWA</td>
-                    <td class="px-6 py-4 text-sm text-center text-gray-500">10</td>
-                    <td class="px-6 py-4 text-sm text-center text-gray-500">10</td>
-                    <td class="px-6 py-4 text-sm">
-                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Fully Assigned</span>
-                    </td>
-                    <td class="px-6 py-4 text-sm">
-                        <button class="w-8 h-8 bg-blue-100 text-blue-600 rounded hover:bg-blue-200">
-                            <i class="fas fa-search text-xs"></i>
-                        </button>
-                    </td>
-                </tr>
-                @endforelse
+            <tbody class="bg-white divide-y divide-gray-200" id="tableBody">
+                @include('schedules.partials.class-table-rows', ['dailyData' => $dailyData])
             </tbody>
         </table>
+
+        <!-- No Search Results Message -->
+        <div id="noSearchResults" class="hidden bg-white px-6 py-8 text-center text-gray-500 border-t">
+            <i class="fas fa-search text-4xl mb-4 opacity-50"></i>
+            <p class="text-lg font-medium">No schools found</p>
+            <p class="text-sm">Try adjusting your search terms</p>
+        </div>
+    </div>
+
+    <!-- Upload Progress Modal -->
+    <div id="uploadModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 w-96">
+            <div class="text-center">
+                <div class="mb-4">
+                    <i id="uploadIcon" class="fas fa-file-upload text-4xl text-blue-600"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">Uploading Excel File</h3>
+                <div class="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+                    <div id="uploadProgress" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="uploadStatus" class="text-sm text-gray-600">Preparing upload...</p>
+            </div>
+        </div>
     </div>
 
     <!-- Pagination -->
@@ -94,6 +145,26 @@
         <div class="text-sm text-gray-500">
             Showing {{ count($dailyData ?? []) }} results
         </div>
+        <div class="flex items-center space-x-2">
+            <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">1</button>
+            <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
     </div>
     @endif
+
+    <!-- Scripts -->
+    <script>
+        // Set global variables for JavaScript files
+        window.uploadRoute = '{{ route("import.upload") }}';
+        window.csrfToken = '{{ csrf_token() }}';
+        window.searchSchedulesRoute = '{{ route("api.search-schedules") }}';
+    </script>
+    <script src="{{ asset('js/class-scheduling-search.js') }}"></script>
+    <script src="{{ asset('js/class-scheduling.js') }}"></script>
+    <script src="{{ asset('js/excel-upload.js') }}"></script>
 @endif

@@ -37,7 +37,7 @@
 
             <!-- Desktop Buttons -->
             <div class="hidden sm:flex items-center space-x-4">
-                <a>
+                <a href="{{ url('/') }}">
                     <button
                         class="px-6 text-xs py-2 border border-ogs-navy text-ogs-navy rounded-full hover:bg-ogs-navy hover:text-white transition-colors">
                         HOME
@@ -64,7 +64,7 @@
     <!-- Mobile Overlay Menu -->
     <div id="mobile-menu"
         class="hidden sm:hidden fixed top-16 left-0 w-full bg-white shadow-md px-4 py-4 space-y-2 z-50">
-        <a href="{{ route('landing') }}">
+        <a href="{{ url('/') }}">
             <button
                 class="w-full px-6 text-xs py-2 border border-ogs-navy text-ogs-navy rounded-full hover:bg-ogs-navy hover:text-white transition-colors">
                 HOME

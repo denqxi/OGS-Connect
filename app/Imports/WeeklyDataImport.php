@@ -22,8 +22,8 @@ class WeeklyDataImport implements ToModel, WithHeadingRow
         }
 
         // Debug critical column
-        Log::info('Number Required Tutors Value:', [
-            'raw' => $row['number_required_tutors'] ?? 'MISSING'
+        Log::info('Number Required Value:', [
+            'raw' => $row['number_required'] ?? 'MISSING'
         ]);
 
         return new DailyData([

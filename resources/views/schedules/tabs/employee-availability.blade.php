@@ -1,148 +1,172 @@
 <!-- Page Title -->
 <div class="p-6 border-b border-gray-200">
-    <h2 class="text-xl font-semibold text-gray-800">Employee Availability</h2>
+    <h2 class="text-xl font-semibold text-gray-800">Tutor Availability</h2>
 </div>
+
 <!-- Search Filters -->
 <div class="p-6 border-b border-gray-200">
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
     </div>
-    <div class="flex justify-between items-center space-x-4">
-        <!-- Left side -->
-        <div class="flex items-center space-x-4 flex-1 max-w-lg">
-            <div class="relative flex-1">
-                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                <input type="text" placeholder="search name..."
-                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm 
-              focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
-              focus:ring-0 focus:shadow-xl">
-
+    
+    <form method="GET" action="{{ route('schedules.index') }}" id="tutorFilterForm">
+        <input type="hidden" name="tab" value="employee">
+        
+        <div class="flex justify-between items-center space-x-4">
+            <!-- Left side -->
+            <div class="flex items-center space-x-4 flex-1 max-w-lg">
+                <div class="relative flex-1">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" 
+                           name="search"
+                           value="{{ request('search') }}"
+                           placeholder="Search full name, email, phone number..."
+                           id="tutorSearch"
+                           class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md text-sm 
+                                  focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
+                                  focus:ring-0 focus:shadow-xl">
+                    <div id="searchSpinner" class="absolute right-3 top-1/2 transform -translate-y-1/2 hidden">
+                        <i class="fas fa-spinner fa-spin text-gray-400"></i>
+                    </div>
+                    <button type="button" id="clearSearch" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 {{ request('search') ? '' : 'hidden' }}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <select name="status" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
+                    <option value="">All Status</option>
+                    <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
+                    <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                </select>
             </div>
-            <select class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
-                <option>Status</option>
-            </select>
-        </div>
 
-        <!-- Right side -->
-        <div class="flex items-center space-x-4">
-            <span class="text-sm text-gray-600">Available at:</span>
-            <select class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
-                <option>Time Range</option>
-            </select>
-            <select class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
-                <option>Day</option>
-            </select>
+            <!-- Right side -->
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-600">Available at:</span>
+                <select name="time_range" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
+                    <option value="">All Times</option>
+                    <option value="morning" {{ request('time_range') == 'morning' ? 'selected' : '' }}>Morning (6AM-12PM)</option>
+                    <option value="afternoon" {{ request('time_range') == 'afternoon' ? 'selected' : '' }}>Afternoon (12PM-6PM)</option>
+                    <option value="evening" {{ request('time_range') == 'evening' ? 'selected' : '' }}>Evening (6PM-12AM)</option>
+                </select>
+                
+                <select name="day" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
+                    <option value="">All Days</option>
+                    <option value="monday" {{ request('day') == 'monday' ? 'selected' : '' }}>Monday</option>
+                    <option value="tuesday" {{ request('day') == 'tuesday' ? 'selected' : '' }}>Tuesday</option>
+                    <option value="wednesday" {{ request('day') == 'wednesday' ? 'selected' : '' }}>Wednesday</option>
+                    <option value="thursday" {{ request('day') == 'thursday' ? 'selected' : '' }}>Thursday</option>
+                    <option value="friday" {{ request('day') == 'friday' ? 'selected' : '' }}>Friday</option>
+                    <option value="saturday" {{ request('day') == 'saturday' ? 'selected' : '' }}>Saturday</option>
+                    <option value="sunday" {{ request('day') == 'sunday' ? 'selected' : '' }}>Sunday</option>
+                </select>
+
+                @if(request()->hasAny(['search', 'status', 'time_range', 'day']))
+                    <a href="{{ route('schedules.index', ['tab' => 'employee']) }}" 
+                       class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors">
+                        Clear
+                    </a>
+                @endif
+            </div>
         </div>
-    </div>
+    </form>
 </div>
 
-<!-- Employee Table -->
+<!-- Tutor Table -->
 <div class="overflow-x-auto">
-    <table class="w-full">
+    <table class="w-full" id="tutorTable">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number
-                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available
-                    Time</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available Time</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
         </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Josh Daniel Collins</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09477789871</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">jc.921@gmail.com</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Mon - Fri | 7 AM - 3 PM</td>
+        <tbody class="bg-white divide-y divide-gray-200" id="tutorTableBody">
+            @forelse($tutors ?? [] as $tutor)
+            <tr class="hover:bg-gray-50 tutor-row" data-searchable="{{ strtolower(($tutor->tutorID ?? '') . ' ' . ($tutor->full_name ?? '') . ' ' . ($tutor->email ?? '') . ' ' . ($tutor->phone_number ?? '')) }}">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {{ $tutor->full_name ?? 'N/A' }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tutor->phone_number ?? 'N/A' }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">
+                    <a href="mailto:{{ $tutor->email ?? '' }}">{{ $tutor->email ?? 'N/A' }}</a>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    @php
+                        $glsAccount = $tutor->accounts->firstWhere('account_name', 'GLS');
+                    @endphp
+                    @if($glsAccount)
+                        <div class="flex flex-col">
+                            <span class="font-medium text-gray-700">{{ $glsAccount->formatted_available_time }}</span>
+                            <span class="text-xs text-green-600 font-medium">(GLS Account)</span>
+                        </div>
+                    @else
+                        <span class="text-red-500 text-sm">No GLS availability</span>
+                    @endif
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                    <span
-                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                        {{ $tutor->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                        {{ ucfirst($tutor->status) }}
+                    </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                    <button class="w-8 h-8 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 transition-colors">
+                    <button class="w-8 h-8 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 transition-colors" 
+                            onclick="editTutor('{{ $tutor->tutorID }}')">
                         <i class="fas fa-edit text-xs"></i>
                     </button>
-                    <button class="w-8 h-8 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors">
-                        <i class="fas fa-times text-xs"></i>
-                    </button>
+                    @if($tutor->status === 'active')
+                        <button class="w-8 h-8 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+                                onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'inactive')">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    @else
+                        <button class="w-8 h-8 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors"
+                                onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'active')">
+                            <i class="fas fa-check text-xs"></i>
+                        </button>
+                    @endif
                 </td>
             </tr>
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Nidal Kendrick</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09789998767</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">nidal@gmail.com</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Mon - Wed | 7 AM - 4 PM</td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <span
-                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Inactive</span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                    <button class="w-8 h-8 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 transition-colors">
-                        <i class="fas fa-edit text-xs"></i>
-                    </button>
-                    <button class="w-8 h-8 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors">
-                        <i class="fas fa-check text-xs"></i>
-                    </button>
+            @empty
+            <tr id="noResultsRow">
+                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                    <i class="fas fa-users text-4xl mb-4 opacity-50"></i>
+                    <p class="text-lg font-medium">No tutors found</p>
+                    <p class="text-sm">Try adjusting your search criteria</p>
                 </td>
             </tr>
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Kageyam Lazola</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09775456351</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">lazola.k@gmail.com</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Mon - Fri | 10 AM - 3 PM</td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <span
-                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                    <button class="w-8 h-8 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 transition-colors">
-                        <i class="fas fa-edit text-xs"></i>
-                    </button>
-                    <button class="w-8 h-8 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors">
-                        <i class="fas fa-times text-xs"></i>
-                    </button>
-                </td>
-            </tr>
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">John Doe</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09886536455</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">j.d@gmail.com</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Tue - Wed | 7 AM - 3 PM</td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <span
-                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                    <button class="w-8 h-8 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 transition-colors">
-                        <i class="fas fa-edit text-xs"></i>
-                    </button>
-                    <button class="w-8 h-8 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors">
-                        <i class="fas fa-times text-xs"></i>
-                    </button>
-                </td>
-            </tr>
+            @endforelse
         </tbody>
     </table>
+
+    <!-- No Search Results Message -->
+    <div id="noSearchResults" class="hidden bg-white px-6 py-8 text-center text-gray-500 border-t">
+        <i class="fas fa-search text-4xl mb-4 opacity-50"></i>
+        <p class="text-lg font-medium">No tutors found</p>
+        <p class="text-sm">Try adjusting your search terms</p>
+    </div>
 </div>
+
 <!-- Pagination -->
-<div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+@if(isset($tutors) && method_exists($tutors, 'hasPages') && $tutors->hasPages())
+<div class="px-6 py-4 border-t border-gray-200" id="paginationSection">
+    {{ $tutors->appends(request()->query())->links() }}
+</div>
+@else
+<div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between" id="paginationSection">
     <div class="text-sm text-gray-500">
-        Showing 1 to 4 of 4 results
-    </div>
-    <div class="flex items-center space-x-2">
-        <button
-            class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-            disabled>
-            <i class="fas fa-chevron-left"></i>
-        </button>
-        <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">1</button>
-        <button
-            class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-            disabled>
-            <i class="fas fa-chevron-right"></i>
-        </button>
+        Showing <span id="resultCount">{{ count($tutors ?? []) }}</span> results
     </div>
 </div>
+@endif
+
+<script>
+    // Set global variables for JavaScript files
+    window.tutorTotalResults = @json(isset($tutors) && method_exists($tutors, 'total') ? $tutors->total() : 0);
+</script>
+<script src="{{ asset('js/employee-availability-search.js') }}"></script>
