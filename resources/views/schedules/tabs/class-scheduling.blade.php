@@ -37,13 +37,14 @@
                     <div class="relative flex-1 max-w-md">
                         <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                         <input type="text" 
-                               id="realTimeSearch"
-                               name="search"
-                               value="{{ request('search') }}"
-                               placeholder="Search schools..." 
-                               class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md text-sm 
-                                      focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
-                                      focus:ring-0 focus:shadow-xl">
+                   id="realTimeSearch"
+                   name="search"
+                   value="{{ request('search') }}"
+                   placeholder="Search schools..." 
+                   class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md text-sm 
+                       focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
+                       focus:ring-0 focus:shadow-xl"
+                   oninput="removePageParam()">
                         <!-- Spinner -->
                         <div id="searchSpinner" class="absolute right-8 top-1/2 transform -translate-y-1/2 hidden">
                             <i class="fas fa-spinner fa-spin text-gray-400"></i>
@@ -54,7 +55,8 @@
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                    <select name="date" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+                    <!-- Only one filter active at a time -->
+                    <select name="date" id="filterDate" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="handleFilterChange('date')">
                         <option value="">All Dates</option>
                         @foreach($availableDates ?? [] as $date)
                             <option value="{{ $date }}" {{ request('date') == $date ? 'selected' : '' }}>
@@ -62,7 +64,7 @@
                             </option>
                         @endforeach
                     </select>
-                    <select name="day" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+                    <select name="day" id="filterDay" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="handleFilterChange('day')">
                         <option value="">All Days</option>
                         <option value="Monday" {{ request('day') == 'Monday' ? 'selected' : '' }}>Monday</option>
                         <option value="Tuesday" {{ request('day') == 'Tuesday' ? 'selected' : '' }}>Tuesday</option>
@@ -72,10 +74,9 @@
                         <option value="Saturday" {{ request('day') == 'Saturday' ? 'selected' : '' }}>Saturday</option>
                         <option value="Sunday" {{ request('day') == 'Sunday' ? 'selected' : '' }}>Sunday</option>
                     </select>
-                    <select name="status" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+                    <select name="status" id="filterStatus" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="handleFilterChange('status')">
                         <option value="">All Status</option>
                         <option value="assigned" {{ request('status') == 'assigned' ? 'selected' : '' }}>Fully Assigned</option>
-                        <option value="partial" {{ request('status') == 'partial' ? 'selected' : '' }}>Partially Assigned</option>
                         <option value="unassigned" {{ request('status') == 'unassigned' ? 'selected' : '' }}>Unassigned</option>
                     </select>
                     <button type="submit" class="bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-teal-700 transition-colors">
@@ -83,12 +84,36 @@
                     </button>
                     @if(request()->hasAny(['search', 'date', 'day', 'status']))
                     <a href="{{ route('schedules.index', ['tab' => 'class']) }}" 
+                       onclick="event.preventDefault(); document.getElementById('filterForm').reset(); removePageParam(); window.location='{{ route('schedules.index', ['tab' => 'class']) }}';"
                        class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors">
                         Clear
                     </a>
                     @endif
                 </div>
             </div>
+            <script>
+                function removePageParam() {
+                    // Remove the page param if present so search always starts at page 1
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('page');
+                    window.history.replaceState({}, '', url);
+                }
+                function handleFilterChange(changed) {
+                    // Only one filter can be active at a time
+                    if (changed === 'date') {
+                        document.getElementById('filterDay').selectedIndex = 0;
+                        document.getElementById('filterStatus').selectedIndex = 0;
+                    } else if (changed === 'day') {
+                        document.getElementById('filterDate').selectedIndex = 0;
+                        document.getElementById('filterStatus').selectedIndex = 0;
+                    } else if (changed === 'status') {
+                        document.getElementById('filterDate').selectedIndex = 0;
+                        document.getElementById('filterDay').selectedIndex = 0;
+                    }
+                    // Optionally auto-submit the form
+                    document.getElementById('filterForm').submit();
+                }
+            </script>
         </form>
     </div>
 
@@ -136,26 +161,9 @@
     </div>
 
     <!-- Pagination -->
-    @if(isset($dailyData) && method_exists($dailyData, 'links'))
-    <div class="px-6 py-4 border-t border-gray-200">
-        {{ $dailyData->appends(request()->query())->links() }}
+    <div id="paginationContainer">
+        @include('schedules.partials.class-pagination', ['dailyData' => $dailyData])
     </div>
-    @else
-    <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-        <div class="text-sm text-gray-500">
-            Showing {{ count($dailyData ?? []) }} results
-        </div>
-        <div class="flex items-center space-x-2">
-            <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
-                <i class="fas fa-chevron-left"></i>
-            </button>
-            <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">1</button>
-            <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
-                <i class="fas fa-chevron-right"></i>
-            </button>
-        </div>
-    </div>
-    @endif
 
     <!-- Scripts -->
     <script>

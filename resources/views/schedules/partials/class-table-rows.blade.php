@@ -12,8 +12,17 @@
         @endphp
         {{ $dayMap[$data->day] ?? $data->day }}
     </td>
-    <td class="px-6 py-4 text-sm text-gray-900 font-medium">{{ $data->schools ?? '-' }}</td>
-    <td class="px-6 py-4 text-sm text-center text-gray-500">{{ $data->class_count ?? 0 }}</td>
+    <td class="px-6 py-4 text-sm text-gray-900 font-medium">
+        {{ $data->schools ?? '-' }}
+        @if(($data->cancelled_class_count ?? 0) > 0)
+            <div class="inline-flex items-center ml-2">
+                <span class="px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-xs font-medium" title="{{ $data->cancelled_class_count }} cancelled class(es)">
+                    <i class="fas fa-times-circle mr-1"></i>{{ $data->cancelled_class_count }} cancelled
+                </span>
+            </div>
+        @endif
+    </td>
+    <td class="px-6 py-4 text-sm text-center text-gray-500">{{ ($data->active_class_count ?? 0) + ($data->cancelled_class_count ?? 0) }}</td>
     <td class="px-6 py-4 text-sm text-center text-gray-500">{{ $data->total_required ?? 0 }}</td>
     <td class="px-6 py-4 text-sm">
         @php

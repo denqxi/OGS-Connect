@@ -72,8 +72,50 @@ function exportSchedule(type, specificDate = null) {
         Exporting...
     `;
     
-    // Determine the export URL
-    let exportUrl = type === 'tentative' ? '/schedules/export-tentative' : '/schedules/export-final';
+    // Handle final export using the same method as Schedule History
+    if (type === 'final') {
+        if (!specificDate) {
+            showNotification('Date is required for final export.', 'error');
+            button.disabled = false;
+            button.innerHTML = originalText;
+            return;
+        }
+        
+        // Create form to submit the specific date (same as Schedule History export)
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ route("schedules.export-selected") }}';
+        form.style.display = 'none';
+        
+        // Add CSRF token
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '_token';
+        csrfInput.value = '{{ csrf_token() }}';
+        form.appendChild(csrfInput);
+        
+        // Add the specific date
+        const dateInput = document.createElement('input');
+        dateInput.type = 'hidden';
+        dateInput.name = 'dates[]';
+        dateInput.value = specificDate;
+        form.appendChild(dateInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+        
+        // Restore button after a short delay
+        setTimeout(() => {
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }, 1000);
+        
+        return;
+    }
+    
+    // Handle tentative export (existing logic)
+    let exportUrl = '/schedules/export-tentative';
     
     // If specific date is provided, add it as a parameter
     if (specificDate) {

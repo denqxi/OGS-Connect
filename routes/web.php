@@ -91,6 +91,9 @@ Route::get('/api/class-tutors/{classId}', [ScheduleController::class, 'getClassT
 // API route to save tutor assignments
 Route::post('/api/save-tutor-assignments', [ScheduleController::class, 'saveTutorAssignments'])->name('api.save-tutor-assignments');
 
+// API route to check for time conflicts
+Route::post('/api/check-tutor-time-conflict', [ScheduleController::class, 'checkTutorTimeConflict'])->name('api.check-tutor-time-conflict');
+
 // API route for real-time search
 Route::get('/api/search-schedules', [ScheduleController::class, 'searchSchedules'])->name('api.search-schedules');
 
@@ -102,8 +105,17 @@ Route::post('/schedules/auto-assign-class/{class}', [ScheduleController::class, 
 Route::delete('/schedules/remove-assignment/{assignment}', [ScheduleController::class, 'removeTutorAssignment'])->name('schedules.remove-assignment');
 
 // Schedule status routes
-Route::post('/schedules/save-as-partial/{date}', [ScheduleController::class, 'saveAsPartial'])->name('schedules.save-as-partial');
 Route::post('/schedules/save-as-final/{date}', [ScheduleController::class, 'saveAsFinal'])->name('schedules.save-as-final');
+
+// Class cancellation routes
+Route::post('/schedules/cancel-class/{classId}', [ScheduleController::class, 'cancelClass'])->name('schedules.cancel-class');
+
+// Schedule saving routes
+Route::post('/schedules/save-schedule', [ScheduleController::class, 'saveSchedule'])->name('schedules.save-schedule');
+
+// Schedule history routes
+Route::get('/schedules/history', [ScheduleController::class, 'history'])->name('schedules.history');
+Route::get('/schedules/export-history', [ScheduleController::class, 'exportHistory'])->name('schedules.export-history');
 
 // Export routes
 Route::get('/schedules/export-tentative', [ScheduleController::class, 'exportTentativeSchedule'])->name('schedules.export-tentative');

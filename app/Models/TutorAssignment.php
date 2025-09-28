@@ -10,6 +10,9 @@ class TutorAssignment extends Model
         'daily_data_id',
         'tutor_id',
         'is_backup',
+        'was_promoted_from_backup',
+        'replaced_tutor_name',
+        'promoted_at',
         'assigned_at',
         'similarity_score',
         'status'
@@ -17,8 +20,10 @@ class TutorAssignment extends Model
 
     protected $casts = [
         'assigned_at' => 'datetime',
+        'promoted_at' => 'datetime',
         'similarity_score' => 'float',
-        'is_backup' => 'boolean'
+        'is_backup' => 'boolean',
+        'was_promoted_from_backup' => 'boolean'
     ];
 
     public function dailyData()

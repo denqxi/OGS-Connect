@@ -37,6 +37,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const tutorGrid = document.getElementById("tutorGrid");
     const addTutorSelect = document.getElementById("addTutorSelect");
     const backupTutorSelect = document.getElementById("backupTutorSelect");
+    
+    // Searchable dropdown elements
+    const addTutorSearch = document.getElementById("addTutorSearch");
+    const backupTutorSearch = document.getElementById("backupTutorSearch");
+    const addTutorDropdown = document.getElementById("addTutorDropdown");
+    const backupTutorDropdown = document.getElementById("backupTutorDropdown");
+    const addTutorContainer = document.getElementById("addTutorContainer");
+    const backupTutorContainer = document.getElementById("backupTutorContainer");
+    
+    // Store original options for filtering
+    let originalMainTutorOptions = [];
+    let originalBackupTutorOptions = [];
+    
+    // Track dropdown states
+    let isMainDropdownOpen = false;
+    let isBackupDropdownOpen = false;
 
     function fetchAvailableTutors() {
         // Clear current options except the placeholder
@@ -45,6 +61,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (backupTutorSelect) {
             backupTutorSelect.innerHTML = '<option value="">Select backup tutor</option>';
+        }
+        
+        // Clear dropdown contents
+        if (addTutorDropdown) {
+            addTutorDropdown.innerHTML = '';
+        }
+        if (backupTutorDropdown) {
+            backupTutorDropdown.innerHTML = '';
         }
         
         fetch('/api/available-tutors', {
@@ -57,49 +81,65 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success && data.tutors) {
-                // Filter out tutors that are already assigned (by full name)
-                const assignedTutorNames = tutors.map(tutor => 
-                    typeof tutor === 'object' ? tutor.fullName : tutor
+                // Get usernames of currently assigned main tutors (not display names)
+                const assignedMainTutorUsernames = tutors.map(tutor => 
+                    typeof tutor === 'object' ? tutor.username : tutor
                 );
-                const availableTutors = data.tutors.filter(tutor => 
-                    !assignedTutorNames.includes(tutor.full_name)
-                );
+                // Get username of currently assigned backup tutor
+                const assignedBackupTutorUsername = backupTutor ? backupTutor.username : null;
+                // Main tutor dropdown: exclude already assigned main tutors (but NOT backup tutor)
+                const availableMainTutors = data.tutors.filter(tutor => {
+                    const isAssignedMain = assignedMainTutorUsernames.some(username => 
+                        username && tutor.username && username.trim().toLowerCase() === tutor.username.trim().toLowerCase()
+                    );
+                    return !isAssignedMain;
+                });
+                // Backup tutor dropdown: exclude already assigned main tutors and exclude if already selected as main
+                const availableBackupTutors = data.tutors.filter(tutor => {
+                    const isAssignedMain = assignedMainTutorUsernames.some(username => 
+                        username && tutor.username && username.trim().toLowerCase() === tutor.username.trim().toLowerCase()
+                    );
+                    // If this tutor is already selected as main, don't show in backup
+                    return !isAssignedMain && (!backupTutor || tutor.username !== backupTutor.username);
+                });
                 
                 // Populate main tutor dropdown
-                if (addTutorSelect) {
-                    if (availableTutors.length === 0) {
-                        const option = document.createElement('option');
-                        option.value = '';
-                        option.textContent = 'No tutors available';
-                        option.disabled = true;
-                        addTutorSelect.appendChild(option);
+                if (addTutorDropdown) {
+                    if (availableMainTutors.length === 0) {
+                        addTutorDropdown.innerHTML = '<div class="px-3 py-2 text-gray-500 text-sm">No tutors available</div>';
                     } else {
-                        availableTutors.forEach(tutor => {
-                            const option = document.createElement('option');
-                            option.value = tutor.full_name;
-                            option.dataset.username = tutor.username;
-                            option.textContent = tutor.full_name;
-                            addTutorSelect.appendChild(option);
+                        availableMainTutors.forEach(tutor => {
+                            const div = document.createElement('div');
+                            div.className = 'px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm';
+                            div.textContent = tutor.full_name;
+                            div.dataset.value = tutor.full_name;
+                            div.dataset.username = tutor.username;
+                            div.addEventListener('click', () => selectMainTutor(tutor));
+                            addTutorDropdown.appendChild(div);
                         });
                     }
                 }
                 
-                // Populate backup tutor dropdown (includes all tutors, even assigned ones)
-                if (backupTutorSelect) {
-                    data.tutors.forEach(tutor => {
-                        const option = document.createElement('option');
-                        option.value = tutor.full_name;
-                        option.dataset.username = tutor.username;
-                        option.textContent = tutor.full_name;
-                        // Mark if currently assigned as main tutor
-                        if (assignedTutorNames.includes(tutor.full_name)) {
-                            option.textContent += ' (Main Tutor)';
-                            option.style.fontStyle = 'italic';
-                            option.style.color = '#6b7280';
-                        }
-                        backupTutorSelect.appendChild(option);
-                    });
+                // Populate backup tutor dropdown
+                if (backupTutorDropdown) {
+                    if (availableBackupTutors.length === 0) {
+                        backupTutorDropdown.innerHTML = '<div class="px-3 py-2 text-gray-500 text-sm">No tutors available for backup</div>';
+                    } else {
+                        availableBackupTutors.forEach(tutor => {
+                            const div = document.createElement('div');
+                            div.className = 'px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm';
+                            div.textContent = tutor.full_name;
+                            div.dataset.value = tutor.full_name;
+                            div.dataset.username = tutor.username;
+                            div.addEventListener('click', () => selectBackupTutor(tutor));
+                            backupTutorDropdown.appendChild(div);
+                        });
+                    }
                 }
+                
+                // Store original options for search functionality
+                originalMainTutorOptions = availableMainTutors;
+                originalBackupTutorOptions = availableBackupTutors;
             } else {
                 console.error('Failed to fetch tutors:', data.message);
             }
@@ -109,81 +149,391 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Searchable dropdown functionality
+    function selectMainTutor(tutor) {
+        const requiredTutors = parseInt(modalRequired.textContent) || 0;
+        
+        // Check if we've reached the required tutor limit
+        if (tutors.length >= requiredTutors) {
+            alert(`Cannot add more tutors. Maximum of ${requiredTutors} tutors allowed for this class.`);
+            closeDropdown('main');
+            return;
+        }
+        
+        // Check for time conflicts before adding
+        if (tutor.username && currentClassId) {
+            checkTutorConflictAndAdd(tutor, false); // false = not backup
+        } else {
+            // Fallback if no username or class ID
+            tutors.push({
+                fullName: tutor.full_name,
+                username: tutor.username
+            });
+            renderTutors();
+            fetchAvailableTutors();
+        }
+        
+        closeDropdown('main');
+        if (addTutorSearch) {
+            addTutorSearch.value = '';
+        }
+    }
+    
+    function selectBackupTutor(tutor) {
+        console.log('Backup tutor selected:', tutor);
+        
+        // Check for time conflicts before assigning backup tutor
+        if (tutor.username && currentClassId) {
+            fetch('/api/check-tutor-time-conflict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    tutor_username: tutor.username,
+                    class_id: currentClassId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && !data.has_conflict) {
+                    backupTutor = {
+                        fullName: tutor.full_name,
+                        username: tutor.username
+                    };
+                    fetchAvailableTutors();
+                } else if (data.has_conflict) {
+                    const proceed = confirm(`BACKUP TUTOR TIME CONFLICT WARNING: ${data.message}\n\nDo you still want to assign this backup tutor?`);
+                    if (proceed) {
+                        backupTutor = {
+                            fullName: tutor.full_name,
+                            username: tutor.username
+                        };
+                        fetchAvailableTutors();
+                    }
+                } else {
+                    alert('Error checking time conflicts: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error checking time conflicts:', error);
+                const proceed = confirm('Unable to check for time conflicts. Do you want to proceed?');
+                if (proceed) {
+                    backupTutor = {
+                        fullName: tutor.full_name,
+                        username: tutor.username
+                    };
+                    fetchAvailableTutors();
+                }
+            });
+        } else {
+            backupTutor = {
+                fullName: tutor.full_name,
+                username: tutor.username
+            };
+            fetchAvailableTutors();
+        }
+        closeDropdown('backup');
+        if (backupTutorSearch) {
+            backupTutorSearch.value = tutor.full_name;
+        }
+    }
+    
+    function checkTutorConflictAndAdd(tutor, isBackup) {
+        fetch('/api/check-tutor-time-conflict', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                tutor_username: tutor.username,
+                class_id: currentClassId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && !data.has_conflict) {
+                // No conflict
+                if (isBackup) {
+                    backupTutor = {
+                        fullName: tutor.full_name,
+                        username: tutor.username
+                    };
+                } else {
+                    tutors.push({
+                        fullName: tutor.full_name,
+                        username: tutor.username
+                    });
+                    renderTutors();
+                }
+                fetchAvailableTutors();
+            } else if (data.has_conflict) {
+                // Conflict detected
+                const message = isBackup ? 
+                    `BACKUP TUTOR TIME CONFLICT WARNING: ${data.message}\n\nDo you still want to assign this backup tutor?` :
+                    `TIME CONFLICT WARNING: ${data.message}\n\nDo you still want to assign this tutor?`;
+                
+                const proceed = confirm(message);
+                if (proceed) {
+                    if (isBackup) {
+                        backupTutor = {
+                            fullName: tutor.full_name,
+                            username: tutor.username
+                        };
+                    } else {
+                        tutors.push({
+                            fullName: tutor.full_name,
+                            username: tutor.username
+                        });
+                        renderTutors();
+                    }
+                    fetchAvailableTutors();
+                }
+            } else {
+                alert('Error checking time conflicts: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error checking time conflicts:', error);
+            const proceed = confirm('Unable to check for time conflicts. Do you want to proceed?');
+            if (proceed) {
+                if (isBackup) {
+                    backupTutor = {
+                        fullName: tutor.full_name,
+                        username: tutor.username
+                    };
+                } else {
+                    tutors.push({
+                        fullName: tutor.full_name,
+                        username: tutor.username
+                    });
+                    renderTutors();
+                }
+                fetchAvailableTutors();
+            }
+        });
+    }
+    
+    function openDropdown(type) {
+        if (type === 'main') {
+            isMainDropdownOpen = true;
+            if (addTutorDropdown) {
+                addTutorDropdown.classList.remove('hidden');
+            }
+            if (addTutorSearch) {
+                addTutorSearch.removeAttribute('readonly');
+                addTutorSearch.focus();
+            }
+        } else if (type === 'backup') {
+            isBackupDropdownOpen = true;
+            if (backupTutorDropdown) {
+                backupTutorDropdown.classList.remove('hidden');
+            }
+            if (backupTutorSearch) {
+                backupTutorSearch.removeAttribute('readonly');
+                backupTutorSearch.focus();
+            }
+        }
+    }
+    
+    function closeDropdown(type) {
+        if (type === 'main') {
+            isMainDropdownOpen = false;
+            if (addTutorDropdown) {
+                addTutorDropdown.classList.add('hidden');
+            }
+            if (addTutorSearch) {
+                addTutorSearch.setAttribute('readonly', 'readonly');
+            }
+        } else if (type === 'backup') {
+            isBackupDropdownOpen = false;
+            if (backupTutorDropdown) {
+                backupTutorDropdown.classList.add('hidden');
+            }
+            if (backupTutorSearch) {
+                backupTutorSearch.setAttribute('readonly', 'readonly');
+            }
+        }
+    }
+    
+    function filterDropdown(searchTerm, type) {
+        const options = type === 'main' ? originalMainTutorOptions : originalBackupTutorOptions;
+        const dropdown = type === 'main' ? addTutorDropdown : backupTutorDropdown;
+        
+        if (!dropdown) return;
+        
+        const filteredOptions = searchTerm ? 
+            options.filter(tutor => 
+                tutor.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                tutor.username.toLowerCase().includes(searchTerm.toLowerCase())
+            ) : options;
+        
+        dropdown.innerHTML = '';
+        
+        if (filteredOptions.length === 0) {
+            dropdown.innerHTML = '<div class="px-3 py-2 text-gray-500 text-sm">No tutors found</div>';
+        } else {
+            filteredOptions.forEach(tutor => {
+                const div = document.createElement('div');
+                div.className = 'px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm';
+                div.textContent = tutor.full_name;
+                div.dataset.value = tutor.full_name;
+                div.dataset.username = tutor.username;
+                
+                if (type === 'main') {
+                    div.addEventListener('click', () => selectMainTutor(tutor));
+                } else {
+                    div.addEventListener('click', () => selectBackupTutor(tutor));
+                }
+                
+                dropdown.appendChild(div);
+            });
+        }
+    }
+
+    // Event listeners for searchable dropdowns
+    if (addTutorSearch) {
+        addTutorSearch.addEventListener('click', () => {
+            if (!isMainDropdownOpen) {
+                openDropdown('main');
+            }
+        });
+        
+        addTutorSearch.addEventListener('input', (e) => {
+            filterDropdown(e.target.value, 'main');
+        });
+        
+        addTutorSearch.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeDropdown('main');
+                e.target.value = '';
+            }
+        });
+    }
+    
+    if (backupTutorSearch) {
+        backupTutorSearch.addEventListener('click', () => {
+            if (!isBackupDropdownOpen) {
+                openDropdown('backup');
+            }
+        });
+        
+        backupTutorSearch.addEventListener('input', (e) => {
+            filterDropdown(e.target.value, 'backup');
+        });
+        
+        backupTutorSearch.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeDropdown('backup');
+                e.target.value = '';
+            }
+        });
+    }
+    
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!addTutorContainer?.contains(e.target) && isMainDropdownOpen) {
+            closeDropdown('main');
+        }
+        if (!backupTutorContainer?.contains(e.target) && isBackupDropdownOpen) {
+            closeDropdown('backup');
+        }
+    });
+
     function renderTutors() {
         if (tutorGrid) {
             tutorGrid.innerHTML = "";
+            const required = parseInt(modalRequired.textContent) || 0;
             if (tutors.length === 0) {
                 tutorGrid.innerHTML = '<div class="col-span-2 text-center text-gray-500 py-4">No tutors assigned</div>';
             } else {
-                tutors.forEach((tutor, index) => {
-                    const div = document.createElement("div");
-                    div.className = "flex justify-between items-center border px-3 py-2 rounded";
-                    const displayName = typeof tutor === 'object' ? tutor.fullName : tutor;
-                    div.innerHTML = `<span>${displayName}</span>
-                    <button class="text-red-500 font-bold" onclick="removeTutor(${index})">&times;</button>`;
+                // Only render tutors that are in the tutors array (main tutors), regardless of backup tutor
+                for (let i = 0; i < required; i++) {
+                    const tutor = tutors[i];
+                    const div = document.createElement('div');
+                    if (tutor) {
+                        div.className = 'py-2 px-3 bg-green-50 border border-green-200 rounded text-green-700 text-center font-medium text-sm flex items-center justify-between';
+                        div.innerHTML = `
+                            <span>${tutor.fullName || tutor}</span>
+                            <button class="removeTutorBtn ml-2 text-red-500 hover:text-red-700" data-index="${i}" title="Remove Tutor">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        `;
+                    } else {
+                        div.className = 'py-2 px-3 bg-gray-50 rounded text-gray-400 text-center text-sm';
+                        div.textContent = 'Not Assigned';
+                    }
                     tutorGrid.appendChild(div);
-                });
+                }
             }
         }
     }
 
-    // Make removeTutor globally available
-    window.removeTutor = function(index) {
-        tutors.splice(index, 1);
-        renderTutors();
-        fetchAvailableTutors(); // Update dropdowns when tutor is removed
-    }
-
-    if (addTutorSelect) {
-        addTutorSelect.addEventListener("change", function() {
-            const selectedTutor = this.value;
-            const selectedOption = this.options[this.selectedIndex];
-            const requiredTutors = parseInt(modalRequired.textContent) || 0;
-            
-            if (selectedTutor && !tutors.some(tutor => tutor.fullName === selectedTutor)) {
-                // Check if we've reached the required tutor limit
-                if (tutors.length >= requiredTutors) {
-                    alert(`Cannot add more tutors. Maximum of ${requiredTutors} tutors allowed for this class.`);
-                    this.value = "";
-                    return;
-                }
-                
-                // Store both full name and username for saving
-                tutors.push({
-                    fullName: selectedTutor,
-                    username: selectedOption.dataset.username
-                });
+    // Remove tutor event delegation (for dynamically rendered remove buttons)
+    tutorGrid?.addEventListener('click', function(e) {
+        const btn = e.target.closest('.removeTutorBtn');
+        if (btn) {
+            const index = parseInt(btn.getAttribute('data-index'));
+            if (!isNaN(index)) {
+                tutors.splice(index, 1);
                 renderTutors();
-                fetchAvailableTutors(); // Update dropdowns when tutor is added
+                fetchAvailableTutors();
             }
-            this.value = "";
-        });
-    }
+        }
+    });
 
-    // Backup tutor selection handler
-    if (backupTutorSelect) {
-        backupTutorSelect.addEventListener("change", function() {
-            const selectedFullName = this.value; // This is the full name
-            const selectedOption = this.options[this.selectedIndex];
-            
-            console.log('Backup tutor selection details:');
-            console.log('- Selected value:', selectedFullName);
-            console.log('- Selected option:', selectedOption);
-            console.log('- Option dataset:', selectedOption.dataset);
-            console.log('- Username from dataset:', selectedOption.dataset.username);
-            
-            if (selectedFullName) {
-                backupTutor = {
-                    fullName: selectedFullName,
-                    username: selectedOption.dataset.username // This is the actual username
-                };
-                console.log('Backup tutor selected:', backupTutor);
-            } else {
-                backupTutor = null;
-                console.log('Backup tutor cleared');
+    // Event listeners for searchable dropdowns
+    if (addTutorSearch) {
+        addTutorSearch.addEventListener('click', () => {
+            if (!isMainDropdownOpen) {
+                openDropdown('main');
+            }
+        });
+        
+        addTutorSearch.addEventListener('input', (e) => {
+            filterDropdown(e.target.value, 'main');
+        });
+        
+        addTutorSearch.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeDropdown('main');
+                e.target.value = '';
             }
         });
     }
+    
+    if (backupTutorSearch) {
+        backupTutorSearch.addEventListener('click', () => {
+            if (!isBackupDropdownOpen) {
+                openDropdown('backup');
+            }
+        });
+        
+        backupTutorSearch.addEventListener('input', (e) => {
+            filterDropdown(e.target.value, 'backup');
+        });
+        
+        backupTutorSearch.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeDropdown('backup');
+                e.target.value = '';
+            }
+        });
+    }
+    
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!addTutorContainer?.contains(e.target) && isMainDropdownOpen) {
+            closeDropdown('main');
+        }
+        if (!backupTutorContainer?.contains(e.target) && isBackupDropdownOpen) {
+            closeDropdown('backup');
+        }
+    });
 
     // Use event delegation for edit buttons (since they're dynamically rendered)
     document.addEventListener("click", function(e) {
@@ -204,9 +554,28 @@ document.addEventListener('DOMContentLoaded', function() {
             // Clear tutors array and backup tutor first
             tutors = [];
             backupTutor = null;
-            if (backupTutorSelect) {
-                backupTutorSelect.value = "";
+            
+            // Reset search inputs and close dropdowns
+            if (addTutorSearch) {
+                addTutorSearch.value = "";
+                addTutorSearch.placeholder = "Add tutor";
+                addTutorSearch.setAttribute('readonly', 'readonly');
             }
+            if (backupTutorSearch) {
+                backupTutorSearch.value = "";
+                backupTutorSearch.placeholder = "Select backup tutor";
+                backupTutorSearch.setAttribute('readonly', 'readonly');
+            }
+            if (addTutorDropdown) {
+                addTutorDropdown.classList.add('hidden');
+            }
+            if (backupTutorDropdown) {
+                backupTutorDropdown.classList.add('hidden');
+            }
+            
+            // Reset dropdown states
+            isMainDropdownOpen = false;
+            isBackupDropdownOpen = false;
             
             console.log('Loading tutors for class ID:', currentClassId);
             
@@ -227,7 +596,6 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function loadClassTutors(classId) {
         console.log('Loading tutors for class:', classId);
-        
         fetch(`/api/class-tutors/${classId}`, {
             method: 'GET',
             headers: {
@@ -237,50 +605,42 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             console.log('Class tutors response:', data);
-            
             if (data.success) {
-                // Load main tutors
-                tutors = data.main_tutors.map(tutor => ({
-                    fullName: tutor.full_name,
-                    username: tutor.username
-                }));
-                
-                // Load backup tutor (if any)
+                // Only main tutors go into tutors array
+                let loadedBackupTutor = null;
                 if (data.backup_tutors && data.backup_tutors.length > 0) {
                     const firstBackup = data.backup_tutors[0];
-                    backupTutor = {
+                    loadedBackupTutor = {
                         fullName: firstBackup.full_name,
                         username: firstBackup.username
                     };
-                    console.log('Loaded backup tutor:', backupTutor);
                 }
-                
+                backupTutor = loadedBackupTutor;
+                // Defensive: filter out backup tutor from main tutors array if present
+                tutors = (data.main_tutors || []).map(tutor => ({
+                    fullName: tutor.full_name,
+                    username: tutor.username
+                })).filter(tutor => {
+                    if (!backupTutor) return true;
+                    return tutor.username !== backupTutor.username;
+                });
                 console.log('Loaded main tutors:', tutors);
                 console.log('Loaded backup tutor:', backupTutor);
-                
-                // Render the tutors and fetch available tutors for dropdowns
                 renderTutors();
                 fetchAvailableTutors();
-                
-                // Set backup tutor dropdown after a short delay to ensure options are loaded
+                // Set backup tutor display after a short delay to ensure options are loaded
                 if (backupTutor) {
                     setTimeout(() => {
-                        if (backupTutorSelect) {
-                            const backupOptions = Array.from(backupTutorSelect.options);
-                            const matchingOption = backupOptions.find(option => 
-                                option.value === backupTutor.fullName ||
-                                option.dataset.username === backupTutor.username
-                            );
-                            if (matchingOption) {
-                                backupTutorSelect.value = matchingOption.value;
-                                console.log('Set backup tutor dropdown to:', matchingOption.value);
-                            }
+                        if (backupTutorSearch) {
+                            backupTutorSearch.value = backupTutor.fullName;
+                            console.log('Set backup tutor search field to:', backupTutor.fullName);
                         }
-                    }, 200);
+                    }, 500);
+                } else if (backupTutorSearch) {
+                    backupTutorSearch.value = '';
                 }
             } else {
                 console.error('Failed to load class tutors:', data.message);
-                // Fallback to empty state
                 tutors = [];
                 backupTutor = null;
                 renderTutors();
@@ -289,7 +649,6 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Error loading class tutors:', error);
-            // Fallback to empty state
             tutors = [];
             backupTutor = null;
             renderTutors();
@@ -330,17 +689,13 @@ document.addEventListener('DOMContentLoaded', function() {
             saveBtn.textContent = 'Saving...';
             saveBtn.disabled = true;
 
-            console.log('Debug - Original tutors array:', tutors);
-            
             // Convert tutor objects to usernames for the API
             const tutorUsernames = tutors.map(tutor => {
                 if (typeof tutor === 'object' && tutor.username) {
                     return tutor.username;
                 }
-                // Fallback for any string entries (shouldn't happen with new structure)
                 return tutor;
             }).filter(username => {
-                // Make sure it's a string and not empty
                 return username && typeof username === 'string' && username.trim() !== '';
             });
 
@@ -349,11 +704,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 username: backupTutor.username,
                 full_name: backupTutor.fullName
             } : null;
-            
-            console.log('Saving assignments - Main tutors:', tutorUsernames, 'Backup tutor:', backupTutorData);
-            console.log('Class ID:', currentClassId);
 
-            // Send tutor assignments to server
             fetch('/api/save-tutor-assignments', {
                 method: 'POST',
                 headers: {
@@ -364,43 +715,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({
                     class_id: currentClassId,
                     tutors: tutorUsernames,
-                    backup_tutor: backupTutorData // Include backup tutor in the save request
+                    backup_tutor: backupTutorData
                 })
             })
             .then(response => {
-                console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
-                
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                
                 return response.text().then(text => {
-                    console.log('Response text:', text);
                     try {
                         return JSON.parse(text);
                     } catch (e) {
-                        console.error('JSON parse error:', e);
                         throw new Error('Invalid JSON response: ' + text);
                     }
                 });
             })
             .then(data => {
-                console.log('Parsed response:', data);
                 if (data.success) {
                     alert('Tutor assignments saved successfully!');
                     if (modal) modal.classList.add("hidden");
-                    location.reload(); // Refresh to show updated assignments
+                    location.reload();
                 } else {
                     alert('Error saving assignments: ' + (data.message || 'Unknown error'));
                 }
             })
             .catch(error => {
-                console.error('Full error:', error);
                 alert('Error saving assignments: ' + error.message);
             })
             .finally(() => {
-                console.log('Save operation completed');
                 saveBtn.textContent = originalText;
                 saveBtn.disabled = false;
             });

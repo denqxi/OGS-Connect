@@ -19,7 +19,8 @@ class Tutor extends Model
         'phone_number',
         'tusername',
         'tpassword',
-        'status'
+        'status',
+        'sex' // Added sex field
     ];
 
     protected $casts = [

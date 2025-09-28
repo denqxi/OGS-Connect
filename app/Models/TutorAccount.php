@@ -12,6 +12,8 @@ class TutorAccount extends Model
     protected $fillable = [
         'tutor_id',
         'account_name',
+        'username',        // Added username field
+        'screen_name',     // Added screen_name field
         'available_days',
         'available_times', 
         'preferred_time_range',

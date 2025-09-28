@@ -20,7 +20,7 @@
                     <input type="text" 
                            name="search"
                            value="{{ request('search') }}"
-                           placeholder="Search full name, email, phone number..."
+                           placeholder="Search full name, email, phone..."
                            id="tutorSearch"
                            class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md text-sm 
                                   focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
@@ -87,7 +87,10 @@
         </thead>
         <tbody class="bg-white divide-y divide-gray-200" id="tutorTableBody">
             @forelse($tutors ?? [] as $tutor)
-            <tr class="hover:bg-gray-50 tutor-row" data-searchable="{{ strtolower(($tutor->tutorID ?? '') . ' ' . ($tutor->full_name ?? '') . ' ' . ($tutor->email ?? '') . ' ' . ($tutor->phone_number ?? '')) }}">
+            @php
+                $glsAccount = $tutor->accounts->firstWhere('account_name', 'GLS');
+            @endphp
+            <tr class="hover:bg-gray-50 tutor-row" data-searchable="{{ strtolower(($tutor->full_name ?? '') . ' ' . ($tutor->email ?? '') . ' ' . ($tutor->phone_number ?? '')) }}">
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {{ $tutor->full_name ?? 'N/A' }}
                 </td>
@@ -96,9 +99,6 @@
                     <a href="mailto:{{ $tutor->email ?? '' }}">{{ $tutor->email ?? 'N/A' }}</a>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    @php
-                        $glsAccount = $tutor->accounts->firstWhere('account_name', 'GLS');
-                    @endphp
                     @if($glsAccount)
                         <div class="flex flex-col">
                             <span class="font-medium text-gray-700">{{ $glsAccount->formatted_available_time }}</span>
@@ -115,10 +115,6 @@
                     </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                    <button class="w-8 h-8 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 transition-colors" 
-                            onclick="editTutor('{{ $tutor->tutorID }}')">
-                        <i class="fas fa-edit text-xs"></i>
-                    </button>
                     @if($tutor->status === 'active')
                         <button class="w-8 h-8 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
                                 onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'inactive')">
@@ -154,19 +150,61 @@
 
 <!-- Pagination -->
 @if(isset($tutors) && method_exists($tutors, 'hasPages') && $tutors->hasPages())
-<div class="px-6 py-4 border-t border-gray-200" id="paginationSection">
-    {{ $tutors->appends(request()->query())->links() }}
+<div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between" id="paginationSection">
+    <div class="text-sm text-gray-500">
+        Showing {{ $tutors->count() }} of {{ $tutors->total() }} results
+    </div>
+    <div class="flex items-center space-x-2">
+        @if ($tutors->onFirstPage())
+            <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        @else
+            <a href="{{ $tutors->appends(request()->query())->previousPageUrl() }}" 
+               class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+        @endif
+
+        @foreach ($tutors->appends(request()->query())->getUrlRange(1, $tutors->lastPage()) as $page => $url)
+            @if ($page == $tutors->currentPage())
+                <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">{{ $page }}</button>
+            @else
+                <a href="{{ $url }}" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">{{ $page }}</a>
+            @endif
+        @endforeach
+
+        @if ($tutors->hasMorePages())
+            <a href="{{ $tutors->appends(request()->query())->nextPageUrl() }}" 
+               class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        @else
+            <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        @endif
+    </div>
 </div>
 @else
 <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between" id="paginationSection">
     <div class="text-sm text-gray-500">
         Showing <span id="resultCount">{{ count($tutors ?? []) }}</span> results
     </div>
+    <div class="flex items-center space-x-2">
+        <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">1</button>
+        <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
 </div>
 @endif
 
 <script>
-    // Set global variables for JavaScript files
     window.tutorTotalResults = @json(isset($tutors) && method_exists($tutors, 'total') ? $tutors->total() : 0);
 </script>
+<script src="{{ asset('js/employee-availability-globals.js') }}"></script>
 <script src="{{ asset('js/employee-availability-search.js') }}"></script>

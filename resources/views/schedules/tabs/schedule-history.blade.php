@@ -1,3 +1,7 @@
+@if (request('view_date'))
+    {{-- Show the daily schedule view for finalized schedules --}}
+    @include('schedules.tabs.views.finalized-schedule', ['date' => request('view_date')])
+@else
 <!-- Page Title -->
 <div class="bg-white border-b border-gray-200 px-6 py-4">
     <h2 class="text-xl font-semibold text-gray-800">Schedule History</h2>
@@ -108,10 +112,10 @@
                         </span>
                         <div class="text-xs text-gray-400 mt-1">
                             Finalized: {{ \Carbon\Carbon::parse($history->finalized_at)->format('M j, Y g:i A') }}
-                        </div>
+                        </div>  
                     </td>
                     <td class="px-6 py-4 text-sm">
-                        <a href="{{ route('schedules.index', ['tab' => 'class', 'view_date' => $history->date]) }}"
+                        <a href="{{ route('schedules.index', ['tab' => 'history', 'view_date' => \Carbon\Carbon::parse($history->date)->format('Y-m-d')]) }}"
                             class="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
                             title="View Schedule">
                             <i class="fas fa-search text-xs"></i>
@@ -133,6 +137,44 @@
 </div>
 
 <!-- Pagination -->
+@if(isset($scheduleHistory) && method_exists($scheduleHistory, 'hasPages') && $scheduleHistory->hasPages())
+<div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+    <div class="text-sm text-gray-500">
+        Showing {{ $scheduleHistory->count() }} of {{ $scheduleHistory->total() }} finalized schedules
+    </div>
+    <div class="flex items-center space-x-2">
+        @if ($scheduleHistory->onFirstPage())
+            <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        @else
+            <a href="{{ $scheduleHistory->appends(request()->query())->previousPageUrl() }}" 
+               class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+        @endif
+
+        @foreach ($scheduleHistory->appends(request()->query())->getUrlRange(1, $scheduleHistory->lastPage()) as $page => $url)
+            @if ($page == $scheduleHistory->currentPage())
+                <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">{{ $page }}</button>
+            @else
+                <a href="{{ $url }}" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">{{ $page }}</a>
+            @endif
+        @endforeach
+
+        @if ($scheduleHistory->hasMorePages())
+            <a href="{{ $scheduleHistory->appends(request()->query())->nextPageUrl() }}" 
+               class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        @else
+            <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        @endif
+    </div>
+</div>
+@else
 <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
     <div class="text-sm text-gray-500">
         @if(isset($scheduleHistory))
@@ -151,3 +193,15 @@
         </button>
     </div>
 </div>
+@endif
+
+<!-- JavaScript for Schedule History -->
+<script>
+    // Pass CSRF token and export route to JS
+    const csrfToken = "{{ csrf_token() }}";
+    const exportSelectedSchedulesRoute = "{{ route('schedules.export-selected') }}";
+</script>
+<script src="{{ asset('js/schedule-history.js') }}"></script>
+@endif
+
+

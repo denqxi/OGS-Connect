@@ -22,19 +22,35 @@ class DailyData extends Model
         'number_required',
         'schedule_status',
         'finalized_at',
+        'finalized_by',
+        'class_status', // Added class cancellation status
+        'cancelled_at'  // Added cancellation timestamp
     ];
 
     protected $casts = [
         'date' => 'date',
         'time_jst' => 'datetime:H:i:s',
         'time_pht' => 'datetime:H:i:s',
-        'finalized_at' => 'datetime'
+        'finalized_at' => 'datetime',
+        'cancelled_at' => 'datetime' // Added cancelled_at casting
     ];
 
     // ADD THIS RELATIONSHIP
     public function tutorAssignments()
     {
         return $this->hasMany(TutorAssignment::class);
+    }
+
+    // History relationship
+    public function scheduleHistory()
+    {
+        return $this->hasMany(ScheduleHistory::class, 'class_id');
+    }
+
+    // Finalized by user relationship
+    public function finalizedBy()
+    {
+        return $this->belongsTo(User::class, 'finalized_by');
     }
 
     // Optional: Get assignment status
@@ -80,5 +96,47 @@ class DailyData extends Model
             default:
                 return 'bg-gray-100 text-gray-800';
         }
+    }
+
+    // Schedule status helpers
+    public function isFinalized()
+    {
+        return $this->schedule_status === 'finalized';
+    }
+
+    public function isDraft()
+    {
+        return $this->schedule_status === 'draft';
+    }
+
+    public function isTentative()
+    {
+        return $this->schedule_status === 'tentative';
+    }
+
+    public function canBeEdited()
+    {
+        // Only draft and tentative schedules can be fully edited
+        // Finalized schedules can only be cancelled or rescheduled
+        return in_array($this->schedule_status, ['draft', 'tentative']) && $this->class_status !== 'cancelled';
+    }
+
+    // Create history record
+    public function createHistoryRecord($action, $performedBy = null, $reason = null, $oldData = null, $newData = null)
+    {
+        $status = $this->schedule_status === 'final' ? 'finalized' : $this->schedule_status;
+        return ScheduleHistory::create([
+            'class_id' => $this->id,
+            'class_name' => $this->class,
+            'school' => $this->school,
+            'class_date' => $this->date,
+            'class_time' => $this->time_jst,
+            'status' => $status,
+            'action' => $action,
+            'performed_by' => $performedBy,
+            'reason' => $reason,
+            'old_data' => $oldData,
+            'new_data' => $newData
+        ]);
     }
 }

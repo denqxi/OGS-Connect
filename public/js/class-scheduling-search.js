@@ -12,7 +12,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchSpinner = document.getElementById('searchSpinner');
     const clearButton = document.getElementById('clearSearch');
     const tableBody = document.getElementById('tableBody');
-    const paginationSection = document.querySelector('.px-6.py-4.border-t.border-gray-200');
+    function getPaginationSection() {
+        return document.getElementById('paginationContainer');
+    }
     
     // Check if we started with a search query
     if (searchInput && searchInput.value.trim()) {
@@ -167,8 +169,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     // Update pagination if exists
-                    if (paginationSection && data.pagination) {
-                        paginationSection.innerHTML = data.pagination;
+                    const pagSection = getPaginationSection();
+                    if (pagSection && data.pagination) {
+                        pagSection.innerHTML = data.pagination;
                     }
                 } else {
                     // Clear table body and show "no search results" message
@@ -180,8 +183,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     // Clear pagination
-                    if (paginationSection) {
-                        paginationSection.innerHTML = '<div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between"><div class="text-sm text-gray-500">No results found</div></div>';
+                    const pagSection = getPaginationSection();
+                    if (pagSection) {
+                        pagSection.innerHTML = '<div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between"><div class="text-sm text-gray-500">No results found</div></div>';
                     }
                 }
                 
