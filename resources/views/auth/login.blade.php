@@ -78,8 +78,33 @@
       </p>
 
       <!-- Login Form -->
-      <form class="space-y-3 md:space-y-4 flex-1 flex flex-col justify-center">
-        <!-- Email -->
+      <form method="POST" action="{{ route('login') }}" class="space-y-3 md:space-y-4 flex-1 flex flex-col justify-center">
+        @csrf
+        
+        <!-- Error Messages -->
+        @if ($errors->any())
+          <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              <div class="ml-3">
+                <h3 class="text-sm font-medium text-red-800">
+                  Login Failed
+                </h3>
+                <div class="mt-1 text-sm text-red-700">
+                  @foreach ($errors->all() as $error)
+                    <p>{{ $error }}</p>
+                  @endforeach
+                </div>
+              </div>
+            </div>
+          </div>
+        @endif
+        
+        <!-- Unified ID/Email Field -->
         <div class="relative">
           <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
             <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,10 +112,9 @@
                     d="M3 8l7.89 7.89a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
             </svg>
           </div>
-          <input type="email" placeholder="Email" required
+          <input type="text" name="login_id" placeholder="Supervisor/Tutor ID or Email" required
                   class="w-full pl-12 pr-4 py-5 bg-white border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all duration-200">
         </div>
-
         <!-- Password -->
         <div class="relative">
           <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -99,10 +123,10 @@
                     d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
             </svg>
           </div>
-          <input type="password" placeholder="Password" required
+          <input type="password" name="password" placeholder="Password" required
                   class="w-full pl-12 pr-12 py-5 bg-white border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all duration-200">
           <div class="absolute inset-y-0 right-0 pr-4 flex items-center">
-            <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors">
+            <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" onclick="togglePasswordField(this)">
               <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -112,16 +136,26 @@
             </button>
           </div>
         </div>
-
         <div class="flex justify-end">
           <a href="#" class="text-ogs-navy font-semibold text-xs md:text-sm hover:underline">Forgot Password?</a>
         </div>
-
         <button type="submit"
                 class="w-full py-5 rounded-xl bg-mint hover:bg-teal text-ogs-navy font-bold text-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]">
           LOG IN
         </button>
       </form>
+      <script>
+        function togglePasswordField(btn) {
+          const input = btn.parentElement.parentElement.querySelector('input[type="password"], input[type="text"]');
+          if (input.type === 'password') {
+            input.type = 'text';
+            btn.querySelector('svg').classList.add('text-mint');
+          } else {
+            input.type = 'password';
+            btn.querySelector('svg').classList.remove('text-mint');
+          }
+        }
+      </script>
     </div>
   </div>
 
@@ -140,6 +174,30 @@
       <img class="w-52 h-52 object-contain" src="{{ asset('images/login-image.png') }}" alt="Login Illustration"/>
       <div class="absolute top-1/2 translate-y-0 w-[90%] bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl">
         <div class="text-blue-950 text-lg font-bold mb-2 text-center">Log in to your Account</div>
+        
+        <!-- Error Messages for Mobile -->
+        @if ($errors->any())
+          <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <svg class="h-4 w-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              <div class="ml-2">
+                <h3 class="text-xs font-medium text-red-800">
+                  Login Failed
+                </h3>
+                <div class="mt-1 text-xs text-red-700">
+                  @foreach ($errors->all() as $error)
+                    <p>{{ $error }}</p>
+                  @endforeach
+                </div>
+              </div>
+            </div>
+          </div>
+        @endif
+        
         <form class="space-y-3">
           <!-- Email -->
           <div class="relative">
