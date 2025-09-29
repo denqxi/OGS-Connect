@@ -9,6 +9,7 @@ use App\Models\DailyData;
 use App\Models\TutorAvailability;
 use App\Models\TutorAssignment;
 use App\Models\ScheduleHistory;
+use App\Models\Supervisor;
 use App\Services\TutorAssignmentService;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -20,10 +21,17 @@ use Illuminate\Support\Facades\Auth;
 use PhpOffice\PhpSpreadsheet\Style\Protection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\Supervisor;
 
 class ScheduleController extends Controller
 {
+    /**
+     * Simple index method to avoid undefined method error.
+     * (Removed due to duplicate declaration)
+     */
+    // public function index(Request $request)
+    // {
+    //     return redirect()->route('schedules.index', ['tab' => 'class']);
+    // }
     protected $assignmentService;
 
     public function __construct(TutorAssignmentService $assignmentService)
@@ -31,86 +39,67 @@ class ScheduleController extends Controller
         $this->assignmentService = $assignmentService;
     }
 
+    /**
+     * Main index method - handles all tabs and views
+     */
     public function index(Request $request)
     {
-        $tab = $request->get('tab', 'employee');
+        try {
+            $tab = $request->input('tab', 'employee');
 
+        // Class scheduling tab
         if ($tab === 'class') {
-            // Get available dates for filter dropdown (exclude finalized schedules)
-            $availableDates = DailyData::select('date')
-                ->where(function($q) {
-                    $q->where('schedule_status', '!=', 'finalized')
-                      ->orWhereNull('schedule_status');
-                })
-                ->distinct()
-                ->orderBy('date')
-                ->pluck('date');
-
-            // Check if viewing a specific date
-            if ($request->filled('view_date')) {
-                return $this->showPerDaySchedule($request->view_date, $request->get('page', 1));
+            if ($request->has('date')) {
+                return $this->showPerDaySchedule($request->date, $request->input('page', 1));
             }
 
-            // Group by date for table view - Build query with proper filtering
+            // Default class list view
             $query = DailyData::query();
             
-            // Exclude finalized schedules from main class scheduling view
-                        $query->where(function($q) {
-                                $q->where('schedule_status', '!=', 'finalized')
-                                    ->orWhereNull('schedule_status');
-                        });
-            
-            // Apply filters first
+            $query->where(function($q) {
+                $q->where('schedule_status', '!=', 'finalized')
+                  ->orWhereNull('schedule_status');
+            });
+
             if ($request->filled('search')) {
                 $query->where('school', 'like', '%' . $request->search . '%');
             }
-            
+
             if ($request->filled('date')) {
                 $query->whereDate('date', $request->date);
             }
-            
+
             if ($request->filled('day')) {
-                $query->where('day', strtolower(substr($request->day, 0, 4)));
+                $query->where('day', $request->day);
             }
-            
+
             if ($request->filled('status')) {
                 $this->applyStatusFilter($query, $request->status);
             }
-            
-            // Now build the grouped query with accurate totals
-            $selectRaw = 'date, day, 
+
+            $dailyData = $query->selectRaw('date, day, 
                 GROUP_CONCAT(DISTINCT school ORDER BY school ASC SEPARATOR ", ") as schools,
                 COUNT(*) as class_count,
-                SUM(CASE WHEN class_status = \'active\' THEN 1 ELSE 0 END) as active_class_count,
-                SUM(CASE WHEN class_status = \'cancelled\' THEN 1 ELSE 0 END) as cancelled_class_count,
-                SUM(CASE WHEN class_status = \'active\' THEN number_required ELSE 0 END) as total_required,
-                (SELECT COUNT(*) FROM tutor_assignments ta 
-                 WHERE ta.daily_data_id IN (
-                     SELECT dd2.id FROM daily_data dd2 
-                     WHERE dd2.date = daily_data.date AND dd2.day = daily_data.day AND dd2.class_status = \'active\''
-                 . ($request->filled('search') ? ' AND dd2.school LIKE ?' : '') . '
-                 ) AND (ta.is_backup = 0 OR ta.is_backup IS NULL)) as total_assigned';
-            
-            $bindings = [];
-            if ($request->filled('search')) {
-                $bindings[] = '%' . $request->search . '%';
-            }
-            
-            $dailyData = $query
-                ->selectRaw($selectRaw, $bindings)
+                SUM(CASE WHEN class_status = "cancelled" THEN 0 ELSE 1 END) as active_class_count,
+                SUM(CASE WHEN class_status = "cancelled" THEN 1 ELSE 0 END) as cancelled_class_count,
+                SUM(number_required) as total_required,
+                (SELECT COUNT(*) FROM tutor_assignments ta WHERE ta.daily_data_id IN (SELECT dd2.id FROM daily_data dd2 WHERE dd2.date = daily_data.date) AND (ta.is_backup = 0 OR ta.is_backup IS NULL)) as total_assigned,
+                GROUP_CONCAT(DISTINCT assigned_supervisor ORDER BY assigned_supervisor ASC SEPARATOR ", ") as assigned_supervisors')
                 ->groupBy('date', 'day')
                 ->orderBy('date', 'desc')
                 ->paginate(5)
                 ->withQueryString();
 
-            return view('schedules.index', compact('dailyData', 'availableDates'));
+            return view('schedules.index', compact('dailyData'));
+        }
 
-        } elseif ($tab === 'history') {
-            // Schedule History - show finalized schedules
+        // Schedule History tab
+        if ($tab === 'history') {
             return $this->showScheduleHistory($request);
-            
-        } elseif ($tab === 'employee') {
-            // Employee availability logic - Filter by GLS account only
+        }
+
+        // Employee availability tab
+        if ($tab === 'employee') {
             $query = Tutor::with(['accounts' => function($query) {
                 $query->forAccount('GLS')->active();
             }])
@@ -118,7 +107,6 @@ class ScheduleController extends Controller
                 $query->forAccount('GLS')->active();
             });
             
-            // Apply search filter
             if ($request->filled('search')) {
                 $query->where(function($q) use ($request) {
                     $q->where('tusername', 'like', '%' . $request->search . '%')
@@ -131,21 +119,17 @@ class ScheduleController extends Controller
                 });
             }
             
-            // Apply status filter (for tutor status)
             if ($request->filled('status')) {
                 $query->where('status', $request->status);
             }
             
-            // Apply time range filter (for GLS account availability)
             if ($request->filled('time_range')) {
                 $query->whereHas('accounts', function($q) use ($request) {
                     $q->forAccount('GLS')->active();
                     
-                    // Use a more flexible approach to filter by time ranges
                     switch($request->time_range) {
-                        case 'morning': // 6AM-12PM
+                        case 'morning':
                             $q->where(function($timeQuery) {
-                                // Check if any available times fall within morning hours
                                 $timeQuery->where('available_times', 'like', '%06:00%')
                                     ->orWhere('available_times', 'like', '%07:00%')
                                     ->orWhere('available_times', 'like', '%08:00%')
@@ -155,7 +139,7 @@ class ScheduleController extends Controller
                                     ->orWhere('preferred_time_range', 'morning');
                             });
                             break;
-                        case 'afternoon': // 12PM-6PM  
+                        case 'afternoon':
                             $q->where(function($timeQuery) {
                                 $timeQuery->where('available_times', 'like', '%12:00%')
                                     ->orWhere('available_times', 'like', '%13:00%')
@@ -166,7 +150,7 @@ class ScheduleController extends Controller
                                     ->orWhere('preferred_time_range', 'afternoon');
                             });
                             break;
-                        case 'evening': // 6PM-12AM
+                        case 'evening':
                             $q->where(function($timeQuery) {
                                 $timeQuery->where('available_times', 'like', '%18:00%')
                                     ->orWhere('available_times', 'like', '%19:00%')
@@ -181,9 +165,8 @@ class ScheduleController extends Controller
                 });
             }
             
-            // Apply day filter (for GLS account availability)
             if ($request->filled('day')) {
-                $dayName = ucfirst($request->day); // Convert 'monday' to 'Monday'
+                $dayName = ucfirst($request->day);
                 $query->whereHas('accounts', function($q) use ($dayName) {
                     $q->forAccount('GLS')->active()
                       ->whereJsonContains('available_days', $dayName);
@@ -194,8 +177,284 @@ class ScheduleController extends Controller
             return view('schedules.index', compact('tutors'));
         }
 
-        // Default case - redirect to employee tab
+        // Default redirect
         return redirect()->route('schedules.index', ['tab' => 'employee']);
+        
+        } catch (\Exception $e) {
+            Log::error('Error in ScheduleController@index: ' . $e->getMessage());
+            return redirect()->route('schedules.index', ['tab' => 'employee'])
+                ->with('error', 'An error occurred. Please try again.');
+        }
+    }
+
+    /**
+     * Get the supervisor name who finalized a schedule from schedule history
+     */
+    private function getScheduleSupervisorName($schedule)
+    {
+        Log::debug('getScheduleSupervisorName called', [
+            'schedule_id' => $schedule->id,
+            'schedule_class' => $schedule->class,
+            'finalized_by' => $schedule->finalized_by,
+            'schedule_status' => $schedule->schedule_status
+        ]);
+        
+        // For tentative schedules, look for assignment actions first
+        if ($schedule->schedule_status !== 'finalized') {
+            // Look for 'assigned' actions first (who actually worked on the schedule)
+            $assignmentRecord = ScheduleHistory::where('class_id', $schedule->id)
+                ->where('action', 'assigned')
+                ->orderBy('created_at', 'desc')
+                ->first();
+                
+            Log::debug('Assignment history record found', [
+                'assignment_record' => $assignmentRecord ? $assignmentRecord->toArray() : null
+            ]);
+                
+            if ($assignmentRecord && $assignmentRecord->performed_by) {
+                $supervisor = Supervisor::where('supID', $assignmentRecord->performed_by)->first();
+                Log::debug('Supervisor found from assignment action', [
+                    'performed_by' => $assignmentRecord->performed_by,
+                    'supervisor' => $supervisor ? $supervisor->toArray() : null
+                ]);
+                if ($supervisor) {
+                    return $supervisor->full_name;
+                }
+            }
+        }
+        
+        // Look for the 'finalized' action in schedule history for this class
+        $historyRecord = ScheduleHistory::where('class_id', $schedule->id)
+            ->where('action', 'finalized')
+            ->orderBy('created_at', 'desc')
+            ->first();
+            
+        Log::debug('Finalized history record found', [
+            'history_record' => $historyRecord ? $historyRecord->toArray() : null
+        ]);
+            
+        if ($historyRecord && $historyRecord->performed_by) {
+            $supervisor = Supervisor::where('supID', $historyRecord->performed_by)->first();
+            Log::debug('Supervisor found from finalized action', [
+                'performed_by' => $historyRecord->performed_by,
+                'supervisor' => $supervisor ? $supervisor->toArray() : null
+            ]);
+            if ($supervisor) {
+                return $supervisor->full_name;
+            }
+        }
+        
+        // If no finalized action found, look for any action that might indicate who created/finalized the schedule
+        $anyHistoryRecord = ScheduleHistory::where('class_id', $schedule->id)
+            ->whereIn('action', ['finalized', 'assigned', 'created', 'updated', 'exported'])
+            ->orderBy('created_at', 'desc')
+            ->first();
+            
+        Log::debug('Any history record found', [
+            'history_record' => $anyHistoryRecord ? $anyHistoryRecord->toArray() : null
+        ]);
+            
+        if ($anyHistoryRecord && $anyHistoryRecord->performed_by) {
+            $supervisor = Supervisor::where('supID', $anyHistoryRecord->performed_by)->first();
+            Log::debug('Supervisor found from any action', [
+                'performed_by' => $anyHistoryRecord->performed_by,
+                'supervisor' => $supervisor ? $supervisor->toArray() : null
+            ]);
+            if ($supervisor) {
+                return $supervisor->full_name;
+            }
+        }
+        
+        // Fallback to finalized_by field if no history record found
+        if ($schedule->finalized_by) {
+            $supervisor = Supervisor::where('supID', $schedule->finalized_by)->first();
+            Log::debug('Supervisor found from finalized_by field', [
+                'finalized_by' => $schedule->finalized_by,
+                'supervisor' => $supervisor ? $supervisor->toArray() : null
+            ]);
+            if ($supervisor) {
+                return $supervisor->full_name;
+            }
+        }
+        
+        // Final fallback to current session supervisor
+        $currentSupervisorId = session('supervisor_id');
+        if (!$currentSupervisorId && Auth::guard('supervisor')->check()) {
+            $currentSupervisorId = Auth::guard('supervisor')->user()->supID;
+        }
+        
+        if ($currentSupervisorId) {
+            $supervisor = Supervisor::where('supID', $currentSupervisorId)->first();
+            Log::debug('Using current session supervisor as final fallback', [
+                'current_supervisor_id' => $currentSupervisorId,
+                'supervisor' => $supervisor ? $supervisor->toArray() : null
+            ]);
+            if ($supervisor) {
+                return $supervisor->full_name;
+            }
+        }
+        
+        Log::debug('No supervisor found for schedule', [
+            'schedule_id' => $schedule->id
+        ]);
+        
+        return null;
+    }
+
+    /**
+     * Export selected schedules to Excel (from history tab or multi-select)
+     */
+    public function exportSelectedSchedules(Request $request)
+    {
+        try {
+            $request->validate([
+                'dates' => 'required|array|min:1',
+                'dates.*' => 'required|date'
+            ]);
+            
+            $selectedDates = $request->input('dates');
+            
+            $schedules = DailyData::with(['tutorAssignments.tutor'])
+                ->whereIn('date', $selectedDates)
+                ->orderBy('date')
+                ->orderBy('school')
+                ->orderBy('time_jst')
+                ->get();
+                
+            if ($schedules->isEmpty()) {
+                $datesString = implode(', ', $selectedDates);
+                return response()->json(['error' => "No schedules found for selected dates: {$datesString}"], 404);
+            }
+            
+            // Get current supervisor for logging purposes
+            $currentSupervisorId = session('supervisor_id');
+            if (!$currentSupervisorId && Auth::guard('supervisor')->check()) {
+                $currentSupervisorId = Auth::guard('supervisor')->user()->supID;
+            }
+            foreach ($schedules as $class) {
+                if (method_exists($class, 'createHistoryRecord')) {
+                    $class->createHistoryRecord(
+                        'exported',
+                        $currentSupervisorId,
+                        'Exported Selected Schedules',
+                        null,
+                        [
+                            'export_type' => 'selected',
+                            'date' => $class->date,
+                            'exported_by' => $currentSupervisorId
+                        ]
+                    );
+                }
+            }
+            
+            // Build per-class sheets with overview (like final export but with overview)
+            $spreadsheet = new Spreadsheet();
+            $classSheetsData = [];
+            $groupedSchedules = [];
+            
+            foreach ($schedules as $schedule) {
+                $date = \Carbon\Carbon::parse($schedule->date)->format('F j, Y');
+                $sheetKey = $date . ' - ' . $schedule->school . ' - ' . $schedule->class;
+
+                // Get the supervisor who finalized this schedule
+                Log::debug('About to call getScheduleSupervisorName for schedule', [
+                    'schedule_id' => $schedule->id,
+                    'schedule_class' => $schedule->class
+                ]);
+                $scheduleSupervisorName = $this->getScheduleSupervisorName($schedule);
+                Log::debug('getScheduleSupervisorName returned', [
+                    'schedule_id' => $schedule->id,
+                    'supervisor_name' => $scheduleSupervisorName
+                ]);
+
+                // Grouped overview structure per time and school
+                $slotKey = ($schedule->time_jst ?? '') . '|' . $schedule->school;
+                if (!isset($groupedSchedules[$slotKey])) {
+                    $groupedSchedules[$slotKey] = [
+                        'schools' => [$schedule->school],
+                        'date' => $schedule->date,
+                        'time' => $schedule->time_jst,
+                        'total_slots' => $schedule->number_required ?? 0,
+                        'main_tutors' => [],
+                        'backup_tutors' => []
+                    ];
+                } else {
+                    if (!in_array($schedule->school, $groupedSchedules[$slotKey]['schools'])) {
+                        $groupedSchedules[$slotKey]['schools'][] = $schedule->school;
+                    }
+                    // Add slots for additional classes at the same time/school
+                    $groupedSchedules[$slotKey]['total_slots'] += ($schedule->number_required ?? 0);
+                }
+
+                $mainTutors = [];
+                $backupTutors = [];
+                foreach ($schedule->tutorAssignments as $assignment) {
+                    $tutor = $assignment->tutor;
+                    if (!$tutor) { continue; }
+
+                    $glsAccount = $tutor->accounts()->where('account_name', 'GLS')->first();
+                    $glsArr = $glsAccount && method_exists($glsAccount, 'toArray') ? $glsAccount->toArray() : [];
+                    $glsId = isset($glsArr['gls_id']) ? (string)$glsArr['gls_id'] : '';
+                    $glsUsername = $glsAccount && $glsAccount->username ? $glsAccount->username : '';
+                    $glsScreenName = $glsAccount && $glsAccount->screen_name ? $glsAccount->screen_name : '';
+
+                    $tutorArr = [
+                        'glsID' => $glsId,
+                        'full_name' => $tutor->full_name,
+                        'glsUsername' => $glsUsername,
+                        'glsScreenName' => $glsScreenName,
+                        'sex' => $tutor->sex,
+                        'supervisor' => $scheduleSupervisorName,
+                        'is_backup' => $assignment->is_backup,
+                        'is_cancelled' => $schedule->class_status === 'cancelled',
+                    ];
+
+                    if ($assignment->is_backup) {
+                        $backupTutors[] = $tutorArr;
+                        $groupedSchedules[$slotKey]['backup_tutors'][] = $tutor->full_name;
+                    } else {
+                        $mainTutors[] = $tutorArr;
+                        $groupedSchedules[$slotKey]['main_tutors'][] = $tutor->full_name;
+                    }
+                }
+
+                if (empty($mainTutors) && $schedule->class_status === 'cancelled') {
+                    $mainTutors[] = [
+                        'glsID' => '',
+                        'full_name' => 'CLASS CANCELLED',
+                        'glsUsername' => '',
+                        'glsScreenName' => '',
+                        'sex' => '',
+                        'supervisor' => $scheduleSupervisorName,
+                        'is_backup' => false,
+                        'is_cancelled' => true,
+                    ];
+                }
+
+                $classSheetsData[$sheetKey] = array_merge($mainTutors, $backupTutors);
+            }
+
+            // Create overview sheet first with visualizations
+            $overviewSheet = $spreadsheet->getActiveSheet();
+            $this->createSelectedScheduleOverviewSheet($overviewSheet, $groupedSchedules, $schedules, null);
+            $overviewSheet->setTitle('Overview');
+            
+            // Create per-class sheets
+            $this->createClassSheets($spreadsheet, $classSheetsData, false, true);
+            
+            $writer = new Xlsx($spreadsheet);
+            $fileName = 'Selected_Schedules_' . now()->format('Ymd_His') . '.xlsx';
+            
+            return response()->streamDownload(function() use ($writer) {
+                $writer->save('php://output');
+            }, $fileName, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Cache-Control' => 'max-age=0',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error exporting selected schedules: ' . $e->getMessage());
+            return response()->json(['error' => 'Export failed: ' . $e->getMessage()], 500);
+        }
     }
 
     private function applyStatusFilter($query, $status)
@@ -213,7 +472,6 @@ class ScheduleController extends Controller
     {
         $dailyData = DailyData::where('date', $date)->with(['tutorAssignments.tutor'])->get();
         
-        // Check if this schedule is finalized
         $finalizedSchedule = DailyData::where('date', $date)
             ->where('schedule_status', 'finalized')
             ->first();
@@ -229,9 +487,7 @@ class ScheduleController extends Controller
      */
     private function showScheduleHistory(Request $request)
     {
-        // If viewing a specific date, return that view
         if ($request->has('view_date')) {
-            // Validate that the date exists and is finalized
             $date = $request->view_date;
             $hasFinalized = DailyData::where('date', $date)
                 ->where('schedule_status', 'finalized')
@@ -245,21 +501,21 @@ class ScheduleController extends Controller
             return view('schedules.index', compact('date'));
         }
 
-        // Query for finalized schedules grouped by date
         $query = DailyData::select([
             'date',
             'day',
             DB::raw('GROUP_CONCAT(DISTINCT school ORDER BY school ASC SEPARATOR ", ") as schools'),
             DB::raw('COUNT(*) as class_count'),
+            DB::raw('SUM(CASE WHEN class_status = "cancelled" THEN 0 ELSE 1 END) as active_class_count'),
+            DB::raw('SUM(CASE WHEN class_status = "cancelled" THEN 1 ELSE 0 END) as cancelled_class_count'),
             DB::raw('SUM(number_required) as total_required'),
             DB::raw('(SELECT COUNT(*) FROM tutor_assignments ta WHERE ta.daily_data_id IN (SELECT dd2.id FROM daily_data dd2 WHERE dd2.date = daily_data.date) AND (ta.is_backup = 0 OR ta.is_backup IS NULL)) as total_assigned'),
             'schedule_status',
             'finalized_at'
         ])
-    ->where('schedule_status', 'finalized')
+        ->where('schedule_status', 'finalized')
         ->groupBy('date', 'day', 'schedule_status', 'finalized_at');
 
-        // Apply filters
         if ($request->filled('search')) {
             $query->having('schools', 'like', '%' . $request->search . '%');
         }
@@ -272,19 +528,17 @@ class ScheduleController extends Controller
             $query->where('day', $request->day);
         }
 
-        // Get finalized schedules ordered by date (newest first) with pagination
         $scheduleHistory = $query->orderBy('date', 'desc')
             ->paginate(5)
             ->withQueryString();
 
-        // Get available dates and days for filters
-    $availableDates = DailyData::where('schedule_status', 'finalized')
+        $availableDates = DailyData::where('schedule_status', 'finalized')
             ->select('date')
             ->distinct()
             ->orderBy('date', 'desc')
             ->pluck('date');
 
-    $availableDays = DailyData::where('schedule_status', 'finalized')
+        $availableDays = DailyData::where('schedule_status', 'finalized')
             ->select('day')
             ->distinct()
             ->pluck('day');
@@ -312,7 +566,7 @@ class ScheduleController extends Controller
             $conflicts = $this->checkTimeConflicts([$tutorUsername], null, $classId, $class->date, $class->time_jst);
             
             if (!empty($conflicts)) {
-                $conflictInfo = $conflicts[$tutorUsername][0]; // Get first conflict
+                $conflictInfo = $conflicts[$tutorUsername][0];
                 $role = $conflictInfo['is_backup'] ? 'backup tutor' : 'main tutor';
                 
                 return response()->json([
@@ -436,17 +690,39 @@ class ScheduleController extends Controller
     {
         try {
             $assignment = TutorAssignment::findOrFail($assignmentId);
+            $class = $assignment->dailyData;
+            
+            // Check ownership
+            $currentSupervisorId = null;
+            if (Auth::guard('supervisor')->check()) {
+                $currentSupervisorId = Auth::guard('supervisor')->user()->supID;
+            } elseif (session('supervisor_id')) {
+                $currentSupervisorId = session('supervisor_id');
+            }
+            
+            // Check if ANY class in the same schedule (same date) is owned by another supervisor
+            $scheduleDate = $class->date;
+            $existingOwner = DailyData::where('date', $scheduleDate)
+                ->whereNotNull('assigned_supervisor')
+                ->where('assigned_supervisor', '!=', $currentSupervisorId)
+                ->first();
+            
+            if ($existingOwner) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "This schedule is being handled by another supervisor. You cannot modify it."
+                ], 403);
+            }
+            
             $tutorName = $assignment->tutor->tusername;
             $className = $assignment->dailyData->class;
             $wasMainTutor = !$assignment->is_backup;
             $dailyDataId = $assignment->daily_data_id;
             
-            // Delete the assignment
             $assignment->delete();
             
             $message = "Removed {$tutorName} from {$className}";
             
-            // Auto-promotion logic: If a main tutor was removed, promote backup tutor
             if ($wasMainTutor) {
                 $promotionMessage = $this->autoPromoteBackupTutor($dailyDataId, $tutorName, $className);
                 if ($promotionMessage) {
@@ -477,7 +753,6 @@ class ScheduleController extends Controller
             ->first();
         
         if ($backupTutor) {
-            // Promote backup to main tutor and mark as promoted
             $backupTutor->update([
                 'is_backup' => false,
                 'was_promoted_from_backup' => true,
@@ -487,7 +762,6 @@ class ScheduleController extends Controller
             
             $backupTutorName = $backupTutor->tutor->tusername;
             
-            // Create history record for the promotion
             ScheduleHistory::create([
                 'class_id' => $dailyDataId,
                 'class_name' => $className,
@@ -588,11 +862,11 @@ class ScheduleController extends Controller
                            ->map(function($tutor) {
                                return [
                                    'tutorID' => $tutor->tutorID,
-                                   'username' => $tutor->tusername, // Map tusername to username for JavaScript
+                                   'username' => $tutor->tusername,
                                    'email' => $tutor->email,
                                    'first_name' => $tutor->first_name,
                                    'last_name' => $tutor->last_name,
-                                   'full_name' => $tutor->full_name // Use the accessor
+                                   'full_name' => $tutor->full_name
                                ];
                            });
             
@@ -616,7 +890,6 @@ class ScheduleController extends Controller
         $conflicts = [];
         $allTutorNames = $tutorNames;
         
-        // Add backup tutor to check list if provided
         if ($backupTutorName) {
             $allTutorNames[] = $backupTutorName;
         }
@@ -627,9 +900,8 @@ class ScheduleController extends Controller
             $tutor = Tutor::where('tusername', $tutorName)->first();
             if (!$tutor) continue;
             
-            // Find other assignments for this tutor on the same date and time
             $conflictingAssignments = TutorAssignment::where('tutor_id', $tutor->tutorID)
-                ->where('daily_data_id', '!=', $classId) // Exclude current class
+                ->where('daily_data_id', '!=', $classId)
                 ->whereHas('dailyData', function($query) use ($classDate, $classTime) {
                     $query->whereDate('date', $classDate)
                           ->where('time_jst', $classTime);
@@ -675,10 +947,39 @@ class ScheduleController extends Controller
                 ], 400);
             }
             
-            // Find the class
             $class = DailyData::findOrFail($classId);
             
-            // Check for time conflicts before proceeding
+            // Check ownership BEFORE making any changes
+            $supervisorId = null;
+            if (Auth::guard('supervisor')->check()) {
+                $supervisorId = Auth::guard('supervisor')->user()->supID;
+            } elseif (session('supervisor_id')) {
+                $supervisorId = session('supervisor_id');
+            }
+            
+            if ($supervisorId) {
+                // Check if ANY class in the same schedule (same date) is owned by another supervisor
+                $scheduleDate = $class->date;
+                $existingOwner = DailyData::where('date', $scheduleDate)
+                    ->whereNotNull('assigned_supervisor')
+                    ->where('assigned_supervisor', '!=', $supervisorId)
+                    ->first();
+                
+                if ($existingOwner) {
+                    Log::warning("Attempted to assign tutors to schedule owned by another supervisor", [
+                        'class_id' => $class->id,
+                        'current_supervisor' => $supervisorId,
+                        'existing_owner' => $existingOwner->assigned_supervisor,
+                        'schedule_date' => $scheduleDate,
+                        'class_name' => $class->class
+                    ]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => "This schedule is already being handled by another supervisor. You cannot modify it."
+                    ], 403);
+                }
+            }
+            
             $backupTutorName = $backupTutor ? $backupTutor['username'] : null;
             $conflicts = $this->checkTimeConflicts($tutorNames, $backupTutorName, $classId, $class->date, $class->time_jst);
             
@@ -698,7 +999,6 @@ class ScheduleController extends Controller
                 ], 400);
             }
             
-            // Get current assignments for this class
             $existingMainTutors = TutorAssignment::where('daily_data_id', $classId)
                                                 ->where('is_backup', false)
                                                 ->get();
@@ -706,7 +1006,6 @@ class ScheduleController extends Controller
                                                   ->where('is_backup', true)
                                                   ->get();
             
-            // If tutors array is empty, preserve existing main tutor assignments
             if (empty($tutorNames)) {
                 Log::info('No tutors in request - preserving existing main assignments', [
                     'existing_main_count' => $existingMainTutors->count()
@@ -714,17 +1013,14 @@ class ScheduleController extends Controller
                 
                 $assignedCount = $existingMainTutors->count();
             } else {
-                // Normal case: replace main tutor assignments with provided tutors
                 Log::info('Replacing main assignments with provided tutors', [
                     'tutor_count' => count($tutorNames)
                 ]);
                 
-                // Remove existing MAIN assignments for this class (preserve backup)
                 TutorAssignment::where('daily_data_id', $classId)
                               ->where('is_backup', false)
                               ->delete();
                 
-                // Add new main tutor assignments
                 $assignedCount = 0;
                 foreach ($tutorNames as $tutorName) {
                     if (trim($tutorName) !== '') {
@@ -745,24 +1041,20 @@ class ScheduleController extends Controller
                 }
             }
             
-            // Handle backup tutor separately
             if ($backupTutor && isset($backupTutor['username']) && trim($backupTutor['username']) !== '') {
                 $backupTutorModel = Tutor::where('tusername', $backupTutor['username'])->first();
                 
                 if ($backupTutorModel) {
-                    // Remove existing backup tutors for this class (only allow one backup)
                     TutorAssignment::where('daily_data_id', $classId)
                                   ->where('is_backup', true)
                                   ->delete();
                     
-                    // Check if this tutor is already assigned as a main tutor
                     $alreadyAssignedAsMain = TutorAssignment::where('daily_data_id', $classId)
                                                           ->where('tutor_id', $backupTutorModel->tutorID)
                                                           ->where('is_backup', false)
                                                           ->exists();
                     
                     if (!$alreadyAssignedAsMain) {
-                        // Add as backup tutor
                         TutorAssignment::create([
                             'daily_data_id' => $classId,
                             'tutor_id' => $backupTutorModel->tutorID,
@@ -778,7 +1070,6 @@ class ScheduleController extends Controller
                 }
             }
             
-            // Get final counts
             $finalMainCount = TutorAssignment::where('daily_data_id', $classId)
                                             ->where('is_backup', false)
                                             ->count();
@@ -786,7 +1077,48 @@ class ScheduleController extends Controller
                                               ->where('is_backup', true)
                                               ->count();
             
-            // (Removed auto-promotion of backup tutors to main slots. Backup tutors will only be promoted by explicit user action in the UI.)
+            // Set schedule ownership for all classes on this date if not already assigned
+            if ($supervisorId && !$class->isAssigned()) {
+                $scheduleDate = $class->date;
+                // Assign all classes on this date to the current supervisor
+                DailyData::where('date', $scheduleDate)
+                    ->whereNull('assigned_supervisor')
+                    ->update([
+                        'assigned_supervisor' => $supervisorId,
+                        'assigned_at' => now()
+                    ]);
+                
+                Log::info("Schedule assigned to supervisor", [
+                    'class_id' => $class->id,
+                    'supervisor_id' => $supervisorId,
+                    'class_name' => $class->class,
+                    'schedule_date' => $scheduleDate
+                ]);
+            }
+            
+            // Create history record for the assignment action
+            if ($supervisorId) {
+                $tutorNames = array_filter($tutorNames);
+                $backupTutorName = $backupTutor ? $backupTutor['username'] : null;
+                $allTutorNames = array_merge($tutorNames, $backupTutorName ? [$backupTutorName] : []);
+                
+                $class->createHistoryRecord(
+                    'assigned',
+                    $supervisorId,
+                    'Tutors assigned to class',
+                    [
+                        'previous_main_count' => $existingMainTutors->count(),
+                        'previous_backup_count' => $existingBackupTutors->count()
+                    ],
+                    [
+                        'main_tutors' => $tutorNames,
+                        'backup_tutor' => $backupTutorName,
+                        'final_main_count' => $finalMainCount,
+                        'final_backup_count' => $finalBackupCount,
+                        'assigned_tutors' => $allTutorNames
+                    ]
+                );
+            }
             
             $response = [
                 'success' => true,
@@ -821,10 +1153,8 @@ class ScheduleController extends Controller
         try {
             Log::info('Search request received:', $request->all());
             
-            // Build query with filters
             $query = DailyData::query();
             
-            // Exclude finalized schedules from search results
             $query->where(function($q) {
                 $q->where('schedule_status', '!=', 'final')
                   ->orWhereNull('schedule_status');
@@ -846,10 +1176,11 @@ class ScheduleController extends Controller
                 $this->applyStatusFilter($query, $request->status);
             }
             
-            // Build grouped query with assignment counts
             $selectRaw = 'date, day, 
                 GROUP_CONCAT(DISTINCT school ORDER BY school ASC SEPARATOR ", ") as schools,
                 COUNT(*) as class_count,
+                SUM(CASE WHEN class_status = "cancelled" THEN 0 ELSE 1 END) as active_class_count,
+                SUM(CASE WHEN class_status = "cancelled" THEN 1 ELSE 0 END) as cancelled_class_count,
                 SUM(number_required) as total_required,
                 (SELECT COUNT(*) FROM tutor_assignments ta 
                  WHERE ta.daily_data_id IN (
@@ -870,7 +1201,6 @@ class ScheduleController extends Controller
                 ->paginate(5)
                 ->withQueryString();
             
-            // Return HTML partial for AJAX
             Log::info('Pagination URLs:', [
                 'current_page' => $dailyData->currentPage(),
                 'last_page' => $dailyData->lastPage(),
@@ -904,10 +1234,6 @@ class ScheduleController extends Controller
         try {
             $class = DailyData::findOrFail($classId);
             
-            // Do NOT auto-promote backup tutors. Promotion should only occur by explicit user action in the UI.
-            // $this->checkAndAutoPromoteBackupTutors($classId);
-            
-            // Get main tutors (is_backup = false or null)
             $mainTutors = TutorAssignment::where('daily_data_id', $classId)
                 ->where(function($query) {
                     $query->where('is_backup', false)
@@ -916,8 +1242,6 @@ class ScheduleController extends Controller
                 ->with('tutor')
                 ->get()
                 ->map(function($assignment) {
-                    // For UI display, always show the actual tutor name
-                    // The replacement message is only for Excel exports
                     return [
                         'username' => $assignment->tutor->tusername,
                         'full_name' => $assignment->tutor->full_name,
@@ -926,14 +1250,11 @@ class ScheduleController extends Controller
                     ];
                 });
 
-            // Get backup tutors (is_backup = true)
             $backupTutors = TutorAssignment::where('daily_data_id', $classId)
                 ->where('is_backup', true)
                 ->with('tutor')
                 ->get()
                 ->map(function($assignment) {
-                    // For UI display, always show the actual tutor name
-                    // The replacement message is only for Excel exports
                     return [
                         'username' => $assignment->tutor->tusername,
                         'full_name' => $assignment->tutor->full_name,
@@ -966,11 +1287,39 @@ class ScheduleController extends Controller
     public function saveAsFinal(Request $request, $date)
     {
         try {
+            $supervisorId = session('supervisor_id');
+            if (!$supervisorId && Auth::guard('supervisor')->check()) {
+                $supervisorId = Auth::guard('supervisor')->user()->supID;
+            }
+
             $updated = DailyData::where('date', $date)
                 ->update([
                     'schedule_status' => 'finalized',
-                    'finalized_at' => now()
+                    'finalized_at' => now(),
+                    'finalized_by' => $supervisorId
                 ]);
+
+            $classes = DailyData::where('date', $date)->get();
+            foreach ($classes as $class) {
+                if (method_exists($class, 'createHistoryRecord')) {
+                    $oldData = [
+                        'schedule_status' => $class->getOriginal('schedule_status'),
+                        'finalized_at' => $class->getOriginal('finalized_at'),
+                        'finalized_by' => $class->getOriginal('finalized_by'),
+                    ];
+                    $class->createHistoryRecord(
+                        'finalized',
+                        $supervisorId,
+                        'Schedule finalized',
+                        $oldData,
+                        [
+                            'schedule_status' => 'finalized',
+                            'finalized_at' => now(),
+                            'finalized_by' => $supervisorId
+                        ]
+                    );
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -984,71 +1333,183 @@ class ScheduleController extends Controller
         }
     }
 
-    /**
-     * Export tentative schedule to Excel (Class Scheduling tab)
-     */
     public function exportTentativeSchedule(Request $request)
     {
         try {
-            // Build the query for non-finalized schedules
-            $query = DailyData::with(['tutorAssignments.tutor'])
-                                ->where(function($q) {
-                                        $q->where('schedule_status', '!=', 'finalized')
-                                            ->orWhereNull('schedule_status');
-                                });
-            
-            // If specific date is provided, filter by that date
+            $query = DailyData::with(['tutorAssignments.tutor' => function($q) {
+                $q->with(['accounts' => function($qa) {
+                    $qa->where('account_name', 'GLS')->where('status', 'active')->select(['id', 'tutor_id', 'account_name', 'gls_id', 'username', 'screen_name']);
+                }]);
+            }])
+                ->where(function($q) {
+                    $q->where('schedule_status', '!=', 'finalized')
+                        ->orWhereNull('schedule_status');
+                })
+                ->where(function($q) {
+                    $q->whereNull('class_status')->orWhere('class_status', '!=', 'cancelled');
+                });
+
             if ($request->has('date') && $request->date) {
                 $query->where('date', $request->date);
             }
-            
+
             $schedules = $query->orderBy('date')
                 ->orderBy('school')
                 ->orderBy('time_jst')
                 ->get();
 
             if ($schedules->isEmpty()) {
-                return response()->json(['error' => 'No tentative schedules found for the specified criteria'], 404);
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json(['error' => 'No tentative schedules found for the specified criteria.'], 404);
+                } else {
+                    return response('No tentative schedules found for the specified criteria.', 404)
+                        ->header('Content-Type', 'text/plain')
+                        ->header('Content-Disposition', 'attachment; filename="Tentative_Schedule_Error.txt"');
+                }
             }
 
-            return $this->generateExcel($schedules, 'Tentative Schedule');
+            // Get current supervisor for logging purposes
+            $currentSupervisorId = session('supervisor_id');
+            if (!$currentSupervisorId && Auth::guard('supervisor')->check()) {
+                $currentSupervisorId = Auth::guard('supervisor')->user()->supID;
+            }
+            foreach ($schedules as $class) {
+                if (method_exists($class, 'createHistoryRecord')) {
+                    $class->createHistoryRecord(
+                        'exported',
+                        $currentSupervisorId,
+                        'Exported Tentative Schedule',
+                        null,
+                        [
+                            'export_type' => 'tentative',
+                            'date' => $class->date,
+                            'exported_by' => $currentSupervisorId
+                        ]
+                    );
+                }
+            }
+
+            $spreadsheet = new Spreadsheet();
+            // Group schedules for overview and class sheets
+            $groupedSchedules = [];
+            $classSheetsData = [];
+            foreach ($schedules as $schedule) {
+                $date = $schedule->date; // Y-m-d
+                $dateFormatted = \Carbon\Carbon::parse($date)->format('F j, Y');
+                $time = $schedule->time_jst ?? '';
+                $key = $dateFormatted . '|' . $schedule->school . '|' . $schedule->class;
+                $sheetKey = $dateFormatted . ' - ' . $schedule->school . ' - ' . $schedule->class;
+
+                // Get the supervisor who finalized this schedule
+                Log::debug('TENTATIVE: About to call getScheduleSupervisorName for schedule', [
+                    'schedule_id' => $schedule->id,
+                    'schedule_class' => $schedule->class
+                ]);
+                $scheduleSupervisorName = $this->getScheduleSupervisorName($schedule);
+                Log::debug('TENTATIVE: getScheduleSupervisorName returned', [
+                    'schedule_id' => $schedule->id,
+                    'supervisor_name' => $scheduleSupervisorName
+                ]);
+
+                // Overview grouping
+                $slotKey = ($schedule->time_jst ?? '') . '|' . $schedule->school;
+                if (!isset($groupedSchedules[$slotKey])) {
+                    $groupedSchedules[$slotKey] = [
+                        'schools' => [$schedule->school],
+                        'date' => $schedule->date, // Add date for overview header
+                        'time' => $schedule->time_jst,
+                        'total_slots' => $schedule->number_required ?? 0,
+                        'main_tutors' => [],
+                        'backup_tutors' => [],
+                        'supervisor_name' => $scheduleSupervisorName
+                    ];
+                } else {
+                    if (!in_array($schedule->school, $groupedSchedules[$slotKey]['schools'])) {
+                        $groupedSchedules[$slotKey]['schools'][] = $schedule->school;
+                    }
+                    // Add slots for additional classes at the same time/school
+                    $groupedSchedules[$slotKey]['total_slots'] += ($schedule->number_required ?? 0);
+                }
+
+                $mainTutors = [];
+                $backupTutors = [];
+                foreach ($schedule->tutorAssignments as $assignment) {
+                    $tutor = $assignment->tutor;
+                    if (!$tutor) continue;
+                    // Fetch GLS account directly from DB for this tutor
+                    $glsAccount = $tutor->accounts()->where('account_name', 'GLS')->first();
+                    $glsId = '';
+                    if ($glsAccount) {
+                        // Use toArray() to extract gls_id, since property/array access fails
+                        $glsArr = method_exists($glsAccount, 'toArray') ? $glsAccount->toArray() : [];
+                        $glsId = isset($glsArr['gls_id']) ? $glsArr['gls_id'] : '';
+                    }
+                    $glsUsername = $glsAccount && $glsAccount->username ? $glsAccount->username : '';
+                    $glsScreenName = $glsAccount && $glsAccount->screen_name ? $glsAccount->screen_name : '';
+                    $glsIdStr = (string)$glsId;
+                    Log::debug('EXPORT_TENTATIVE: FINAL glsID before tutorArr', [
+                        'glsId' => $glsId,
+                        'glsIdStr' => $glsIdStr,
+                        'tutor_id' => $tutor->tutorID
+                    ]);
+                    $tutorArr = [
+                        'glsID' => $glsIdStr,
+                        'full_name' => $tutor->full_name,
+                        'glsUsername' => $glsUsername,
+                        'glsScreenName' => $glsScreenName,
+                        'sex' => $tutor->sex,
+                        'supervisor' => $scheduleSupervisorName,
+                        'is_backup' => $assignment->is_backup,
+                        'is_cancelled' => $schedule->class_status === 'cancelled',
+                    ];
+                    Log::debug('EXPORT_TENTATIVE: tutorArr before Excel', [
+                        'tutorArr' => $tutorArr,
+                        'tutor_id' => $tutor->tutorID
+                    ]);
+                    if ($assignment->is_backup) {
+                        $backupTutors[] = $tutorArr;
+                        $groupedSchedules[$slotKey]['backup_tutors'][] = $tutor->full_name;
+                    } else {
+                        $mainTutors[] = $tutorArr;
+                        $groupedSchedules[$slotKey]['main_tutors'][] = $tutor->full_name;
+                    }
+                }
+                if (empty($mainTutors) && $schedule->class_status === 'cancelled') {
+                    $mainTutors[] = [
+                        'glsID' => '',
+                        'full_name' => 'CLASS CANCELLED',
+                        'glsUsername' => '',
+                        'glsScreenName' => '',
+                        'sex' => '',
+                        'supervisor' => $scheduleSupervisorName,
+                        'is_backup' => false,
+                        'is_cancelled' => true,
+                    ];
+                }
+                $classSheetsData[$sheetKey] = array_merge($mainTutors, $backupTutors);
+            }
+            $overviewSheet = $spreadsheet->getActiveSheet();
+            $this->createOverviewSheet($overviewSheet, $groupedSchedules);
+            $overviewSheet->setTitle('Overview');
+            $this->createClassSheets($spreadsheet, $classSheetsData, true, true);
+            $writer = new Xlsx($spreadsheet);
+            $fileName = 'Tentative_Schedule_' . now()->format('Ymd_His') . '.xlsx';
+
+            return response()->streamDownload(function() use ($writer) {
+                $writer->save('php://output');
+            }, $fileName, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Cache-Control' => 'max-age=0',
+            ]);
         } catch (\Exception $e) {
             Log::error('Error exporting tentative schedule: ' . $e->getMessage());
-            return back()->with('error', 'Failed to export: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Export selected schedules to Excel (Schedule History tab)
-     */
-    public function exportSelectedSchedules(Request $request)
-    {
-        try {
-            $request->validate([
-                'dates' => 'required|array|min:1',
-                'dates.*' => 'required|date'
-            ]);
-
-            $selectedDates = $request->input('dates');
-            
-            // Get schedule data for selected dates (remove final status requirement for Final Excel button)
-            $schedules = DailyData::with(['tutorAssignments.tutor'])
-                ->whereIn('date', $selectedDates)
-                ->orderBy('date')
-                ->orderBy('school')
-                ->orderBy('time_jst')
-                ->get();
-
-            if ($schedules->isEmpty()) {
-                $datesString = implode(', ', $selectedDates);
-                return response()->json(['error' => "No schedules found for selected dates: {$datesString}"], 404);
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['error' => 'Failed to export: ' . $e->getMessage()], 500);
+            } else {
+                return response('Failed to export: ' . $e->getMessage(), 500)
+                    ->header('Content-Type', 'text/plain')
+                    ->header('Content-Disposition', 'attachment; filename="Tentative_Schedule_Error.txt"');
             }
-
-            return $this->generateExcel($schedules, 'selected');
-            
-        } catch (\Exception $e) {
-            Log::error('Error exporting selected schedules: ' . $e->getMessage());
-            return response()->json(['error' => 'Export failed'], 500);
         }
     }
 
@@ -1057,14 +1518,20 @@ class ScheduleController extends Controller
      */
     public function exportFinalSchedule(Request $request)
     {
+        // Get current supervisor for logging purposes
+        $currentSupervisorId = session('supervisor_id');
+        if (!$currentSupervisorId && Auth::guard('supervisor')->check()) {
+            $currentSupervisorId = Auth::guard('supervisor')->user()->supID;
+        }
+        // The following foreach block should be moved after $schedules is defined (inside the try block)
         try {
-            // Build the query for finalized schedules
-            $query = DailyData::with(['tutorAssignments.tutor'])
-                ->where('schedule_status', 'finalized');
-            
-            // If specific date is provided, filter by that date
+            $query = DailyData::with(['tutorAssignments.tutor']);
+            // If a specific date is requested, export that date regardless of status;
+            // otherwise export all finalized schedules
             if ($request->has('date') && $request->date) {
-                $query->where('date', $request->date);
+                $query->whereDate('date', $request->date);
+            } else {
+                $query->where('schedule_status', 'finalized');
             }
             
             $schedules = $query->orderBy('date')
@@ -1076,7 +1543,78 @@ class ScheduleController extends Controller
                 return response()->json(['error' => 'No finalized schedules found for the specified criteria'], 404);
             }
 
-            return $this->generateExcel($schedules, 'Finalized Schedule');
+            // Build per-class sheets only (no overview) with cancelled markings
+            $spreadsheet = new Spreadsheet();
+            $classSheetsData = [];
+            foreach ($schedules as $schedule) {
+                $date = \Carbon\Carbon::parse($schedule->date)->format('F j, Y');
+                $sheetKey = $date . ' - ' . $schedule->school . ' - ' . $schedule->class;
+
+                // Get the supervisor who finalized this schedule
+                $scheduleSupervisorName = $this->getScheduleSupervisorName($schedule);
+
+                $mainTutors = [];
+                $backupTutors = [];
+                foreach ($schedule->tutorAssignments as $assignment) {
+                    $tutor = $assignment->tutor;
+                    if (!$tutor) { continue; }
+
+                    $glsAccount = $tutor->accounts()->where('account_name', 'GLS')->first();
+                    $glsArr = $glsAccount && method_exists($glsAccount, 'toArray') ? $glsAccount->toArray() : [];
+                    $glsId = isset($glsArr['gls_id']) ? (string)$glsArr['gls_id'] : '';
+                    $glsUsername = $glsAccount && $glsAccount->username ? $glsAccount->username : '';
+                    $glsScreenName = $glsAccount && $glsAccount->screen_name ? $glsAccount->screen_name : '';
+
+                    $tutorArr = [
+                        'glsID' => $glsId,
+                        'full_name' => $tutor->full_name,
+                        'glsUsername' => $glsUsername,
+                        'glsScreenName' => $glsScreenName,
+                        'sex' => $tutor->sex,
+                        'supervisor' => $scheduleSupervisorName,
+                        'is_backup' => $assignment->is_backup,
+                        'is_cancelled' => $schedule->class_status === 'cancelled',
+                    ];
+
+                    if ($assignment->is_backup) {
+                        $backupTutors[] = $tutorArr;
+                    } else {
+                        $mainTutors[] = $tutorArr;
+                    }
+                }
+
+                if (empty($mainTutors) && $schedule->class_status === 'cancelled') {
+                    $mainTutors[] = [
+                        'glsID' => '',
+                        'full_name' => 'CLASS CANCELLED',
+                        'glsUsername' => '',
+                        'glsScreenName' => '',
+                        'sex' => '',
+                        'supervisor' => $scheduleSupervisorName,
+                        'is_backup' => false,
+                        'is_cancelled' => true,
+                    ];
+                }
+
+                $classSheetsData[$sheetKey] = array_merge($mainTutors, $backupTutors);
+            }
+
+            $this->createClassSheets($spreadsheet, $classSheetsData, false, true);
+            // Remove the default empty sheet
+            if ($spreadsheet->getSheetCount() > 1) {
+                $spreadsheet->removeSheetByIndex(0);
+                $spreadsheet->setActiveSheetIndex(0);
+            }
+
+            $writer = new Xlsx($spreadsheet);
+            $filename = 'finalized_schedule_' . date('Y-m-d_H-i-s') . '.xlsx';
+            return response()->streamDownload(function() use ($writer) {
+            $writer->save('php://output');
+            }, $filename, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Cache-Control' => 'max-age=0',
+            ]);
+            
         } catch (\Exception $e) {
             Log::error('Error exporting final schedule: ' . $e->getMessage());
             return back()->with('error', 'Failed to export: ' . $e->getMessage());
@@ -1088,258 +1626,504 @@ class ScheduleController extends Controller
      */
     private function generateExcel($schedules, $title)
     {
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle($title === 'Finalized Schedule' ? 'Finalized Schedule' : 'Tentative Schedule');
-
-        // Check if this is a finalized schedule export (different format)
-        if ($title === 'Finalized Schedule' || $title === 'selected') {
-            return $this->generateFinalizedScheduleExcel($spreadsheet, $schedules, $title);
-        }
-
-        // Original tentative schedule format (column-based)
-        return $this->generateTentativeScheduleExcel($spreadsheet, $schedules, $title);
+        // This method is no longer used - keeping for backward compatibility
+        // All exports now go directly through their specific methods
+        return null;
     }
 
     /**
      * Generate finalized schedule Excel with detailed tutor list format
      */
-    private function generateFinalizedScheduleExcel($spreadsheet, $schedules, $title)
+    private function generateFinalizedScheduleExcel($spreadsheet, $schedules, $title, $editable = false, $showCancelledMarkings = false, $supervisorName = null)
     {
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Overview');
         
-        // Group schedules by date and class, and prepare individual class sheet data
-        $groupedSchedules = [];
-        $classSheetsData = []; // Reverted back to individual class sheets
-        
-        foreach ($schedules as $schedule) {
-            $date = \Carbon\Carbon::parse($schedule->date)->format('F j, Y'); // Full date format
-            $time = '';
-            
-            if ($schedule->time_jst) {
-                // Convert JST to PHT (JST - 1 hour)
-                $phtTime = \Carbon\Carbon::parse($schedule->time_jst)->subHour();
-                $time = $phtTime->format('g:i A'); // 12-hour format with AM/PM
-            }
-            
-            $key = $date . ' - ' . $time . ' (' . $schedule->school . ')';
-            
-            // Create sheet key based on date, school, and class name (for individual class sheets)
-            $shortDate = \Carbon\Carbon::parse($schedule->date)->format('M. d, Y'); // Sept. 02, 2025
-            $sheetKey = $shortDate . ' - ' . $schedule->school . ' - ' . $schedule->class; // Sept. 02, 2025 - Takada - Math
-            
-            // Add "CANCELLED" to sheet name if class is cancelled
-            if ($schedule->class_status === 'cancelled') {
-                $sheetKey .= ' - CANCELLED';
-            }
-            
-            if (!isset($classSheetsData[$sheetKey])) {
-                $classSheetsData[$sheetKey] = [];
-            }
-            if (!isset($groupedSchedules[$key])) {
-                $groupedSchedules[$key] = [
-                    'schedules' => [],
-                    'date' => $date,
-                    'time' => $time,
-                    'school' => $schedule->school,
-                    'tutors' => []
-                ];
-            }
-            
-            $groupedSchedules[$key]['schedules'][] = $schedule;
-            
-            // Collect all tutors (main and backup) with full details for this class sheet
-            foreach ($schedule->tutorAssignments as $assignment) {
-                $tutor = $assignment->tutor;
-                
-                // Get GLS account info for this tutor including username and screen name
-                $glsAccount = $tutor->accounts()->where('account_name', 'GLS')->first();
-                
-                // Use GLS account credentials if available, otherwise use tutor's basic info
-                $glsId = $glsAccount && $glsAccount->gls_id ? $glsAccount->gls_id : $tutor->tutorID;
-                $glsUsername = $glsAccount && $glsAccount->username ? $glsAccount->username : 'N/A';
-                $glsScreenName = $glsAccount && $glsAccount->screen_name ? $glsAccount->screen_name : 'N/A';
-                
-                // Determine the display name based on promotion status
-                if ($assignment->was_promoted_from_backup) {
-                    if ($assignment->replaced_tutor_name === 'Auto-filled vacant slot') {
-                        $displayName = "{$tutor->full_name} (promoted from backup)";
-                    } else {
-                        $displayName = "{$tutor->full_name} (replaced {$assignment->replaced_tutor_name})";
-                    }
-                } else {
-                    $displayName = $tutor->full_name;
-                }
-                
-                $tutorData = [
-                    'tutorID' => $tutor->tutorID,
-                    'full_name' => $displayName,
-                    'username' => $tutor->tusername,
-                    'screen_name' => $tutor->tusername, // Use username as screen name since screen_name field doesn't exist
-                    'sex' => $tutor->sex ?? 'N/A', // Fetch sex from tutors table
-                    'is_backup' => $assignment->is_backup,
-                    'class_name' => $schedule->class, // Add class name for reference
-                    'time' => $time,
-                    'is_cancelled' => $schedule->class_status === 'cancelled' // Add cancellation status
-                ];
-                
-                $groupedSchedules[$key]['tutors'][] = $tutorData;
-                
-                // Add ALL tutors (main and backup) to the individual class sheet
-                $classSheetsData[$sheetKey][] = [
-                    'glsID' => $glsId,
-                    'full_name' => $displayName, // Use the same display name logic
-                    'glsUsername' => $glsUsername,  // Use GLS account username
-                    'glsScreenName' => $glsScreenName,  // Use GLS account screen name
-                    'sex' => $tutor->sex ?? 'N/A', // Fetch from tutors table
-                    'supervisor' => 'N/A', // Will be updated when supervisor/logging functionality is integrated
-                    'is_backup' => $assignment->is_backup,
-                    'has_gls_account' => $glsAccount ? true : false,
-                    'class_name' => $schedule->class,
-                    'time' => $time,
-                    'is_cancelled' => $schedule->class_status === 'cancelled' // Add cancellation status
-                ];
-            }
-            
-            // If class is cancelled and has no tutors, still create an entry to show in export
-            if ($schedule->class_status === 'cancelled' && $schedule->tutorAssignments->count() === 0) {
-                $classSheetsData[$sheetKey][] = [
-                    'glsID' => 'N/A',
-                    'full_name' => 'CLASS CANCELLED',
-                    'glsUsername' => 'N/A',
-                    'glsScreenName' => 'N/A',
-                    'sex' => 'N/A',
-                    'supervisor' => 'N/A',
-                    'is_backup' => false,
-                    'has_gls_account' => false,
-                    'class_name' => $schedule->class,
-                    'time' => $time,
-                    'is_cancelled' => true
-                ];
-            }
-        }
-
-        // For finalized schedules, remove the default sheet and only create individual class sheets
-        $spreadsheet->removeSheetByIndex(0);
-        
-        // Create individual class sheets (editable) with date, school, and class names
-        $this->createClassSheets($spreadsheet, $classSheetsData, true, true); // true for finalized = show cancelled markings
-
-        // Generate and output file (without protection for finalized schedules)
-        $this->finalizeAndOutputEditableExcel($spreadsheet, $title);
-    }
-
-    /**
-     * Generate tentative schedule Excel with column-based format plus individual class sheets
-     */
-    private function generateTentativeScheduleExcel($spreadsheet, $schedules, $title)
-    {
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Overview');
-
-        // Group schedules by date and time, including school info
         $groupedSchedules = [];
         $classSheetsData = [];
         
         foreach ($schedules as $schedule) {
-            $date = \Carbon\Carbon::parse($schedule->date)->format('M j');
-            $time = '';
+            $date = \Carbon\Carbon::parse($schedule->date)->format('F j, Y');
+            $sheetKey = $date . ' - ' . $schedule->school . ' - ' . $schedule->class;
             
-            if ($schedule->time_jst) {
-                // Convert JST to PHT (JST - 1 hour)
-                $phtTime = \Carbon\Carbon::parse($schedule->time_jst)->subHour();
-                $time = $phtTime->format('G:i') . ($phtTime->format('A') === 'AM' ? 'am' : 'pm');
-            }
-            
-            $key = $date . ' (' . $time . ')';
-            if (!isset($groupedSchedules[$key])) {
-                $groupedSchedules[$key] = [
-                    'schedules' => [],
-                    'total_slots' => 0,
+            // Get the supervisor who finalized this schedule
+            $scheduleSupervisorName = $this->getScheduleSupervisorName($schedule);
+
+            // Grouped overview structure per time and school
+            $slotKey = ($schedule->time_jst ?? '') . '|' . $schedule->school;
+            if (!isset($groupedSchedules[$slotKey])) {
+                $groupedSchedules[$slotKey] = [
+                    'schools' => [$schedule->school],
+                    'date' => $schedule->date,
+                    'time' => $schedule->time_jst,
+                    'total_slots' => $schedule->number_required ?? 0,
                     'main_tutors' => [],
-                    'backup_tutors' => [],
-                    'schools' => []
+                    'backup_tutors' => []
                 ];
+            } else {
+                if (!in_array($schedule->school, $groupedSchedules[$slotKey]['schools'])) {
+                    $groupedSchedules[$slotKey]['schools'][] = $schedule->school;
+                }
+                // Add slots for additional classes at the same time/school
+                $groupedSchedules[$slotKey]['total_slots'] += ($schedule->number_required ?? 0);
             }
-            
-            $groupedSchedules[$key]['schedules'][] = $schedule;
-            $groupedSchedules[$key]['total_slots'] += $schedule->number_required ?? 0;
-            
-            // Collect school names
-            if (!in_array($schedule->school, $groupedSchedules[$key]['schools'])) {
-                $groupedSchedules[$key]['schools'][] = $schedule->school;
-            }
-            
-            // Get tutors for this schedule and prepare class sheet data
-            // Create sheet key in format "M. d, Y - School - Class"
-            $shortDate = \Carbon\Carbon::parse($schedule->date)->format('M. d, Y'); // Sept. 02, 2025
-            $className = $shortDate . ' - ' . $schedule->school . ' - ' . $schedule->class;
-            
-            // For tentative schedules, don't mark cancelled classes differently
-            
-            if (!isset($classSheetsData[$className])) {
-                $classSheetsData[$className] = [];
-            }
-            
+
+            // Build class sheet tutor data
+            $mainTutors = [];
+            $backupTutors = [];
             foreach ($schedule->tutorAssignments as $assignment) {
                 $tutor = $assignment->tutor;
-                
-                // Get GLS account info for this tutor including username and screen name
+                if (!$tutor) { continue; }
+
                 $glsAccount = $tutor->accounts()->where('account_name', 'GLS')->first();
-                
-                // Use GLS account credentials if available, otherwise use tutor's basic info
-                $glsId = $glsAccount && $glsAccount->gls_id ? $glsAccount->gls_id : $tutor->tutorID;
-                $glsUsername = $glsAccount && $glsAccount->username ? $glsAccount->username : 'N/A';
-                $glsScreenName = $glsAccount && $glsAccount->screen_name ? $glsAccount->screen_name : 'N/A';
-                
-                // Determine the display name based on promotion status
-                if ($assignment->was_promoted_from_backup) {
-                    if ($assignment->replaced_tutor_name === 'Auto-filled vacant slot') {
-                        $displayName = "{$tutor->full_name} (promoted from backup)";
-                    } else {
-                        $displayName = "{$tutor->full_name} (replaced {$assignment->replaced_tutor_name})";
-                    }
-                } else {
-                    $displayName = $tutor->full_name;
-                }
-                
-                if ($assignment->is_backup) {
-                    if (!in_array($displayName, $groupedSchedules[$key]['backup_tutors'])) {
-                        $groupedSchedules[$key]['backup_tutors'][] = $displayName;
-                    }
-                } else {
-                    $groupedSchedules[$key]['main_tutors'][] = $displayName;
-                }
-                
-                // Add ALL tutors (main and backup) to the individual class sheet
-                $classSheetsData[$className][] = [
+                $glsArr = $glsAccount && method_exists($glsAccount, 'toArray') ? $glsAccount->toArray() : [];
+                $glsId = isset($glsArr['gls_id']) ? (string)$glsArr['gls_id'] : '';
+                $glsUsername = $glsAccount && $glsAccount->username ? $glsAccount->username : '';
+                $glsScreenName = $glsAccount && $glsAccount->screen_name ? $glsAccount->screen_name : '';
+
+                $tutorArr = [
                     'glsID' => $glsId,
-                    'full_name' => $displayName, // Use the display name logic
-                    'glsUsername' => $glsUsername,  // Use GLS account username
-                    'glsScreenName' => $glsScreenName,  // Use GLS account screen name
-                    'sex' => $tutor->sex ?? 'N/A', // Fetch from tutors table
-                    'supervisor' => 'N/A', // Placeholder for supervisor information
+                    'full_name' => $tutor->full_name,
+                    'glsUsername' => $glsUsername,
+                    'glsScreenName' => $glsScreenName,
+                    'sex' => $tutor->sex,
+                    'supervisor' => $scheduleSupervisorName,
                     'is_backup' => $assignment->is_backup,
-                    'has_gls_account' => $glsAccount ? true : false,
-                    'class_name' => $schedule->class,
-                    'time' => $time,
-                    'is_cancelled' => false // For tentative exports, don't mark as cancelled
+                    'is_cancelled' => $schedule->class_status === 'cancelled',
+                ];
+
+                if ($assignment->is_backup) {
+                    $backupTutors[] = $tutorArr;
+                    $groupedSchedules[$slotKey]['backup_tutors'][] = $tutor->full_name;
+                } else {
+                    $mainTutors[] = $tutorArr;
+                    $groupedSchedules[$slotKey]['main_tutors'][] = $tutor->full_name;
+                }
+            }
+
+            if (empty($mainTutors) && $schedule->class_status === 'cancelled') {
+                $mainTutors[] = [
+                    'glsID' => '',
+                    'full_name' => 'CLASS CANCELLED',
+                    'glsUsername' => '',
+                    'glsScreenName' => '',
+                    'sex' => '',
+                    'supervisor' => $scheduleSupervisorName,
+                    'is_backup' => false,
+                    'is_cancelled' => true,
                 ];
             }
-            
-            // For tentative exports, skip cancelled classes with no tutors (don't show them at all)
-            // Note: Cancelled classes with tutors are already included above but not marked as cancelled
+
+            $classSheetsData[$sheetKey] = array_merge($mainTutors, $backupTutors);
         }
 
-        // Create overview sheet (existing format)
         $this->createOverviewSheet($sheet, $groupedSchedules);
-        
-        // Create individual class sheets (editable)
-        $this->createClassSheets($spreadsheet, $classSheetsData, true, false); // false for tentative = no cancelled markings
-
-        // Generate and output editable file
+        $this->createClassSheets($spreadsheet, $classSheetsData, $editable, $showCancelledMarkings);
         $this->finalizeAndOutputEditableExcel($spreadsheet, $title);
+    }
+
+    /**
+     * Create enhanced overview sheet for selected schedules with visualizations
+     */
+    private function createSelectedScheduleOverviewSheet($sheet, $groupedSchedules, $schedules, $supervisorName = null)
+    {
+        // Calculate summary statistics
+        $totalClasses = count($schedules);
+        $totalSlots = array_sum(array_column($groupedSchedules, 'total_slots'));
+        $totalMainTutors = 0;
+        $totalBackupTutors = 0;
+        $schools = [];
+        $timeSlots = [];
+        
+        foreach ($groupedSchedules as $data) {
+            $totalMainTutors += count($data['main_tutors'] ?? []);
+            $totalBackupTutors += count($data['backup_tutors'] ?? []);
+            $schools = array_merge($schools, $data['schools'] ?? []);
+            if (!empty($data['time'])) {
+                $timeSlots[] = $data['time'];
+            }
+        }
+        
+        $uniqueSchools = array_unique($schools);
+        $uniqueTimeSlots = array_unique($timeSlots);
+        $fillRate = $totalSlots > 0 ? round(($totalMainTutors / $totalSlots) * 100, 1) : 0;
+        
+        // Set column widths for overview sheet
+        $sheet->getColumnDimension('A')->setWidth(20);
+        $sheet->getColumnDimension('B')->setWidth(15);
+        $sheet->getColumnDimension('C')->setWidth(15);
+        $sheet->getColumnDimension('D')->setWidth(25);
+        $sheet->getColumnDimension('E')->setWidth(20);
+        $sheet->getColumnDimension('F')->setWidth(15);
+        $sheet->getColumnDimension('G')->setWidth(15);
+        $sheet->getColumnDimension('H')->setWidth(25);
+        
+        // Create summary section at the top
+        $this->createSummarySection($sheet, $totalClasses, $totalSlots, $totalMainTutors, $totalBackupTutors, count($uniqueSchools), count($uniqueTimeSlots), $fillRate);
+        
+        // Create visualizations section
+        $this->createVisualizationSection($sheet, $groupedSchedules, $uniqueSchools, $uniqueTimeSlots);
+        
+        // Create insights section
+        $this->createInsightsSection($sheet, $groupedSchedules, $totalSlots, $totalMainTutors, $fillRate);
+        
+        // Note: Detailed schedule matrix removed from overview as requested
+    }
+    
+    /**
+     * Create summary statistics section
+     */
+    private function createSummarySection($sheet, $totalClasses, $totalSlots, $totalMainTutors, $totalBackupTutors, $uniqueSchools, $uniqueTimeSlots, $fillRate)
+    {
+        // Title
+        $sheet->setCellValue('A1', 'SCHEDULE OVERVIEW & ANALYTICS');
+        $sheet->mergeCells('A1:H1');
+        $sheet->getStyle('A1:H1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 16, 'color' => ['rgb' => 'FFFFFF']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => '2A5382']],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+        ]);
+        
+        // Summary statistics
+        $stats = [
+            ['Total Classes', $totalClasses],
+            ['Total Slots Available', $totalSlots],
+            ['Main Tutors Assigned', $totalMainTutors],
+            ['Backup Tutors Assigned', $totalBackupTutors],
+            ['Schools Involved', $uniqueSchools],
+            ['Time Slots', $uniqueTimeSlots],
+            ['Fill Rate', $fillRate . '%']
+        ];
+        
+        $row = 3;
+        foreach ($stats as $index => $stat) {
+            $col = $index < 4 ? 'A' : 'E'; // First 4 stats in column A, rest in column E
+            $statRow = $index < 4 ? $row + $index : $row + ($index - 4);
+            
+            $sheet->setCellValue($col . $statRow, $stat[0] . ':');
+            $sheet->setCellValue(chr(ord($col) + 1) . $statRow, $stat[1]);
+            
+            $sheet->getStyle($col . $statRow)->applyFromArray([
+                'font' => ['bold' => true],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'E6F3FF']],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+            ]);
+            
+            $fillColor = $stat[0] === 'Fill Rate' ? 
+                ($fillRate >= 90 ? '90EE90' : ($fillRate >= 70 ? 'FFE4B5' : 'FFB6C1')) : 'F0F8FF';
+            
+            $sheet->getStyle(chr(ord($col) + 1) . $statRow)->applyFromArray([
+                'font' => ['bold' => true],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => $fillColor]],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+            ]);
+        }
+    }
+    
+    /**
+     * Create visualization section with charts and graphs
+     */
+    private function createVisualizationSection($sheet, $groupedSchedules, $uniqueSchools, $uniqueTimeSlots)
+    {
+        $startRow = 10;
+        
+        // School distribution chart
+        $sheet->setCellValue('A' . $startRow, 'SCHOOL DISTRIBUTION');
+        $sheet->mergeCells('A' . $startRow . ':D' . $startRow);
+        $sheet->getStyle('A' . $startRow . ':D' . $startRow)->applyFromArray([
+            'font' => ['bold' => true, 'size' => 12],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'FFE4B5']],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+        ]);
+        
+        $row = $startRow + 1;
+        foreach ($uniqueSchools as $school) {
+            $classCount = 0;
+            $tutorCount = 0;
+            foreach ($groupedSchedules as $data) {
+                if (in_array($school, $data['schools'] ?? [])) {
+                    $classCount++;
+                    $tutorCount += count($data['main_tutors'] ?? []);
+                }
+            }
+            
+            $sheet->setCellValue('A' . $row, $school);
+            $sheet->setCellValue('B' . $row, $classCount . ' classes');
+            $sheet->setCellValue('C' . $row, $tutorCount . ' tutors');
+            
+            // Create a visual bar chart using cell background colors and text
+            $barLength = min(20, max(1, $tutorCount));
+            $bar = str_repeat('█', $barLength);
+            $sheet->setCellValue('D' . $row, $bar);
+            
+            // Add background color to make the bar more visible
+            $barColor = $tutorCount > 15 ? '90EE90' : ($tutorCount > 10 ? 'FFE4B5' : 'FFB6C1');
+            $sheet->getStyle('D' . $row)->applyFromArray([
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => $barColor]],
+                'font' => ['color' => ['rgb' => '000000'], 'size' => 10]
+            ]);
+            
+            $sheet->getStyle('A' . $row . ':D' . $row)->applyFromArray([
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+            ]);
+                    $row++;
+        }
+        
+        // Time slot distribution
+        $sheet->setCellValue('F' . $startRow, 'TIME SLOT DISTRIBUTION');
+        $sheet->mergeCells('F' . $startRow . ':H' . $startRow);
+        $sheet->getStyle('F' . $startRow . ':H' . $startRow)->applyFromArray([
+            'font' => ['bold' => true, 'size' => 12],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'E6E6FA']],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+        ]);
+        
+        $row = $startRow + 1;
+        foreach ($uniqueTimeSlots as $time) {
+            $classCount = 0;
+            $tutorCount = 0;
+            $timeStr = is_object($time) ? $time->format('H:i:s') : (string)$time;
+            foreach ($groupedSchedules as $data) {
+                $dataTimeStr = is_object($data['time']) ? $data['time']->format('H:i:s') : (string)$data['time'];
+                if ($dataTimeStr === $timeStr) {
+                    $classCount++;
+                    $tutorCount += count($data['main_tutors'] ?? []);
+                }
+            }
+            
+            $sheet->setCellValue('F' . $row, $timeStr);
+            $sheet->setCellValue('G' . $row, $classCount . ' classes');
+            
+            // Create a visual bar chart with background colors
+            $barLength = min(15, max(1, $tutorCount));
+            $bar = str_repeat('█', $barLength);
+            $sheet->setCellValue('H' . $row, $bar);
+            
+            // Add background color to make the bar more visible
+            $barColor = $tutorCount > 8 ? '90EE90' : ($tutorCount > 5 ? 'FFE4B5' : 'FFB6C1');
+            $sheet->getStyle('H' . $row)->applyFromArray([
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => $barColor]],
+                'font' => ['color' => ['rgb' => '000000'], 'size' => 10]
+            ]);
+            
+            $sheet->getStyle('F' . $row . ':H' . $row)->applyFromArray([
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+                    ]);
+                    $row++;
+        }
+    }
+    
+    /**
+     * Create insights and recommendations section
+     */
+    private function createInsightsSection($sheet, $groupedSchedules, $totalSlots, $totalMainTutors, $fillRate)
+    {
+        $startRow = 20;
+        
+        // Insights header
+        $sheet->setCellValue('A' . $startRow, 'INSIGHTS & RECOMMENDATIONS');
+        $sheet->mergeCells('A' . $startRow . ':H' . $startRow);
+        $sheet->getStyle('A' . $startRow . ':H' . $startRow)->applyFromArray([
+            'font' => ['bold' => true, 'size' => 12],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'DDA0DD']],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+        ]);
+        
+        $row = $startRow + 1;
+        $insights = [];
+        
+        // Generate insights based on data
+        if ($fillRate >= 100) {
+            $insights[] = "✅ Excellent! All slots are fully assigned.";
+        } elseif ($fillRate >= 90) {
+            $insights[] = "✅ Very good fill rate. Only " . ($totalSlots - $totalMainTutors) . " slots remaining.";
+        } elseif ($fillRate >= 70) {
+            $insights[] = "⚠️ Moderate fill rate. " . ($totalSlots - $totalMainTutors) . " slots still need assignment.";
+        } else {
+            $insights[] = "❌ Low fill rate. " . ($totalSlots - $totalMainTutors) . " slots need urgent attention.";
+        }
+        
+        // Check for backup tutor coverage
+        $totalBackupTutors = 0;
+        foreach ($groupedSchedules as $data) {
+            $totalBackupTutors += count($data['backup_tutors'] ?? []);
+        }
+        
+        if ($totalBackupTutors > 0) {
+            $insights[] = "🔄 " . $totalBackupTutors . " backup tutors available for coverage.";
+        } else {
+            $insights[] = "⚠️ No backup tutors assigned. Consider adding backup coverage.";
+        }
+        
+        // Check for time distribution
+        $timeSlotCounts = [];
+        foreach ($groupedSchedules as $data) {
+            if (!empty($data['time'])) {
+                $timeKey = is_object($data['time']) ? $data['time']->format('H:i:s') : (string)$data['time'];
+                $timeSlotCounts[$timeKey] = ($timeSlotCounts[$timeKey] ?? 0) + 1;
+            }
+        }
+        
+        if (count($timeSlotCounts) > 1) {
+            $maxTime = array_keys($timeSlotCounts, max($timeSlotCounts))[0];
+            $insights[] = "📊 Peak time slot: " . $maxTime . " (" . max($timeSlotCounts) . " classes)";
+        }
+        
+        // Display insights
+        foreach ($insights as $index => $insight) {
+            $col = $index < 2 ? 'A' : 'E'; // First 2 insights in column A, rest in column E
+            $insightRow = $index < 2 ? $row + $index : $row + ($index - 2);
+            
+            $sheet->setCellValue($col . $insightRow, $insight);
+            $sheet->mergeCells($col . $insightRow . ':' . chr(ord($col) + 2) . $insightRow);
+            
+            $sheet->getStyle($col . $insightRow . ':' . chr(ord($col) + 2) . $insightRow)->applyFromArray([
+                'font' => ['size' => 10],
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP, 'wrapText' => true],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'F8F8FF']],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+            ]);
+        }
+    }
+    
+    /**
+     * Create the main schedule matrix
+     */
+    private function createScheduleMatrix($sheet, $groupedSchedules, $startRow)
+    {
+        // Add a separator
+        $sheet->setCellValue('A' . ($startRow - 1), 'DETAILED SCHEDULE MATRIX');
+        $sheet->mergeCells('A' . ($startRow - 1) . ':H' . ($startRow - 1));
+        $sheet->getStyle('A' . ($startRow - 1) . ':H' . ($startRow - 1))->applyFromArray([
+            'font' => ['bold' => true, 'size' => 14],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'D3D3D3']],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+        ]);
+        
+        // Matrix layout: each column is a slot (school/time), with headers, main tutors, BACK UP row, backup tutors
+        $columnIndex = 1;
+        $maxMain = 0;
+        $maxBackup = 0;
+        foreach ($groupedSchedules as $slotKey => $data) {
+            $mainCount = count($data['main_tutors'] ?? []);
+            $backupCount = count($data['backup_tutors'] ?? []);
+            if ($mainCount > $maxMain) $maxMain = $mainCount;
+            if ($backupCount > $maxBackup) $maxBackup = $backupCount;
+        }
+        $mainRows = $maxMain;
+        $backupRows = $maxBackup;
+        $totalRows = 3 + $mainRows + 1 + 1 + $backupRows; // 3 header rows, main tutors, gap, BACK UP, backup tutors
+
+        foreach ($groupedSchedules as $slotKey => $data) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($columnIndex);
+            $currentRow = $startRow;
+            
+            // Row 1: School name (FFFACD)
+            $sheet->setCellValue($col . $currentRow, $data['schools'][0] ?? '');
+            $sheet->getStyle($col . $currentRow)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 12],
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'FFFACD']],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+            ]);
+            $currentRow++;
+            
+            // Row 2: Date (Time) (ADD8E6)
+            $dateStr = '';
+            if (!empty($data['date']) && !empty($data['time'])) {
+                try {
+                    $dateObj = \Carbon\Carbon::parse($data['date']);
+                    $jstTime = $data['time'];
+                    $timeObj = null;
+                    try {
+                        $timeObj = \Carbon\Carbon::parse($jstTime);
+                    } catch (\Exception $e) {
+                        try {
+                            $timeObj = \Carbon\Carbon::createFromFormat('H:i:s', $jstTime);
+                        } catch (\Exception $e2) {
+                            try {
+                                $timeObj = \Carbon\Carbon::createFromFormat('H:i', $jstTime);
+                            } catch (\Exception $e3) {
+                                $timeObj = null;
+                            }
+                        }
+                    }
+                    if ($timeObj) {
+                        $phTimeObj = $timeObj->copy()->subHour();
+                        $dateStr = $dateObj->format('M j') . ' (' . ltrim($phTimeObj->format('g:ia'), '0') . ')';
+                    }
+                } catch (\Exception $e) {
+                    $dateStr = '';
+                }
+            }
+            $sheet->setCellValue($col . $currentRow, $dateStr);
+            $sheet->getStyle($col . $currentRow)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 11],
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'ADD8E6']],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+            ]);
+            $currentRow++;
+            
+            // Row 3: Slot count (E6F3FF)
+            $sheet->setCellValue($col . $currentRow, '(' . ($data['total_slots'] ?? 0) . ' Slots)');
+            $sheet->getStyle($col . $currentRow)->applyFromArray([
+                'font' => ['italic' => true, 'size' => 11],
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'E6F3FF']],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+            ]);
+            $currentRow++;
+
+            // Main tutors
+            $mainTutors = $data['main_tutors'] ?? [];
+            for ($i = 0; $i < $mainRows; $i++) {
+                $sheet->setCellValue($col . $currentRow, $mainTutors[$i] ?? '');
+                $sheet->getStyle($col . $currentRow)->applyFromArray([
+                    'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+                    'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+                ]);
+                $currentRow++;
+            }
+
+            // Gap
+            $currentRow++;
+            $currentRow++;
+
+            // BACK UP row
+            $sheet->setCellValue($col . $currentRow, 'BACK UP');
+            $sheet->getStyle($col . $currentRow)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 11],
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'FFE599']],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]   
+            ]);
+            $currentRow++;
+
+            // Backup tutors
+            $backupTutors = $data['backup_tutors'] ?? [];
+            for ($i = 0; $i < $backupRows; $i++) {
+                $sheet->setCellValue($col . $currentRow, $backupTutors[$i] ?? '');
+                $sheet->getStyle($col . $currentRow)->applyFromArray([
+                    'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+                    'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'FFE6CC']],
+                    'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+                ]);
+                $currentRow++;
+            }
+
+            // Set column width
+            $sheet->getColumnDimension($col)->setWidth(18);
+            $columnIndex++;
+        }
+        
+        // Freeze the top rows
+        $sheet->freezePane('A' . ($startRow + 3));
     }
 
     /**
@@ -1347,114 +2131,148 @@ class ScheduleController extends Controller
      */
     private function createOverviewSheet($sheet, $groupedSchedules)
     {
-        $columnIndex = 1; // Start from column A (1)
-        $columnLetters = [];
-        
-        foreach ($groupedSchedules as $timeSlot => $data) {
-            $columnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($columnIndex);
-            $columnLetters[] = $columnLetter;
-            
-            // Set school info first (row 1)
-            $schoolText = implode(', ', $data['schools']);
-            $sheet->setCellValue($columnLetter . '1', $schoolText);
-            
-            // Set time slot header (row 2)
-            $sheet->setCellValue($columnLetter . '2', $timeSlot);
-            
-            // Set slot count (row 3)
-            $slotText = '(' . $data['total_slots'] . ' Slots)';
-            $sheet->setCellValue($columnLetter . '3', $slotText);
-            
-            // Style the school row (row 1)
-            $sheet->getStyle($columnLetter . '1')->applyFromArray([
-                'font' => ['bold' => true, 'size' => 11],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'FFFACD']],
-                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
-            ]);
-            
-            // Style the time slot headers (row 2)
-            $sheet->getStyle($columnLetter . '2')->applyFromArray([
-                'font' => ['bold' => true, 'size' => 12],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'ADD8E6']],
-                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
-            ]);
-            
-            // Style the slot count (row 3)
-            $sheet->getStyle($columnLetter . '3')->applyFromArray([
-                'font' => ['italic' => true],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'E6F3FF']],
-                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
-            ]);
-            
-            $columnIndex++;
-        }
-
-        // Find the maximum number of tutors needed for proper row spacing
-        $maxTutors = 0;
-        $maxBackupTutors = 0;
-        
-        foreach ($groupedSchedules as $data) {
-            $maxTutors = max($maxTutors, count($data['main_tutors']));
-            $maxBackupTutors = max($maxBackupTutors, count($data['backup_tutors']));
-        }
-
-        // Fill in the tutor data
-        $row = 4; // Start from row 4 (after school, time, and slot count rows)
+        // Matrix layout: each column is a slot (school/time), with headers, main tutors, BACK UP row, backup tutors
         $columnIndex = 1;
-        
-        foreach ($groupedSchedules as $timeSlot => $data) {
-            $columnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($columnIndex);
-            
-            // Add main tutors
-            $currentRow = $row;
-            foreach ($data['main_tutors'] as $tutor) {
-                $sheet->setCellValue($columnLetter . $currentRow, $tutor);
-                $sheet->getStyle($columnLetter . $currentRow)->applyFromArray([
-                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
-                ]);
-                $currentRow++;
+        $maxMain = 0;
+        $maxBackup = 0;
+        foreach ($groupedSchedules as $slotKey => $data) {
+            $mainCount = count($data['main_tutors'] ?? []);
+            $backupCount = count($data['backup_tutors'] ?? []);
+            if ($mainCount > $maxMain) $maxMain = $mainCount;
+            if ($backupCount > $maxBackup) $maxBackup = $backupCount;
+        }
+        $mainRows = $maxMain;
+        $backupRows = $maxBackup;
+    $totalRows = 3 + $mainRows + 1 + 1 + $backupRows; // 3 header rows, main tutors, gap, BACK UP, backup tutors
+
+    foreach ($groupedSchedules as $slotKey => $data) {
+        $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($columnIndex);
+        // Row 1: School name (FFFACD)
+        $sheet->setCellValue($col.'1', $data['schools'][0] ?? '');
+        $sheet->getStyle($col.'1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 12],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'FFFACD']],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+        ]);
+        // Row 2: Date (Time) (ADD8E6)
+        // Format: Sep 5 (8:05am) -- PH time, not JST
+        // Always show 'M j (g:ia)' using date and time from $data, fallback to blank if either missing
+        $dateStr = '';
+        if (!empty($data['date']) && !empty($data['time'])) {
+            try {
+                $dateObj = \Carbon\Carbon::parse($data['date']);
+                $jstTime = $data['time'];
+                $timeObj = null;
+                try {
+                    $timeObj = \Carbon\Carbon::parse($jstTime);
+                } catch (\Exception $e) {
+                    try {
+                        $timeObj = \Carbon\Carbon::createFromFormat('H:i:s', $jstTime);
+                    } catch (\Exception $e2) {
+                        try {
+                            $timeObj = \Carbon\Carbon::createFromFormat('H:i', $jstTime);
+                        } catch (\Exception $e3) {
+                            $timeObj = null;
+                        }
+                    }
+                }
+                if ($timeObj) {
+                    $phTimeObj = $timeObj->copy()->subHour();
+                    $dateStr = $dateObj->format('M j') . ' (' . ltrim($phTimeObj->format('g:ia'), '0') . ')';
+                } else {
+                    $dateStr = '';
+                }
+            } catch (\Exception $e) {
+                $dateStr = '';
             }
-            
-            // Add "BACK UP" header
-            $backupStartRow = $row + $maxTutors + 1;
-            $sheet->setCellValue($columnLetter . $backupStartRow, 'BACK UP');
-            $sheet->getStyle($columnLetter . $backupStartRow)->applyFromArray([
-                'font' => ['bold' => true],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'FFEB9C']],
-                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+        } else {
+            $dateStr = '';
+        }
+        $sheet->setCellValue($col.'2', $dateStr);
+        $sheet->getStyle($col.'2')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 11],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'ADD8E6']],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+        ]);
+        // Row 3: Slot count (E6F3FF)
+        $sheet->setCellValue($col.'3', '(' . ($data['total_slots'] ?? 0) . ' Slots)');
+        $sheet->getStyle($col.'3')->applyFromArray([
+            'font' => ['italic' => true, 'size' => 11],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'E6F3FF']],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+        ]);
+
+        // Main tutors (rows 4 to 4+mainRows-1)
+        $mainTutors = $data['main_tutors'] ?? [];
+        for ($i = 0; $i < $mainRows; $i++) {
+            $row = 4 + $i;
+            $sheet->setCellValue($col.$row, $mainTutors[$i] ?? '');
+            $sheet->getStyle($col.$row)->applyFromArray([
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
             ]);
-            
-            // Add backup tutors
-            $currentRow = $backupStartRow + 1;
-            foreach ($data['backup_tutors'] as $backupTutor) {
-                $sheet->setCellValue($columnLetter . $currentRow, $backupTutor);
-                $sheet->getStyle($columnLetter . $currentRow)->applyFromArray([
-                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-                    'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'FFE6CC']],
-                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
-                ]);
-                $currentRow++;
-            }
-            
-            $columnIndex++;
         }
 
-        // Auto-size all columns
-        foreach ($columnLetters as $letter) {
-            $sheet->getColumnDimension($letter)->setAutoSize(true);
+        // 2-row gap between main tutors and BACK UP (no border)
+        $gapRow1 = 4 + $mainRows;
+        $gapRow2 = $gapRow1 + 1;
+        $sheet->setCellValue($col.$gapRow1, '');
+        $sheet->setCellValue($col.$gapRow2, '');
+        $sheet->getStyle($col.$gapRow1)->applyFromArray([
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_NONE]]
+        ]);
+        $sheet->getStyle($col.$gapRow2)->applyFromArray([
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_NONE]]
+        ]);
+
+        // BACK UP row (row after gap)
+        $backupHeaderRow = $gapRow2 + 1;
+        $sheet->setCellValue($col.$backupHeaderRow, 'BACK UP');
+        $sheet->getStyle($col.$backupHeaderRow)->applyFromArray([
+            'font' => ['bold' => true, 'size' => 11],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'FFE599']],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]   
+        ]);
+
+        // Backup tutors (rows after BACK UP)
+        $backupTutors = $data['backup_tutors'] ?? [];
+        for ($i = 0; $i < $backupRows; $i++) {
+            $row = $backupHeaderRow + 1 + $i;
+            $sheet->setCellValue($col.$row, $backupTutors[$i] ?? '');
+            $sheet->getStyle($col.$row)->applyFromArray([
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'FFE6CC']],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+            ]);
         }
-        
-        // Set minimum column width
-        foreach ($columnLetters as $letter) {
-            if ($sheet->getColumnDimension($letter)->getWidth() < 15) {
-                $sheet->getColumnDimension($letter)->setWidth(15);
-            }
+
+        // Fill any remaining empty cells to ensure all columns have the same number of rows
+        for ($row = $backupHeaderRow + 1 + $backupRows; $row <= $totalRows; $row++) {
+            $sheet->setCellValue($col.$row, '');
+            $sheet->getStyle($col.$row)->applyFromArray([
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+            ]);
         }
+
+        // Set column width
+        $sheet->getColumnDimension($col)->setWidth(20);
+
+        $columnIndex++;
+    }
+    
+    // Set additional column widths for better readability
+    $sheet->getColumnDimension('A')->setWidth(15);
+    $sheet->getColumnDimension('B')->setWidth(15);
+    
+    // Freeze the top 3 header rows
+    $sheet->freezePane('A4');
     }
 
     /**
@@ -1466,28 +2284,21 @@ class ScheduleController extends Controller
             $classSheet = $spreadsheet->createSheet();
             $classSheet->setTitle($this->sanitizeSheetName($className));
             
-            // Check if this is a cancelled class
             $isCancelled = !empty($tutorData) && ($tutorData[0]['is_cancelled'] ?? false) && $showCancelledMarkings;
             
-            // Set headers
             $classSheet->setCellValue('A1', 'No.');
             $classSheet->setCellValue('B1', 'glsID');
             $classSheet->setCellValue('C1', 'Full Name');
             $classSheet->setCellValue('D1', 'glsUsername');
             $classSheet->setCellValue('E1', 'glsScreenName');
             $classSheet->setCellValue('F1', 'Sex');
-            $classSheet->setCellValue('G1', 'Supervisor');
-            
-            // Style headers with different color for cancelled classes (only if showing cancelled markings)
-            $headerColor = $isCancelled ? 'FF9999' : 'ADD8E6'; // Red for cancelled, blue for normal
-            $classSheet->getStyle('A1:G1')->applyFromArray([
+            $headerColor = $isCancelled ? 'FF9999' : 'ADD8E6';
+            $classSheet->getStyle('A1:F1')->applyFromArray([
                 'font' => ['bold' => true, 'size' => 12],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => $headerColor]],
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
             ]);
-            
-            // Add cancellation notice if class is cancelled
             if ($isCancelled) {
                 $row = 2;
                 $classSheet->setCellValue('A' . $row, 'CLASS CANCELLED');
@@ -1498,32 +2309,20 @@ class ScheduleController extends Controller
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'FF0000']],
                     'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THICK]]
                 ]);
-                $row += 2; // Skip a row after the notice
+                $row += 2;
                 
-                // If there are no actual tutors (just placeholder), don't show tutor data
                 if (count($tutorData) === 1 && $tutorData[0]['full_name'] === 'CLASS CANCELLED') {
-                    // Only show the cancellation notice
                     $classSheet->getColumnDimension('A')->setAutoSize(true);
                     continue;
                 }
             } else {
                 $row = 2;
             }
-            
-            // Separate main tutors and backup tutors
-            $mainTutors = [];
-            $backupTutors = [];
-            
-            foreach ($tutorData as $tutor) {
-                if ($tutor['is_backup']) {
-                    $backupTutors[] = $tutor;
-                } else {
-                    $mainTutors[] = $tutor;
-                }
-            }
-            
-            // Fill main tutor data first
+
             $number = 1;
+            $mainTutors = array_filter($tutorData, function($t) { return empty($t['is_backup']); });
+            $backupTutors = array_filter($tutorData, function($t) { return !empty($t['is_backup']); });
+
             foreach ($mainTutors as $tutor) {
                 $classSheet->setCellValue('A' . $row, $number);
                 $classSheet->setCellValue('B' . $row, $tutor['glsID']);
@@ -1531,42 +2330,31 @@ class ScheduleController extends Controller
                 $classSheet->setCellValue('D' . $row, $tutor['glsUsername']);
                 $classSheet->setCellValue('E' . $row, $tutor['glsScreenName']);
                 $classSheet->setCellValue('F' . $row, $tutor['sex']);
-                $classSheet->setCellValue('G' . $row, $tutor['supervisor'] ?? 'N/A');
-                
-                // Style the row with grayed out effect for cancelled classes (only if showing cancelled markings)
-                $backgroundColor = ($isCancelled && $showCancelledMarkings) ? 'F0F0F0' : 'FFFFFF'; // Gray for cancelled, white for normal
-                $fontColor = ($isCancelled && $showCancelledMarkings) ? '808080' : '000000'; // Gray text for cancelled, black for normal
-                
-                $classSheet->getStyle('A' . $row . ':G' . $row)->applyFromArray([
+                $backgroundColor = ($isCancelled && $showCancelledMarkings) ? 'F0F0F0' : 'FFFFFF';
+                $fontColor = ($isCancelled && $showCancelledMarkings) ? '808080' : '000000';
+                $classSheet->getStyle('A' . $row . ':F' . $row)->applyFromArray([
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
                     'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => $backgroundColor]],
                     'font' => ['color' => ['rgb' => $fontColor]]
                 ]);
-                
                 $row++;
                 $number++;
             }
             
-            // Add backup tutors section if there are any
             if (count($backupTutors) > 0) {
-                // Add a separator row
                 $row++;
                 $classSheet->setCellValue('A' . $row, 'BACKUP TUTORS');
-                $classSheet->mergeCells('A' . $row . ':G' . $row);
-                
-                $backupHeaderColor = ($isCancelled && $showCancelledMarkings) ? 'E6E6E6' : 'FFF2CC'; // Darker gray for cancelled, yellow for normal
-                $backupFontColor = ($isCancelled && $showCancelledMarkings) ? '606060' : '000000'; // Gray text for cancelled, black for normal
-                
-                $classSheet->getStyle('A' . $row . ':G' . $row)->applyFromArray([
+                $classSheet->mergeCells('A' . $row . ':F' . $row);
+                $backupHeaderColor = ($isCancelled && $showCancelledMarkings) ? 'E6E6E6' : 'FFF2CC';
+                $backupFontColor = ($isCancelled && $showCancelledMarkings) ? '606060' : '000000';
+                $classSheet->getStyle('A' . $row . ':F' . $row)->applyFromArray([
                     'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => $backupFontColor]],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => $backupHeaderColor]],
                     'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
                 ]);
                 $row++;
-                
-                // Fill backup tutor data
                 foreach ($backupTutors as $tutor) {
                     $classSheet->setCellValue('A' . $row, $number);
                     $classSheet->setCellValue('B' . $row, $tutor['glsID']);
@@ -1574,30 +2362,67 @@ class ScheduleController extends Controller
                     $classSheet->setCellValue('D' . $row, $tutor['glsUsername']);
                     $classSheet->setCellValue('E' . $row, $tutor['glsScreenName']);
                     $classSheet->setCellValue('F' . $row, $tutor['sex']);
-                    $classSheet->setCellValue('G' . $row, $tutor['supervisor'] ?? 'N/A');
-                    
-                    // Style the row with backup highlighting and cancelled graying
-                    $backupRowColor = ($isCancelled && $showCancelledMarkings) ? 'E6E6E6' : 'FFE6CC'; // Gray for cancelled, orange for normal
-                    $backupRowFontColor = ($isCancelled && $showCancelledMarkings) ? '606060' : '000000'; // Gray text for cancelled, black for normal
-                    
-                    $classSheet->getStyle('A' . $row . ':G' . $row)->applyFromArray([
+                    $backupRowColor = ($isCancelled && $showCancelledMarkings) ? 'E6E6E6' : 'FFE6CC';
+                    $backupRowFontColor = ($isCancelled && $showCancelledMarkings) ? '606060' : '000000';
+                    $classSheet->getStyle('A' . $row . ':F' . $row)->applyFromArray([
                         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
                         'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
                         'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => $backupRowColor]],
                         'font' => ['color' => ['rgb' => $backupRowFontColor]]
                     ]);
-                    
                     $row++;
                     $number++;
                 }
             }
-            
-            // Auto-size columns
-            foreach (range('A', 'G') as $column) {
-                $classSheet->getColumnDimension($column)->setAutoSize(true);
+
+			// Gap after backup tutors
+			$row++;
+
+			// Supervisor section below backup tutors
+			$classSheet->setCellValue('A' . $row, 'SUPERVISOR');
+			$classSheet->mergeCells('A' . $row . ':F' . $row);
+			$classSheet->getStyle('A' . $row . ':F' . $row)->applyFromArray([
+				'font' => ['bold' => true],
+				'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+				'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'E6F3FF']],
+				'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+			]);
+			$row++;
+            $supervisorName = null;
+            if (!empty($mainTutors)) {
+                $firstMain = reset($mainTutors);
+                if (is_array($firstMain) && isset($firstMain['supervisor'])) {
+                    $supervisorName = $firstMain['supervisor'];
+                }
             }
+            if (!$supervisorName && !empty($backupTutors)) {
+                $firstBackup = reset($backupTutors);
+                if (is_array($firstBackup) && isset($firstBackup['supervisor'])) {
+                    $supervisorName = $firstBackup['supervisor'];
+                }
+            }
+            if (!$supervisorName && !empty($tutorData)) {
+                $firstAny = reset($tutorData);
+                if (is_array($firstAny) && isset($firstAny['supervisor'])) {
+                    $supervisorName = $firstAny['supervisor'];
+                }
+            }
+			$classSheet->setCellValue('A' . $row, $supervisorName ?: '');
+            $classSheet->mergeCells('A' . $row . ':F' . $row);
+            $classSheet->getStyle('A' . $row . ':F' . $row)->applyFromArray([
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+				'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'F2F2F2']],
+				'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+			]);
+
+            // Set optimized column widths for class sheets
+            $classSheet->getColumnDimension('A')->setWidth(8);   // No.
+            $classSheet->getColumnDimension('B')->setWidth(12);  // glsID
+            $classSheet->getColumnDimension('C')->setWidth(20);  // Full Name
+            $classSheet->getColumnDimension('D')->setWidth(15);  // glsUsername
+            $classSheet->getColumnDimension('E')->setWidth(15);  // glsScreenName
+            $classSheet->getColumnDimension('F')->setWidth(8);   // Sex
             
-            // Only protect sheet if not editable
             if (!$editable) {
                 $classSheet->getProtection()->setSheet(true);
             }
@@ -1605,11 +2430,20 @@ class ScheduleController extends Controller
     }
 
     /**
+     * Stub for generateTentativeScheduleExcel to resolve undefined method error.
+     * Replace with actual logic as needed.
+     */
+    private function generateTentativeScheduleExcel($spreadsheet, $schedules, $title)
+    {
+        // For now, just call the finalized schedule Excel generator with editable = true, showCancelledMarkings = true
+        $this->generateFinalizedScheduleExcel($spreadsheet, $schedules, $title, true, true);
+    }
+
+    /**
      * Sanitize sheet name for Excel compatibility
      */
     private function sanitizeSheetName($name)
     {
-        // Excel sheet names can't be longer than 31 characters and can't contain certain characters
         $name = str_replace(['\\', '/', '*', '?', ':', '[', ']'], '-', $name);
         return substr($name, 0, 31);
     }
@@ -1619,21 +2453,23 @@ class ScheduleController extends Controller
      */
     private function finalizeAndOutputEditableExcel($spreadsheet, $title)
     {
-        // Set the first available sheet as active
         if ($spreadsheet->getSheetCount() > 0) {
             $spreadsheet->setActiveSheetIndex(0);
         }
 
-        // Generate filename
         $filename = str_replace(' ', '_', $title) . '_' . date('Y-m-d_H-i-s') . '.xlsx';
 
-        // Create writer and output file (no protection - editable)
         $writer = new Xlsx($spreadsheet);
         
-        // Set headers for download
+        // Clean output buffer before sending file
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+        
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $filename . '"');
         header('Cache-Control: max-age=0');
+        header('Pragma: public');
         
         $writer->save('php://output');
         exit;
@@ -1644,23 +2480,18 @@ class ScheduleController extends Controller
      */
     private function finalizeAndOutputExcel($spreadsheet, $title)
     {
-        // Set the active sheet back to the first sheet (Overview)
         $spreadsheet->setActiveSheetIndex(0);
         
-        // Protect all sheets to make them read-only
         foreach ($spreadsheet->getAllSheets() as $sheet) {
             $sheet->getProtection()->setSheet(true);
             $sheet->getProtection()->setSelectLockedCells(true);
             $sheet->getProtection()->setSelectUnlockedCells(true);
         }
 
-        // Generate filename
         $filename = str_replace(' ', '_', $title) . '_' . date('Y-m-d_H-i-s') . '.xlsx';
 
-        // Create writer and output file
         $writer = new Xlsx($spreadsheet);
         
-        // Set headers for download
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $filename . '"');
         header('Cache-Control: max-age=0');
@@ -1677,13 +2508,30 @@ class ScheduleController extends Controller
         try {
             $class = DailyData::findOrFail($classId);
             
-            // Start transaction
+            // Check ownership
+            $currentSupervisorId = null;
+            if (Auth::guard('supervisor')->check()) {
+                $currentSupervisorId = Auth::guard('supervisor')->user()->supID;
+            } elseif (session('supervisor_id')) {
+                $currentSupervisorId = session('supervisor_id');
+            }
+            
+            // Check if ANY class in the same schedule (same date) is owned by another supervisor
+            $scheduleDate = $class->date;
+            $existingOwner = DailyData::where('date', $scheduleDate)
+                ->whereNotNull('assigned_supervisor')
+                ->where('assigned_supervisor', '!=', $currentSupervisorId)
+                ->first();
+            
+            if ($existingOwner) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "This schedule is being handled by another supervisor. You cannot modify it."
+                ], 403);
+            }
+            
             DB::beginTransaction();
             
-            // Don't remove tutor assignments - just mark class as cancelled
-            // This preserves assignments so they can be restored later
-            
-            // Mark class as cancelled
             $class->update([
                 'class_status' => 'cancelled',
                 'cancelled_at' => now()
@@ -1714,13 +2562,11 @@ class ScheduleController extends Controller
     {
         try {
             $date = $request->input('date');
-            $status = $request->input('status'); // 'tentative' or 'final'
+            $status = $request->input('status');
 
-            // Get the first supervisor's supID (or null if none)
-            $supervisor = \App\Models\Supervisor::first();
+            $supervisor = Supervisor::first();
             $performedBy = $supervisor ? $supervisor->supID : null;
 
-            // Validate inputs
             if (!$date || !in_array($status, ['tentative', 'final'])) {
                 return response()->json([
                     'success' => false,
@@ -1728,7 +2574,6 @@ class ScheduleController extends Controller
                 ], 400);
             }
 
-            // Get all classes for the date (include both active and cancelled)
             $classes = DailyData::where('date', $date)->get();
 
             if ($classes->isEmpty()) {
@@ -1744,14 +2589,12 @@ class ScheduleController extends Controller
             $scheduleStatus = $status === 'final' ? 'finalized' : 'tentative';
 
             foreach ($classes as $class) {
-                // Store old data for history
                 $oldData = [
                     'schedule_status' => $class->schedule_status,
                     'finalized_at' => $class->finalized_at,
                     'finalized_by' => $class->finalized_by
                 ];
 
-                // Update schedule status
                 $updateData = ['schedule_status' => $scheduleStatus];
                 if ($status === 'final') {
                     $updateData['finalized_at'] = now();
@@ -1760,18 +2603,19 @@ class ScheduleController extends Controller
 
                 $class->update($updateData);
 
-                // Always create a history record for both active and cancelled classes
-                $class->createHistoryRecord(
-                    $status === 'final' ? 'finalized' : 'updated',
-                    $performedBy,
-                    "Schedule saved as " . ($status === 'final' ? 'finalized' : 'tentative'),
-                    $oldData,
-                    [
-                        'schedule_status' => $scheduleStatus,
-                        'finalized_at' => $updateData['finalized_at'] ?? null,
-                        'finalized_by' => $updateData['finalized_by'] ?? null
-                    ]
-                );
+                if (method_exists($class, 'createHistoryRecord')) {
+                    $class->createHistoryRecord(
+                        $status === 'final' ? 'finalized' : 'updated',
+                        $performedBy,
+                        "Schedule saved as " . ($status === 'final' ? 'finalized' : 'tentative'),
+                        $oldData,
+                        [
+                            'schedule_status' => $scheduleStatus,
+                            'finalized_at' => $updateData['finalized_at'] ?? null,
+                            'finalized_by' => $updateData['finalized_by'] ?? null
+                        ]
+                    );
+                }
 
                 $updatedCount++;
             }
@@ -1804,7 +2648,6 @@ class ScheduleController extends Controller
         $query = ScheduleHistory::with(['dailyData', 'performer'])
             ->orderBy('created_at', 'desc');
 
-        // Apply filters
         if ($request->filled('action')) {
             $query->where('action', $request->action);
         }
@@ -1830,7 +2673,7 @@ class ScheduleController extends Controller
         }
 
         $histories = $query->paginate(50);
-        $users = \App\Models\User::orderBy('name')->get();
+        $users = User::orderBy('name')->get();
 
         return view('schedules.history', compact('histories', 'users'));
     }
@@ -1843,7 +2686,6 @@ class ScheduleController extends Controller
         $query = ScheduleHistory::with(['dailyData', 'performer'])
             ->orderBy('created_at', 'desc');
 
-        // Apply same filters as history view
         if ($request->filled('action')) {
             $query->where('action', $request->action);
         }
@@ -1865,7 +2707,6 @@ class ScheduleController extends Controller
 
         $histories = $query->get();
 
-        // Create CSV content
         $filename = 'schedule_history_' . date('Y-m-d_H-i-s') . '.csv';
         $headers = [
             'Content-Type' => 'text/csv',
@@ -1875,7 +2716,6 @@ class ScheduleController extends Controller
         $callback = function() use ($histories) {
             $file = fopen('php://output', 'w');
             
-            // CSV Headers
             fputcsv($file, [
                 'ID',
                 'Class Name',
@@ -1891,7 +2731,6 @@ class ScheduleController extends Controller
                 'New Data'
             ]);
 
-            // Data rows
             foreach ($histories as $history) {
                 fputcsv($file, [
                     $history->id,
