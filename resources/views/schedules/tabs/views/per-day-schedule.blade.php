@@ -22,6 +22,23 @@
     ->where('class_status', '!=', 'cancelled') // Only count active classes in statistics
     ->groupBy('date', 'day')
     ->first();
+
+    // Determine currently logged in supervisor id (if any)
+    $currentSupervisorId = session('supervisor_id');
+    if (!$currentSupervisorId && auth('supervisor')->check()) {
+        $currentSupervisorId = auth('supervisor')->user()->supID;
+    }
+    
+    
+    // Check if the current supervisor owns this schedule
+    $scheduleOwnedByCurrentSupervisor = true;
+    if ($currentSupervisorId) {
+        $existingOwner = \App\Models\DailyData::where('date', $date)
+            ->whereNotNull('assigned_supervisor')
+            ->where('assigned_supervisor', '!=', $currentSupervisorId)
+            ->first();
+        $scheduleOwnedByCurrentSupervisor = !$existingOwner;
+    }
 @endphp
 
 <!-- Main Content -->
@@ -78,6 +95,11 @@
                 <button class="flex items-center space-x-2 bg-gray-400 text-white px-4 py-2 rounded-full text-sm font-medium cursor-not-allowed opacity-60" disabled>
                     <i class="fas fa-lock"></i>
                     <span>Schedule Locked</span>
+                </button>
+            @elseif(!$scheduleOwnedByCurrentSupervisor)
+                <button class="flex items-center space-x-2 bg-gray-400 text-white px-4 py-2 rounded-full text-sm font-medium cursor-not-allowed opacity-60" disabled>
+                    <i class="fas fa-user-lock"></i>
+                    <span>Owned by Another Supervisor</span>
                 </button>
             @else
                 <button onclick="autoAssignForThisDay('{{ $date }}')"
@@ -200,6 +222,21 @@
                     @endif
                 </h3>
                 <p class="text-xs text-center text-blue-200 mt-1">{{ $class->school }}</p>
+                @php
+                    $ownerName = null;
+                    if (!empty($class->finalized_by)) {
+                        $owner = \App\Models\Supervisor::where('supID', $class->finalized_by)->first();
+                        $ownerName = $owner ? $owner->full_name : null;
+                    }
+                @endphp
+                @if($ownerName && $currentSupervisorId && $class->finalized_by !== $currentSupervisorId)
+                    <div class="mt-2 flex justify-center">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xxs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200">
+                            <i class="fas fa-user-shield mr-1 text-xs"></i>
+                            Supervised by {{ $ownerName }}
+                        </span>
+                    </div>
+                @endif
                 @if($class->class_status === 'cancelled')
                     <div class="text-center mt-2">
                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -336,6 +373,12 @@
                             <div class="flex items-center space-x-1">
                                 <i class="fas fa-lock text-blue-400 text-xs"></i>
                                 <span class="text-xs text-blue-600 italic">Schedule Locked</span>
+                            </div>
+                        @elseif(!$scheduleOwnedByCurrentSupervisor)
+                            <!-- No actions available - owned by another supervisor -->
+                            <div class="flex items-center space-x-1">
+                                <i class="fas fa-user-lock text-gray-400 text-xs"></i>
+                                <span class="text-xs text-gray-600 italic">Owned by Another Supervisor</span>
                             </div>
                         @else
                             <!-- Edit Button -->

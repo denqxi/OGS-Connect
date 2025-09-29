@@ -47,22 +47,68 @@
     </td>
     <td class="px-6 py-4 text-sm">
         @php
+            $assignedSupervisors = $data->assigned_supervisors ?? '';
+            if ($assignedSupervisors) {
+                $supervisorIds = explode(', ', $assignedSupervisors);
+                $supervisorNames = [];
+                foreach ($supervisorIds as $supervisorId) {
+                    $supervisor = \App\Models\Supervisor::where('supID', $supervisorId)->first();
+                    if ($supervisor) {
+                        $supervisorNames[] = $supervisor->full_name;
+                    }
+                }
+                $displaySupervisors = implode(', ', $supervisorNames);
+            } else {
+                $displaySupervisors = 'Unassigned';
+            }
+        @endphp
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium {{ $assignedSupervisors ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600' }}">
+            {{ $displaySupervisors }}
+        </span>
+    </td>
+    <td class="px-6 py-4 text-sm">
+        @php
             $viewDate = $data->date;
             if ($viewDate instanceof \Carbon\Carbon) {
                 $viewDate = $viewDate->format('Y-m-d');
             } else {
                 $viewDate = \Carbon\Carbon::parse($viewDate)->format('Y-m-d');
             }
+            
+            // Check if current supervisor owns this schedule
+            $currentSupervisorId = session('supervisor_id');
+            if (!$currentSupervisorId && auth('supervisor')->check()) {
+                $currentSupervisorId = auth('supervisor')->user()->supID;
+            }
+            
+            $canModify = true;
+            if ($currentSupervisorId && $data->assigned_supervisors) {
+                $assignedSupervisors = explode(', ', $data->assigned_supervisors);
+                $canModify = in_array($currentSupervisorId, $assignedSupervisors);
+            }
         @endphp
-        <a href="{{ route('schedules.index', ['tab' => 'class', 'view_date' => $viewDate]) }}" 
-           class="w-8 h-8 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 inline-flex items-center justify-center transition-colors">
-            <i class="fas fa-search text-xs"></i>
-        </a>
+        
+        <div class="flex items-center space-x-2">
+            <!-- View Button (always available) -->
+            <a href="{{ route('schedules.index', ['tab' => 'class', 'view_date' => $viewDate]) }}" 
+               class="w-8 h-8 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 inline-flex items-center justify-center transition-colors"
+               title="View Schedule">
+                <i class="fas fa-search text-xs"></i>
+            </a>
+            
+            <!-- Ownership Indicator -->
+            @if($data->assigned_supervisors && !$canModify)
+                <div class="w-8 h-8 bg-gray-100 text-gray-400 rounded inline-flex items-center justify-center"
+                     title="Owned by Another Supervisor - View Only">
+                    <i class="fas fa-user-lock text-xs"></i>
+                </div>
+            @endif
+        </div>
     </td>
 </tr>
 @empty
 <tr id="noResultsRow">
-    <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+    <td colspan="8" class="px-6 py-8 text-center text-gray-500">
         <i class="fas fa-calendar-times text-4xl mb-4 opacity-50"></i>
         <p class="text-lg font-medium">No scheduling data found</p>
         <p class="text-sm">Try adjusting your search criteria</p>

@@ -7,17 +7,38 @@
                                        ->orderBy('time_pht')
                                        ->get();
     
-    // Apply search filters
-    if (request('search')) {
-        $searchTerm = request('search');
-        $dayClasses = $dayClasses->filter(function($class) use ($searchTerm) {
-            return stripos($class->school, $searchTerm) !== false || 
-                   stripos($class->class, $searchTerm) !== false;
-        });
-    }
-    
-    if (request('school_filter')) {
-        $dayClasses = $dayClasses->where('school', request('school_filter'));
+    // Get supervisor information for the schedule
+    $supervisorInfo = null;
+    if ($dayClasses->count() > 0) {
+        $firstClass = $dayClasses->first();
+        
+        // Try to get supervisor from schedule history (prioritize 'finalized' action)
+        $finalizedHistory = \App\Models\ScheduleHistory::where('class_date', $date)
+            ->where('action', 'finalized')
+            ->first();
+            
+        if ($finalizedHistory && $finalizedHistory->performed_by) {
+            $supervisor = \App\Models\Supervisor::where('supID', $finalizedHistory->performed_by)->first();
+            if ($supervisor) {
+                $supervisorInfo = [
+                    'id' => $supervisor->supID,
+                    'name' => $supervisor->sfname . ' ' . $supervisor->slname,
+                    'action' => 'Finalized'
+                ];
+            }
+        }
+        
+        // If no finalized history, try to get from assigned supervisor
+        if (!$supervisorInfo && $firstClass->assigned_supervisor) {
+            $supervisor = \App\Models\Supervisor::where('supID', $firstClass->assigned_supervisor)->first();
+            if ($supervisor) {
+                $supervisorInfo = [
+                    'id' => $supervisor->supID,
+                    'name' => $supervisor->sfname . ' ' . $supervisor->slname,
+                    'action' => 'Assigned'
+                ];
+            }
+        }
     }
     
     // Get grouped information for the header (excluding cancelled classes for statistics)
@@ -61,62 +82,8 @@
 
     <hr class="my-6">
 
-    <!-- Search/Filter Section -->
-    <div class="mb-6">
-        <form method="GET" action="{{ route('schedules.index') }}" class="flex items-center justify-between">
-            <input type="hidden" name="tab" value="history">
-            <input type="hidden" name="view_date" value="{{ $date }}">
-            
-            <div class="flex items-center space-x-4 flex-1 max-w-2xl">
-                <div class="relative flex-1 max-w-md">
-                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                    <input type="text" 
-                           name="search" 
-                           value="{{ request('search') }}" 
-                           placeholder="Search schools or classes..." 
-                           class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm 
-                                  focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
-                                  focus:ring-0 focus:shadow-xl">
-                </div>
-                <select name="school_filter" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
-                    <option value="">All Schools</option>
-                    @php
-                        $allSchedules = \App\Models\DailyData::where('date', $date)
-                            ->where('schedule_status', 'finalized')
-                            ->select('school')
-                            ->distinct()
-                            ->orderBy('school')
-                            ->pluck('school');
-                    @endphp
-                    @foreach($allSchedules as $school)
-                        <option value="{{ $school }}" {{ request('school_filter') == $school ? 'selected' : '' }}>
-                            {{ $school }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            
-            <div class="flex items-center space-x-2">
-                <button type="submit" 
-                        class="flex items-center space-x-2 bg-[#2A5382] text-white px-4 py-2 rounded-full text-sm font-medium 
-                               hover:bg-[#1e3a5c] transform transition duration-200 hover:scale-105">
-                    <i class="fas fa-search"></i>
-                    <span>Filter</span>
-                </button>
-                @if(request()->hasAny(['search', 'school_filter']))
-                    <a href="{{ route('schedules.index', ['tab' => 'history', 'view_date' => $date]) }}" 
-                       class="flex items-center space-x-2 bg-gray-500 text-white px-4 py-2 rounded-full text-sm font-medium 
-                              hover:bg-gray-600 transform transition duration-200 hover:scale-105">
-                        <i class="fas fa-times"></i>
-                        <span>Clear</span>
-                    </a>
-                @endif
-            </div>
-        </form>
-    </div>
-
     <!-- Status and Info -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div>
             <span class="text-sm text-gray-500 uppercase tracking-wide">Status:</span>
             @php
@@ -155,6 +122,21 @@
         <div>
             <span class="text-sm text-gray-500 uppercase tracking-wide">Day:</span>
             <p class="text-gray-800 font-semibold">{{ $dayInfo->day ?? 'N/A' }}</p>
+        </div>
+        <div>
+            <span class="text-sm text-gray-500 uppercase tracking-wide">Supervisor:</span>
+            @if($supervisorInfo)
+                <div class="flex items-center space-x-2 mt-1">
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
+                        @if($supervisorInfo['action'] === 'Finalized') bg-green-100 text-green-800 @else bg-blue-100 text-blue-800 @endif">
+                        <i class="fas fa-user-tie mr-1"></i>
+                        {{ $supervisorInfo['name'] }}
+                    </span>
+                    <span class="text-xs text-gray-500">{{ $supervisorInfo['action'] }}</span>
+                </div>
+            @else
+                <p class="text-gray-500 text-sm">Not assigned</p>
+            @endif
         </div>
     </div>
 
@@ -291,15 +273,9 @@
         @empty
         <!-- No Classes Message -->
         <div class="col-span-full text-center py-8">
-            @if(request()->hasAny(['search', 'school_filter']))
-                <i class="fas fa-search text-4xl mb-4 opacity-50 text-gray-400"></i>
-                <p class="text-lg font-medium text-gray-500">No matching schedules found</p>
-                <p class="text-sm text-gray-400">Try adjusting your search criteria or clear the filters</p>
-            @else
-                <i class="fas fa-calendar-times text-4xl mb-4 opacity-50 text-gray-400"></i>
-                <p class="text-lg font-medium text-gray-500">No finalized schedule found</p>
-                <p class="text-sm text-gray-400">The schedule for this date may not be finalized yet</p>
-            @endif
+            <i class="fas fa-calendar-times text-4xl mb-4 opacity-50 text-gray-400"></i>
+            <p class="text-lg font-medium text-gray-500">No finalized schedule found</p>
+            <p class="text-sm text-gray-400">The schedule for this date may not be finalized yet</p>
         </div>
         @endforelse
     </div>
