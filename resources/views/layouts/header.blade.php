@@ -26,9 +26,12 @@
                     <i class="fas fa-user mr-2"></i> Profile
                 </a>
                 <div class="border-t border-gray-200"></div>
-                <a href="#logout" class="flex items-center px-4 py-2 text-sm text-red-500 hover:bg-red-50">
-                    <i class="fas fa-sign-out-alt mr-2"></i> Logout
-                </a>
+                <form method="POST" action="{{ route('supervisor.logout') }}" class="w-full">
+                    @csrf
+                    <button type="submit" class="flex items-center w-full px-4 py-2 text-sm text-red-500 hover:bg-red-50">
+                        <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                    </button>
+                </form>
             </div>
         </div>
     </div>
