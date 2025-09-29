@@ -8,8 +8,11 @@ use App\Models\TutorAssignment;
 use App\Models\TutorAccount;
 use App\Models\Availability;
 use App\Models\TimeSlot;
+use App\Models\ScheduleHistory;
+use App\Models\Supervisor;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class TutorAssignmentService
 {
@@ -32,10 +35,29 @@ class TutorAssignmentService
             $query->whereRaw('DAYNAME(date) = ?', [$dayName]);
         }
 
-        // Get classes that need more tutors
-        $classes = $query->get()->filter(function($class) {
+        // Get current supervisor ID
+        $currentSupervisorId = null;
+        if (Auth::guard('supervisor')->check()) {
+            $currentSupervisorId = Auth::guard('supervisor')->user()->supID;
+        } elseif (session('supervisor_id')) {
+            $currentSupervisorId = session('supervisor_id');
+        }
+
+        // Get classes that need more tutors and can be assigned by current supervisor
+        $classes = $query->get()->filter(function($class) use ($currentSupervisorId) {
             $assignedCount = $class->tutorAssignments()->count();
-            return $assignedCount < $class->number_required;
+            $needsMoreTutors = $assignedCount < $class->number_required;
+            
+            // Check if ANY class in the same schedule (same date) is owned by another supervisor
+            $scheduleDate = $class->date;
+            $existingOwner = DailyData::where('date', $scheduleDate)
+                ->whereNotNull('assigned_supervisor')
+                ->where('assigned_supervisor', '!=', $currentSupervisorId)
+                ->first();
+            
+            $canBeAssigned = !$existingOwner; // Can be assigned if no other supervisor owns the schedule
+            
+            return $needsMoreTutors && $canBeAssigned;
         });
 
         Log::info('Classes needing tutors', ['count' => $classes->count()]);
@@ -97,6 +119,11 @@ class TutorAssignmentService
             }
         }
 
+        // Create history records for classes that had tutors assigned
+        if ($assignedCount > 0) {
+            $this->createAssignmentHistoryRecords($results);
+        }
+
         Log::info('Auto-assignment completed', ['total_assigned' => $assignedCount]);
 
         return [
@@ -143,8 +170,17 @@ class TutorAssignmentService
 
             // Check if tutor is available using new account-specific system
             if ($tutorAccount->available_days && $tutorAccount->available_times) {
+                // Handle case where available_days might be a string instead of array
                 $availableDays = $tutorAccount->available_days;
+                if (is_string($availableDays)) {
+                    $availableDays = json_decode($availableDays, true) ?? [];
+                }
+                
+                // Handle case where available_times might be a string instead of array
                 $availableTimes = $tutorAccount->available_times;
+                if (is_string($availableTimes)) {
+                    $availableTimes = json_decode($availableTimes, true) ?? [];
+                }
                 
                 // Skip if not available on this day
                 if (!in_array($classDayName, $availableDays)) {
@@ -586,6 +622,98 @@ class TutorAssignmentService
             'assigned' => $assignedCount,
             'assignments' => $results
         ];
+    }
+
+    /**
+     * Create history records for assignment actions
+     */
+    private function createAssignmentHistoryRecords($assignments)
+    {
+        // Get current supervisor - prioritize authenticated user over session
+        $authCheck = Auth::guard('supervisor')->check();
+        $authUser = Auth::guard('supervisor')->user();
+        $sessionSupervisorId = session('supervisor_id');
+        
+        Log::debug('Auto-assignment service supervisor detection', [
+            'session_supervisor_id' => $sessionSupervisorId,
+            'auth_check' => $authCheck,
+            'auth_user' => $authUser ? $authUser->toArray() : null,
+            'all_session_data' => session()->all()
+        ]);
+        
+        // Prioritize authenticated user over session data
+        $supervisorId = null;
+        if ($authCheck && $authUser) {
+            $supervisorId = $authUser->supID;
+            Log::debug('Using authenticated supervisor ID', ['supervisor_id' => $supervisorId]);
+        } elseif ($sessionSupervisorId) {
+            $supervisorId = $sessionSupervisorId;
+            Log::debug('Using session supervisor ID', ['supervisor_id' => $supervisorId]);
+        }
+        
+        if (!$supervisorId) {
+            Log::warning('No supervisor ID found for assignment history creation');
+            return;
+        }
+        
+        // Group assignments by class
+        $classAssignments = [];
+        foreach ($assignments as $assignment) {
+            $classId = $assignment['class_id'];
+            if (!isset($classAssignments[$classId])) {
+                $classAssignments[$classId] = [];
+            }
+            $classAssignments[$classId][] = $assignment;
+        }
+        
+        // Create history record for each class
+        foreach ($classAssignments as $classId => $classAssignmentList) {
+            $class = DailyData::find($classId);
+            if (!$class) continue;
+            
+            // Set schedule ownership for all classes on this date if not already assigned
+            $scheduleDate = $class->date;
+            if (!$class->isAssigned()) {
+                // Assign all classes on this date to the current supervisor
+                DailyData::where('date', $scheduleDate)
+                    ->whereNull('assigned_supervisor')
+                    ->update([
+                        'assigned_supervisor' => $supervisorId,
+                        'assigned_at' => now()
+                    ]);
+                
+                Log::info("Schedule assigned to supervisor via auto-assignment", [
+                    'class_id' => $class->id,
+                    'supervisor_id' => $supervisorId,
+                    'class_name' => $class->class,
+                    'schedule_date' => $scheduleDate
+                ]);
+            } elseif (!$class->isAssignedTo($supervisorId)) {
+                Log::warning("Skipping auto-assignment for schedule owned by another supervisor", [
+                    'class_id' => $class->id,
+                    'current_supervisor' => $supervisorId,
+                    'assigned_supervisor' => $class->assigned_supervisor,
+                    'class_name' => $class->class
+                ]);
+                continue; // Skip this class
+            }
+            
+            $tutorNames = array_column($classAssignmentList, 'tutor_name');
+            
+            $class->createHistoryRecord(
+                'assigned',
+                $supervisorId,
+                'Auto-assigned tutors to class',
+                [
+                    'previous_assigned_count' => $class->tutorAssignments()->count() - count($tutorNames)
+                ],
+                [
+                    'assigned_tutors' => $tutorNames,
+                    'final_assigned_count' => $class->tutorAssignments()->count(),
+                    'assignment_type' => 'auto'
+                ]
+            );
+        }
     }
 
     /**

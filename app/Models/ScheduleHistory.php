@@ -43,6 +43,12 @@ class ScheduleHistory extends Model
         return $this->belongsTo(User::class, 'performed_by');
     }
 
+    // Supervisor who performed the action
+    public function supervisorPerformer()
+    {
+        return $this->belongsTo(Supervisor::class, 'performed_by', 'supID');
+    }
+
     // Scopes
     public function scopeByAction($query, $action)
     {
