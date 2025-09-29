@@ -16,7 +16,32 @@ class ImportController extends Controller
                 'file' => 'required|file|mimes:xlsx,xls,csv|max:10240'
             ]);
 
+            // Additional security: Check file extension
             $file = $request->file('file');
+            $allowedExtensions = ['xlsx', 'xls', 'csv'];
+            $fileExtension = strtolower($file->getClientOriginalExtension());
+            
+            if (!in_array($fileExtension, $allowedExtensions)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid file type. Only Excel (.xlsx, .xls) and CSV files are allowed.'
+                ], 400);
+            }
+
+            // Additional security: Check MIME type
+            $allowedMimeTypes = [
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+                'application/vnd.ms-excel', // .xls
+                'text/csv', // .csv
+                'application/csv' // .csv alternative
+            ];
+            
+            if (!in_array($file->getMimeType(), $allowedMimeTypes)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid file format. Please upload a valid Excel or CSV file.'
+                ], 400);
+            }
             
             // Process the file
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getPathname());
