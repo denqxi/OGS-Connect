@@ -9,12 +9,12 @@ return new class extends Migration {
     {
         Schema::create('supervisors', function (Blueprint $table) {
             $table->id('supID');
-            $table->string('accID', 50);
             $table->string('sfname', 50);
             $table->string('smname', 50)->nullable();
             $table->string('slname', 50);
             $table->string('semail', 100)->unique();
             $table->string('sconNum', 20)->nullable();
+            $table->string('password');
             $table->timestamps();
         });
     }

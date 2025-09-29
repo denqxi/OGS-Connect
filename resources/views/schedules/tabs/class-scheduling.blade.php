@@ -128,6 +128,7 @@
                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Classes</th>
                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Total Required</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Supervisor</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
             </thead>

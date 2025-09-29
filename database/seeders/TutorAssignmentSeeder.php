@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class TutorAssignmentSeeder extends Seeder
 {
@@ -26,12 +27,17 @@ class TutorAssignmentSeeder extends Seeder
         $this->call(TimeSlotSeeder::class);
         $this->command->newLine();
 
-        // Step 3: Create tutor availability patterns
-        $this->command->info('👥 Step 3: Assigning tutor availability patterns...');
+        // Step 3: Create tutor accounts for all companies
+        $this->command->info('🏢 Step 3: Creating tutor accounts for all companies...');
+        $this->call(TutorAccountSeeder::class);
+        $this->command->newLine();
+
+        // Step 4: Create tutor availability patterns
+        $this->command->info('👥 Step 4: Assigning tutor availability patterns...');
         $this->call(TutorAvailabilitySeeder::class);
         $this->command->newLine();
 
-        // Step 4: Summary of seeded data
+        // Step 5: Summary of seeded data
         $this->command->info('📊 Seeding Summary:');
         $this->showSeededDataSummary();
         
@@ -48,9 +54,9 @@ class TutorAssignmentSeeder extends Seeder
     {
         $tutorsCount = \App\Models\Tutor::count();
         $activeTutorsCount = \App\Models\Tutor::where('status', 'active')->count();
-        $timeSlotsCount = \App\Models\TimeSlot::count();
-        $availabilitiesCount = \App\Models\Availability::count();
-        $availableCount = \App\Models\Availability::where('availStatus', 'available')->count();
+        $timeSlotsCount = DB::table('time_slots')->count();
+        $availabilitiesCount = DB::table('availabilities')->count();
+        $availableCount = DB::table('availabilities')->where('availStatus', 'available')->count();
         $classesCount = \App\Models\DailyData::count();
 
         $this->command->table([
@@ -66,12 +72,13 @@ class TutorAssignmentSeeder extends Seeder
 
         // Show tutor availability distribution
         $this->command->info('🔍 Tutor Availability Distribution:');
-        $tutors = \App\Models\Tutor::with(['availabilities' => function($query) {
-            $query->where('availStatus', 'available');
-        }])->get();
+        $tutors = \App\Models\Tutor::all();
 
         foreach ($tutors as $tutor) {
-            $availableSlots = $tutor->availabilities->count();
+            $availableSlots = DB::table('availabilities')
+                ->where('tutorID', $tutor->tutorID)
+                ->where('availStatus', 'available')
+                ->count();
             $status = $tutor->status === 'active' ? '🟢' : '🔴';
             $this->command->info("  {$status} {$tutor->tusername}: {$availableSlots} available slots");
         }

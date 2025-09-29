@@ -20,7 +20,10 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
+        // Seed supervisor accounts
+        $this->call(SupervisorSeeder::class);
         // Seed tutor assignment system data
         $this->call(TutorAssignmentSeeder::class);
+        // Note: daily_data will be populated from Excel uploads, not seeders
     }
 }

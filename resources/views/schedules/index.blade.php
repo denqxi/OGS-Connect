@@ -72,7 +72,7 @@ function exportSchedule(type, specificDate = null) {
         Exporting...
     `;
     
-    // Handle final export using the same method as Schedule History
+    // Handle final export: call dedicated finalized export endpoint (no overview)
     if (type === 'final') {
         if (!specificDate) {
             showNotification('Date is required for final export.', 'error');
@@ -80,37 +80,41 @@ function exportSchedule(type, specificDate = null) {
             button.innerHTML = originalText;
             return;
         }
-        
-        // Create form to submit the specific date (same as Schedule History export)
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{{ route("schedules.export-selected") }}';
-        form.style.display = 'none';
-        
-        // Add CSRF token
-        const csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = '_token';
-        csrfInput.value = '{{ csrf_token() }}';
-        form.appendChild(csrfInput);
-        
-        // Add the specific date
-        const dateInput = document.createElement('input');
-        dateInput.type = 'hidden';
-        dateInput.name = 'dates[]';
-        dateInput.value = specificDate;
-        form.appendChild(dateInput);
-        
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-        
-        // Restore button after a short delay
-        setTimeout(() => {
+
+        const finalUrl = `{{ route('schedules.export-final') }}?date=${encodeURIComponent(specificDate)}`;
+        fetch(finalUrl, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `finalized_schedule_${specificDate.replace(/[\/\s]/g, '-')}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            showNotification(`Final schedule for ${specificDate} exported successfully!`, 'success');
+        })
+        .catch(error => {
+            console.error('Final export error:', error);
+            showNotification('Error exporting final schedule. Please try again.', 'error');
+        })
+        .finally(() => {
             button.disabled = false;
             button.innerHTML = originalText;
-        }, 1000);
-        
+        });
         return;
     }
     
