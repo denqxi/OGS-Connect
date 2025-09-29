@@ -9,15 +9,36 @@ use App\Services\AccountTimeSlotConfig;
 
 class TutorAccount extends Model
 {
+    // Accessor for glsID (maps to gls_id DB field) - only for camelCase access
+    public function getGlsIDAttribute()
+    {
+        return $this->attributes['gls_id'] ?? '';
+    }
+
+    // Accessor for glsUsername (maps to username DB field)
+    public function getGlsUsernameAttribute()
+    {
+        return $this->username ?? '';
+    }
+
+    // Accessor for glsScreenName (maps to screen_name DB field)
+    public function getGlsScreenNameAttribute()
+    {
+        return $this->screen_name ?? '';
+    }
     protected $fillable = [
         'tutor_id',
         'account_name',
+        'gls_id',          // GLS numeric ID
         'username',        // Added username field
         'screen_name',     // Added screen_name field
         'available_days',
         'available_times', 
         'preferred_time_range',
         'timezone',
+        'restricted_start_time',
+        'restricted_end_time',
+        'company_notes',
         'availability_notes',
         'status'
     ];
@@ -40,6 +61,22 @@ class TutorAccount extends Model
             return 'No availability set';
         }
 
+        // Handle case where available_days might be a string instead of array
+        $availableDays = $this->available_days;
+        if (is_string($availableDays)) {
+            $availableDays = json_decode($availableDays, true) ?? [];
+        }
+        
+        // Handle case where available_times might be a string instead of array
+        $availableTimes = $this->available_times;
+        if (is_string($availableTimes)) {
+            $availableTimes = json_decode($availableTimes, true) ?? [];
+        }
+
+        if (empty($availableDays) || empty($availableTimes)) {
+            return 'No availability set';
+        }
+
         $dayLabels = [
             'monday' => 'Monday', 'tuesday' => 'Tuesday', 'wednesday' => 'Wednesday', 
             'thursday' => 'Thursday', 'friday' => 'Friday', 'saturday' => 'Saturday', 'sunday' => 'Sunday'
@@ -47,12 +84,12 @@ class TutorAccount extends Model
 
         $dayTimeStrings = [];
 
-        foreach ($this->available_days as $day) {
+        foreach ($availableDays as $day) {
             $dayKey = strtolower($day);
             $dayLabel = $dayLabels[$dayKey] ?? ucfirst($day);
             
             // Try both the original day case and lowercase to handle different data formats
-            $dayTimes = $this->available_times[$day] ?? $this->available_times[$dayKey] ?? [];
+            $dayTimes = $availableTimes[$day] ?? $availableTimes[$dayKey] ?? [];
 
             if (!empty($dayTimes)) {
                 // Take only the first time slot for this day
@@ -83,11 +120,23 @@ class TutorAccount extends Model
     // Check if tutor is available on specific day and time for this account
     public function isAvailableAt($day, $time)
     {
-        if (!$this->available_days || !in_array($day, $this->available_days)) {
+        // Handle case where available_days might be a string instead of array
+        $availableDays = $this->available_days;
+        if (is_string($availableDays)) {
+            $availableDays = json_decode($availableDays, true) ?? [];
+        }
+        
+        if (!$availableDays || !in_array($day, $availableDays)) {
             return false;
         }
 
-        $dayTimes = $this->available_times[$day] ?? [];
+        // Handle case where available_times might be a string instead of array
+        $availableTimes = $this->available_times;
+        if (is_string($availableTimes)) {
+            $availableTimes = json_decode($availableTimes, true) ?? [];
+        }
+
+        $dayTimes = $availableTimes[$day] ?? [];
         $timeMinutes = Carbon::parse($time)->hour * 60 + Carbon::parse($time)->minute;
 
         foreach ($dayTimes as $timeRange) {
@@ -126,11 +175,17 @@ class TutorAccount extends Model
             return ['Account name is required for validation'];
         }
 
-        if (!$this->available_times) {
+        // Handle case where available_times might be a string instead of array
+        $availableTimes = $this->available_times;
+        if (is_string($availableTimes)) {
+            $availableTimes = json_decode($availableTimes, true) ?? [];
+        }
+
+        if (!$availableTimes) {
             return []; // No time slots to validate
         }
 
-        return AccountTimeSlotConfig::validateTimeSlots($this->account_name, $this->available_times);
+        return AccountTimeSlotConfig::validateTimeSlots($this->account_name, $availableTimes);
     }
 
     /**
@@ -142,11 +197,17 @@ class TutorAccount extends Model
             return ['Account name is required for validation'];
         }
 
-        if (!$this->available_days) {
+        // Handle case where available_days might be a string instead of array
+        $availableDays = $this->available_days;
+        if (is_string($availableDays)) {
+            $availableDays = json_decode($availableDays, true) ?? [];
+        }
+
+        if (!$availableDays) {
             return []; // No days to validate
         }
 
-        return AccountTimeSlotConfig::validateAvailableDays($this->account_name, $this->available_days);
+        return AccountTimeSlotConfig::validateAvailableDays($this->account_name, $availableDays);
     }
 
     /**
@@ -208,6 +269,38 @@ class TutorAccount extends Model
     public function isOpenAccount(): bool
     {
         return AccountTimeSlotConfig::isOpenAccount($this->account_name);
+    }
+
+    /**
+     * Check if a time is within the company's restricted hours
+     */
+    public function isTimeWithinRestrictions(string $time): bool
+    {
+        // If no restrictions, allow any time
+        if (!$this->restricted_start_time || !$this->restricted_end_time) {
+            return true;
+        }
+
+        $timeCarbon = Carbon::createFromFormat('H:i:s', $time);
+        $startTime = Carbon::createFromFormat('H:i:s', $this->restricted_start_time);
+        $endTime = Carbon::createFromFormat('H:i:s', $this->restricted_end_time);
+
+        return $timeCarbon->between($startTime, $endTime);
+    }
+
+    /**
+     * Get company time restrictions as a readable string
+     */
+    public function getTimeRestrictionsString(): string
+    {
+        if (!$this->restricted_start_time || !$this->restricted_end_time) {
+            return 'Open hours (no restrictions)';
+        }
+
+        $start = Carbon::createFromFormat('H:i:s', $this->restricted_start_time)->format('g:i A');
+        $end = Carbon::createFromFormat('H:i:s', $this->restricted_end_time)->format('g:i A');
+        
+        return "{$start} - {$end}";
     }
 
     /**

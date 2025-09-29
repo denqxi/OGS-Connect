@@ -3,21 +3,31 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
-class Supervisor extends Model
+class Supervisor extends Authenticatable
 {
     protected $primaryKey = 'supID';
     public $incrementing = false; // Primary key is not auto-incrementing
     protected $keyType = 'string'; // Primary key is string type
     
     protected $fillable = [
-        'supID', // Now this stores the formatted ID directly (OGS-S0001)
-        'accID',
+        'supID',
         'sfname',
         'smname',
         'slname',
         'semail',
-        'sconNum'
+        'sconNum',
+        'password'
+    ];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    protected $casts = [
+        'password' => 'hashed',
     ];
 
     // Automatically generate formatted ID when creating new supervisors

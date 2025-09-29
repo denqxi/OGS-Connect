@@ -3,29 +3,41 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Carbon\Carbon;
 
-class Tutor extends Model
+class Tutor extends Authenticatable
 {
     protected $primaryKey = 'tutorID';
     public $incrementing = false; // Primary key is not auto-incrementing
     protected $keyType = 'string'; // Primary key is string type
     
     protected $fillable = [
-        'tutorID', // Now this stores the formatted ID directly (OGS-T0001)
-        'first_name',
-        'last_name', 
-        'email',
-        'phone_number',
+        'tutorID',
         'tusername',
+        'first_name',
+        'last_name',
+        'email',
         'tpassword',
-        'status',
-        'sex' // Added sex field
+        'phone_number',
+        'sex',
+        'status'
+    ];
+
+    protected $hidden = [
+        'tpassword',
+        'remember_token',
     ];
 
     protected $casts = [
-        // Removed legacy availability field casts since they're now in tutor_accounts table
+        'tpassword' => 'hashed',
     ];
+
+    // Override getAuthPassword to use tpassword field
+    public function getAuthPassword()
+    {
+        return $this->tpassword;
+    }
 
     // Automatically generate formatted ID when creating new tutors
     protected static function boot()
