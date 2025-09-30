@@ -425,6 +425,11 @@
                 <i class="fas fa-check-circle text-green-500"></i>
                 <span class="text-gray-700 font-medium">Schedule Already Finalized</span>
             </div>
+        @elseif(!$scheduleOwnedByCurrentSupervisor)
+            <div class="bg-gray-100 border-2 border-gray-300 rounded-full px-6 py-2 flex items-center space-x-2">
+                <i class="fas fa-user-lock text-gray-500"></i>
+                <span class="text-gray-700 font-medium">Owned by Another Supervisor</span>
+            </div>
         @else
             <button onclick="saveScheduleAs('final', '{{ $date }}')"
                 class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-full font-medium 
