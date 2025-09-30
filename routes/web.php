@@ -98,6 +98,7 @@ Route::middleware(['auth:supervisor,web'])->group(function () {
 
     // API route for real-time search
     Route::get('/api/search-schedules', [ScheduleController::class, 'searchSchedules'])->name('api.search-schedules');
+    Route::get('/api/search-tutors', [ScheduleController::class, 'searchTutors'])->name('api.search-tutors');
 });
 
 // Supervisor-only routes - require supervisor authentication
