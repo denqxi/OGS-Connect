@@ -33,6 +33,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Always enable AJAX pagination, regardless of filter state
+    window.alwaysUseAjaxPagination = true;
+    
     if (searchInput) {
         // Real-time search on input
         searchInput.addEventListener('input', function() {
@@ -58,7 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Debounce search
             searchTimeout = setTimeout(() => {
-                performRealTimeSearch(query);
+                window.performRealTimeSearch(query);
             }, 500);
         });
         
@@ -75,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     noResultsMessage.classList.add('hidden');
                 }
                 
-                performRealTimeSearch('');
+                window.performRealTimeSearch('');
             });
         }
     }
@@ -106,8 +109,8 @@ document.addEventListener('DOMContentLoaded', function() {
             targetLink = targetLink.parentNode;
         }
         
-        // If we found a pagination link and search is active
-        if (isSearchActive && targetLink && targetLink.href && targetLink.href.includes('page=')) {
+        // If we found a pagination link, always handle it with AJAX
+        if (targetLink && targetLink.href && targetLink.href.includes('page=')) {
             e.preventDefault();
             e.stopPropagation();
             
@@ -115,12 +118,54 @@ document.addEventListener('DOMContentLoaded', function() {
             const page = url.searchParams.get('page') || 1;
             
             // Perform search with the current search parameters and the new page
-            performRealTimeSearch(searchInput.value.trim(), page);
+            const currentSearch = searchInput ? searchInput.value.trim() : '';
+            window.performRealTimeSearch(currentSearch, page);
             return false;
         }
     }, true); // Use capture phase to catch the event early
     
-    function performRealTimeSearch(query, page = 1) {
+    // Also add a specific event listener for the pagination container
+    const paginationContainer = document.getElementById('paginationContainer');
+    if (paginationContainer) {
+        paginationContainer.addEventListener('click', function(e) {
+            if (e.target.tagName === 'A' && e.target.href && e.target.href.includes('page=')) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const url = new URL(e.target.href);
+                const page = url.searchParams.get('page') || 1;
+                
+                // Perform search with the current search parameters and the new page
+                const currentSearch = searchInput ? searchInput.value.trim() : '';
+                window.performRealTimeSearch(currentSearch, page);
+                return false;
+            }
+        });
+    } else {
+        console.log('Pagination container not found during initialization');
+    }
+    
+    // Add a more robust event delegation for dynamically updated pagination
+    document.addEventListener('click', function(e) {
+        // Check if the clicked element is inside the pagination container
+        const paginationContainer = document.getElementById('paginationContainer');
+        if (paginationContainer && paginationContainer.contains(e.target)) {
+            if (e.target.tagName === 'A' && e.target.href && e.target.href.includes('page=')) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const url = new URL(e.target.href);
+                const page = url.searchParams.get('page') || 1;
+                
+                // Perform search with the current search parameters and the new page
+                const currentSearch = searchInput ? searchInput.value.trim() : '';
+                window.performRealTimeSearch(currentSearch, page);
+                return false;
+            }
+        }
+    });
+    
+    window.performRealTimeSearch = function(query, page = 1) {
         const searchRoute = window.searchSchedulesRoute || '/api/search-schedules';
         const url = new URL(searchRoute, window.location.origin);
         
@@ -152,7 +197,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 // Check if there are no results
@@ -161,7 +211,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (hasResults) {
                     // Update table body with results
-                    tableBody.innerHTML = data.html;
+                    if (tableBody) {
+                        tableBody.innerHTML = data.html;
+                    }
                     
                     // Hide the "no search results" message
                     if (noResultsMessage) {
@@ -175,7 +227,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 } else {
                     // Clear table body and show "no search results" message
-                    tableBody.innerHTML = '';
+                    if (tableBody) {
+                        tableBody.innerHTML = '';
+                    }
                     
                     // Show the "no search results" message
                     if (noResultsMessage) {

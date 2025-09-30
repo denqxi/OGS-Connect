@@ -43,8 +43,7 @@
                    placeholder="Search schools..." 
                    class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md text-sm 
                        focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
-                       focus:ring-0 focus:shadow-xl"
-                   oninput="removePageParam()">
+                       focus:ring-0 focus:shadow-xl">
                         <!-- Spinner -->
                         <div id="searchSpinner" class="absolute right-8 top-1/2 transform -translate-y-1/2 hidden">
                             <i class="fas fa-spinner fa-spin text-gray-400"></i>
@@ -66,22 +65,52 @@
                     </select>
                     <select name="day" id="filterDay" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="handleFilterChange('day')">
                         <option value="">All Days</option>
-                        <option value="Monday" {{ request('day') == 'Monday' ? 'selected' : '' }}>Monday</option>
-                        <option value="Tuesday" {{ request('day') == 'Tuesday' ? 'selected' : '' }}>Tuesday</option>
-                        <option value="Wednesday" {{ request('day') == 'Wednesday' ? 'selected' : '' }}>Wednesday</option>
-                        <option value="Thursday" {{ request('day') == 'Thursday' ? 'selected' : '' }}>Thursday</option>
-                        <option value="Friday" {{ request('day') == 'Friday' ? 'selected' : '' }}>Friday</option>
-                        <option value="Saturday" {{ request('day') == 'Saturday' ? 'selected' : '' }}>Saturday</option>
-                        <option value="Sunday" {{ request('day') == 'Sunday' ? 'selected' : '' }}>Sunday</option>
+                        @if(isset($availableDays) && $availableDays->count() > 0)
+                            @foreach($availableDays as $day)
+                                @php
+                                    // Handle capitalized abbreviated day names from database (Mon, Tue, Wed, Thu, Fri)
+                                    $dayMap = [
+                                        'Mon' => 'mon', 'Tue' => 'tue', 'Wed' => 'wed',
+                                        'Thu' => 'thur', 'Fri' => 'fri',
+                                        'Monday' => 'mon', 'Tuesday' => 'tue', 'Wednesday' => 'wed',
+                                        'Thursday' => 'thur', 'Friday' => 'fri',
+                                        'mon' => 'mon', 'tue' => 'tue', 'wed' => 'wed',
+                                        'thur' => 'thur', 'fri' => 'fri'
+                                    ];
+                                    
+                                    $displayMap = [
+                                        'Mon' => 'Monday', 'Tue' => 'Tuesday', 'Wed' => 'Wednesday',
+                                        'Thu' => 'Thursday', 'Fri' => 'Friday',
+                                        'Monday' => 'Monday', 'Tuesday' => 'Tuesday', 'Wednesday' => 'Wednesday',
+                                        'Thursday' => 'Thursday', 'Friday' => 'Friday',
+                                        'mon' => 'Monday', 'tue' => 'Tuesday', 'wed' => 'Wednesday',
+                                        'thur' => 'Thursday', 'fri' => 'Friday'
+                                    ];
+                                    
+                                    $dayValue = $dayMap[$day] ?? strtolower($day);
+                                    $dayDisplay = $displayMap[$day] ?? ucfirst($day);
+                                @endphp
+                                @if(in_array($day, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'mon', 'tue', 'wed', 'thur', 'fri']))
+                                    <option value="{{ $dayValue }}" {{ request('day') == $dayValue ? 'selected' : '' }}>
+                                        {{ $dayDisplay }}
+                                    </option>
+                                @endif
+                            @endforeach
+                        @else
+                            <!-- Fallback options if availableDays is not set or empty -->
+                            <option value="mon" {{ request('day') == 'mon' ? 'selected' : '' }}>Monday</option>
+                            <option value="tue" {{ request('day') == 'tue' ? 'selected' : '' }}>Tuesday</option>
+                            <option value="wed" {{ request('day') == 'wed' ? 'selected' : '' }}>Wednesday</option>
+                            <option value="thur" {{ request('day') == 'thur' ? 'selected' : '' }}>Thursday</option>
+                            <option value="fri" {{ request('day') == 'fri' ? 'selected' : '' }}>Friday</option>
+                        @endif
                     </select>
                     <select name="status" id="filterStatus" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="handleFilterChange('status')">
                         <option value="">All Status</option>
-                        <option value="assigned" {{ request('status') == 'assigned' ? 'selected' : '' }}>Fully Assigned</option>
-                        <option value="unassigned" {{ request('status') == 'unassigned' ? 'selected' : '' }}>Unassigned</option>
+                        <option value="fully_assigned" {{ request('status') == 'fully_assigned' ? 'selected' : '' }}>Fully Assigned</option>
+                        <option value="partially_assigned" {{ request('status') == 'partially_assigned' ? 'selected' : '' }}>Partially Assigned</option>
+                        <option value="not_assigned" {{ request('status') == 'not_assigned' ? 'selected' : '' }}>Not Assigned</option>
                     </select>
-                    <button type="submit" class="bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-teal-700 transition-colors">
-                        Filter
-                    </button>
                     @if(request()->hasAny(['search', 'date', 'day', 'status']))
                     <a href="{{ route('schedules.index', ['tab' => 'class']) }}" 
                        onclick="event.preventDefault(); document.getElementById('filterForm').reset(); removePageParam(); window.location='{{ route('schedules.index', ['tab' => 'class']) }}';"
@@ -110,8 +139,15 @@
                         document.getElementById('filterDate').selectedIndex = 0;
                         document.getElementById('filterDay').selectedIndex = 0;
                     }
-                    // Optionally auto-submit the form
-                    document.getElementById('filterForm').submit();
+                    
+                    // Trigger AJAX search instead of form submission
+                    const searchInput = document.getElementById('realTimeSearch');
+                    if (searchInput && window.performRealTimeSearch) {
+                        window.performRealTimeSearch(searchInput.value.trim());
+                    } else {
+                        // Fallback to form submission if AJAX search is not available
+                        document.getElementById('filterForm').submit();
+                    }
                 }
             </script>
         </form>
