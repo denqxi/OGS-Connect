@@ -71,7 +71,13 @@ document.addEventListener('DOMContentLoaded', function() {
             backupTutorDropdown.innerHTML = '';
         }
         
-        fetch('/api/available-tutors', {
+        // Build URL with class information for availability filtering
+        let url = '/api/available-tutors';
+        if (currentClassId) {
+            url += `?class_id=${currentClassId}`;
+        }
+        
+        fetch(url, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -584,6 +590,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (modal) {
                 modal.classList.remove("hidden");
+                // Prevent background scrolling when modal is open
+                document.body.style.overflow = 'hidden';
                 console.log('Modal opened');
             } else {
                 console.warn('Modal element not found');
@@ -656,22 +664,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Function to close modal and restore scrolling
+    function closeModal() {
+        if (modal) {
+            modal.classList.add("hidden");
+            // Restore background scrolling when modal is closed
+            document.body.style.overflow = '';
+        }
+    }
+
     // Close modal functionality
     if (closeBtn) {
-        closeBtn.addEventListener("click", () => {
-            if (modal) modal.classList.add("hidden");
-        });
+        closeBtn.addEventListener("click", closeModal);
     }
     
     if (cancelBtn) {
-        cancelBtn.addEventListener("click", () => {
-            if (modal) modal.classList.add("hidden");
-        });
+        cancelBtn.addEventListener("click", closeModal);
     }
     
     if (modal) {
         modal.addEventListener("click", (e) => {
-            if (e.target === modal) modal.classList.add("hidden");
+            if (e.target === modal) closeModal();
         });
     }
 
@@ -733,7 +746,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     alert('Tutor assignments saved successfully!');
-                    if (modal) modal.classList.add("hidden");
+                    closeModal();
                     location.reload();
                 } else {
                     alert('Error saving assignments: ' + (data.message || 'Unknown error'));
