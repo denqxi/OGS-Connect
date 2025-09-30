@@ -23,7 +23,7 @@
               focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
               focus:ring-0 focus:shadow-xl">
             </div>
-            <select name="date" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+            <select name="date" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
                 <option value="">Select Date</option>
                 @if(isset($availableDates))
                     @foreach($availableDates as $availableDate)
@@ -33,7 +33,7 @@
                     @endforeach
                 @endif
             </select>
-            <select name="day" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+            <select name="day" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
                 <option value="">Select Day</option>
                 @if(isset($availableDays))
                     @foreach($availableDays as $availableDay)
@@ -53,6 +53,14 @@
                 <i class="fas fa-search"></i>
                 <span>Search</span>
             </button>
+            @if(request()->hasAny(['search', 'date', 'day']))
+                <a href="{{ route('schedules.index', ['tab' => 'history']) }}" 
+                   class="flex items-center space-x-2 bg-gray-500 text-white px-4 py-2 rounded-full text-sm font-medium 
+                          hover:bg-gray-600 transform transition duration-200 hover:scale-105">
+                    <i class="fas fa-times"></i>
+                    <span>Clear</span>
+                </a>
+            @endif
             <button type="button"
                 id="exportButton"
                 onclick="exportSelectedSchedules()"
