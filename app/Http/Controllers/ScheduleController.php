@@ -70,11 +70,17 @@ class ScheduleController extends Controller
             }
 
             if ($request->filled('day')) {
-                $query->where('day', $request->day);
-            }
-
-            if ($request->filled('status')) {
-                $this->applyStatusFilter($query, $request->status);
+                // Handle both full day names and abbreviated day names
+                $day = $request->day;
+                if (strlen($day) <= 4) {
+                    // Convert lowercase abbreviated day name to capitalized abbreviated form for database query
+                    $dayMap = [
+                        'mon' => 'Mon', 'tue' => 'Tue', 'wed' => 'Wed',
+                        'thur' => 'Thu', 'fri' => 'Fri', 'sat' => 'Sat', 'sun' => 'Sun'
+                    ];
+                    $day = $dayMap[$day] ?? ucfirst($day);
+                }
+                $query->where('day', $day);
             }
 
             $dailyData = $query->selectRaw('date, day, 
@@ -85,12 +91,38 @@ class ScheduleController extends Controller
                 SUM(number_required) as total_required,
                 (SELECT COUNT(*) FROM tutor_assignments ta WHERE ta.daily_data_id IN (SELECT dd2.id FROM daily_data dd2 WHERE dd2.date = daily_data.date) AND (ta.is_backup = 0 OR ta.is_backup IS NULL)) as total_assigned,
                 GROUP_CONCAT(DISTINCT assigned_supervisor ORDER BY assigned_supervisor ASC SEPARATOR ", ") as assigned_supervisors')
-                ->groupBy('date', 'day')
-                ->orderBy('date', 'desc')
+                ->groupBy('date', 'day');
+
+            if ($request->filled('status')) {
+                $this->applyStatusFilter($dailyData, $request->status);
+            }
+
+            $dailyData = $dailyData->orderBy('date', 'desc')
                 ->paginate(5)
                 ->withQueryString();
 
-            return view('schedules.index', compact('dailyData'));
+            // Get available dates and days for filtering
+            $availableDates = DailyData::where(function($q) {
+                $q->where('schedule_status', '!=', 'finalized')
+                  ->orWhereNull('schedule_status');
+            })
+            ->select('date')
+            ->distinct()
+            ->orderBy('date', 'desc')
+            ->pluck('date');
+
+            $availableDays = DailyData::where(function($q) {
+                $q->where('schedule_status', '!=', 'finalized')
+                  ->orWhereNull('schedule_status');
+            })
+            ->select('day')
+            ->distinct()
+            ->pluck('day');
+            
+            // Log available days for debugging
+            Log::info('Available days for filtering:', $availableDays->toArray());
+
+            return view('schedules.index', compact('dailyData', 'availableDates', 'availableDays'));
         }
 
         // Schedule History tab
@@ -114,7 +146,6 @@ class ScheduleController extends Controller
                       ->orWhere('last_name', 'like', '%' . $request->search . '%')
                       ->orWhere('email', 'like', '%' . $request->search . '%')
                       ->orWhere('phone_number', 'like', '%' . $request->search . '%')
-                      ->orWhere('applicant_id', 'like', '%' . $request->search . '%')
                       ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ['%' . $request->search . '%']);
                 });
             }
@@ -123,58 +154,42 @@ class ScheduleController extends Controller
                 $query->where('status', $request->status);
             }
             
-            if ($request->filled('time_range')) {
-                $query->whereHas('accounts', function($q) use ($request) {
-                    $q->forAccount('GLS')->active();
-                    
-                    switch($request->time_range) {
-                        case 'morning':
-                            $q->where(function($timeQuery) {
-                                $timeQuery->where('available_times', 'like', '%06:00%')
-                                    ->orWhere('available_times', 'like', '%07:00%')
-                                    ->orWhere('available_times', 'like', '%08:00%')
-                                    ->orWhere('available_times', 'like', '%09:00%')
-                                    ->orWhere('available_times', 'like', '%10:00%')
-                                    ->orWhere('available_times', 'like', '%11:00%')
-                                    ->orWhere('preferred_time_range', 'morning');
-                            });
-                            break;
-                        case 'afternoon':
-                            $q->where(function($timeQuery) {
-                                $timeQuery->where('available_times', 'like', '%12:00%')
-                                    ->orWhere('available_times', 'like', '%13:00%')
-                                    ->orWhere('available_times', 'like', '%14:00%')
-                                    ->orWhere('available_times', 'like', '%15:00%')
-                                    ->orWhere('available_times', 'like', '%16:00%')
-                                    ->orWhere('available_times', 'like', '%17:00%')
-                                    ->orWhere('preferred_time_range', 'afternoon');
-                            });
-                            break;
-                        case 'evening':
-                            $q->where(function($timeQuery) {
-                                $timeQuery->where('available_times', 'like', '%18:00%')
-                                    ->orWhere('available_times', 'like', '%19:00%')
-                                    ->orWhere('available_times', 'like', '%20:00%')
-                                    ->orWhere('available_times', 'like', '%21:00%')
-                                    ->orWhere('available_times', 'like', '%22:00%')
-                                    ->orWhere('available_times', 'like', '%23:00%')
-                                    ->orWhere('preferred_time_range', 'evening');
-                            });
-                            break;
-                    }
+            if ($request->filled('time_slot')) {
+                // Convert "07:00 - 08:00" to "07:00-08:00" to match database format
+                $timeSlot = str_replace(' - ', '-', $request->time_slot);
+                
+                $query->whereHas('accounts', function($q) use ($timeSlot) {
+                    $q->forAccount('GLS')->active()
+                      ->where('available_times', 'like', '%' . $timeSlot . '%');
                 });
             }
             
             if ($request->filled('day')) {
-                $dayName = ucfirst($request->day);
+                // Convert abbreviated day to full day name for matching
+                $dayMap = [
+                    'mon' => 'Monday',
+                    'tue' => 'Tuesday', 
+                    'wed' => 'Wednesday',
+                    'thur' => 'Thursday',
+                    'fri' => 'Friday',
+                    'sat' => 'Saturday',
+                    'sun' => 'Sunday'
+                ];
+                
+                $dayName = $dayMap[$request->day] ?? ucfirst($request->day);
+                
                 $query->whereHas('accounts', function($q) use ($dayName) {
                     $q->forAccount('GLS')->active()
-                      ->whereJsonContains('available_days', $dayName);
+                      ->where('available_times', 'like', '%' . $dayName . '%');
                 });
             }
             
             $tutors = $query->paginate(5)->withQueryString();
-            return view('schedules.index', compact('tutors'));
+            
+            // Get available time slots for the dropdown
+            $availableTimeSlots = $this->getAvailableTimeSlots();
+            
+            return view('schedules.index', compact('tutors', 'availableTimeSlots'));
         }
 
         // Default redirect
@@ -459,12 +474,15 @@ class ScheduleController extends Controller
 
     private function applyStatusFilter($query, $status)
     {
-        if ($status === 'assigned') {
-            $query->whereHas('tutorAssignments', function($q) {
-                $q->havingRaw('COUNT(*) >= number_required');
-            });
-        } elseif ($status === 'unassigned') {
-            $query->whereDoesntHave('tutorAssignments');
+        if ($status === 'fully_assigned') {
+            // For grouped queries, we need to use havingRaw to check if total_assigned >= total_required
+            $query->havingRaw('total_assigned >= total_required');
+        } elseif ($status === 'partially_assigned') {
+            // For grouped queries, check if total_assigned > 0 but < total_required
+            $query->havingRaw('total_assigned > 0 AND total_assigned < total_required');
+        } elseif ($status === 'not_assigned') {
+            // For grouped queries, check if total_assigned = 0
+            $query->havingRaw('total_assigned = 0');
         }
     }
 
@@ -849,37 +867,165 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Get available tutors for dropdown
+     * Get available tutors for dropdown with availability filtering
      */
     public function getAvailableTutors(Request $request)
     {
         try {
+            $classId = $request->input('class_id');
+            $classDate = $request->input('class_date');
+            $classTime = $request->input('class_time');
+            
+            // If no class context provided, return all active tutors (fallback)
+            if (!$classId && !$classDate && !$classTime) {
+                $tutors = Tutor::where('status', 'active')
+                               ->select('tutorID', 'tusername', 'email', 'first_name', 'last_name')
+                               ->orderBy('first_name')
+                               ->orderBy('last_name')
+                               ->get()
+                               ->map(function($tutor) {
+                                   return [
+                                       'tutorID' => $tutor->tutorID,
+                                       'username' => $tutor->tusername,
+                                       'email' => $tutor->email,
+                                       'first_name' => $tutor->first_name,
+                                       'last_name' => $tutor->last_name,
+                                       'full_name' => $tutor->full_name
+                                   ];
+                               });
+                
+                return response()->json([
+                    'success' => true,
+                    'tutors' => $tutors
+                ]);
+            }
+            
+            // Get class information if classId is provided
+            $class = null;
+            if ($classId) {
+                $class = DailyData::find($classId);
+                if ($class) {
+                    $classDate = $class->date;
+                    $classTime = $class->time_jst;
+                }
+            }
+            
+            if (!$classDate || !$classTime) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Class date and time are required for availability filtering'
+                ], 400);
+            }
+            
+            // Get class day name
+            $classDayName = \Carbon\Carbon::parse($classDate)->format('l'); // Monday, Tuesday, etc.
+            $classTimeCarbon = \Carbon\Carbon::parse($classTime);
+            
+            // Get all active tutors with GLS accounts
             $tutors = Tutor::where('status', 'active')
+                           ->whereHas('accounts', function($query) {
+                               $query->forAccount('GLS')->active();
+                           })
+                           ->with(['accounts' => function($query) {
+                               $query->forAccount('GLS')->active();
+                           }])
                            ->select('tutorID', 'tusername', 'email', 'first_name', 'last_name')
                            ->orderBy('first_name')
                            ->orderBy('last_name')
-                           ->get()
-                           ->map(function($tutor) {
-                               return [
-                                   'tutorID' => $tutor->tutorID,
-                                   'username' => $tutor->tusername,
-                                   'email' => $tutor->email,
-                                   'first_name' => $tutor->first_name,
-                                   'last_name' => $tutor->last_name,
-                                   'full_name' => $tutor->full_name
-                               ];
-                           });
+                           ->get();
+            
+            $availableTutors = [];
+            
+            foreach ($tutors as $tutor) {
+                $tutorAccount = $tutor->accounts->first();
+                
+                if (!$tutorAccount) {
+                    continue;
+                }
+                
+                // Check availability using the same logic as auto-assign
+                if ($tutorAccount->available_days && $tutorAccount->available_times) {
+                    $availableDays = $tutorAccount->available_days;
+                    if (is_string($availableDays)) {
+                        $availableDays = json_decode($availableDays, true) ?? [];
+                    }
+                    
+                    $availableTimes = $tutorAccount->available_times;
+                    if (is_string($availableTimes)) {
+                        $availableTimes = json_decode($availableTimes, true) ?? [];
+                    }
+                    
+                    // Skip if not available on this day
+                    if (!in_array($classDayName, $availableDays)) {
+                        continue;
+                    }
+                    
+                    // Get time ranges for this day
+                    $dayTimes = $availableTimes[$classDayName] ?? [];
+                    if (empty($dayTimes)) {
+                        continue;
+                    }
+                    
+                    // Check if tutor is available at the class time
+                    $isAvailable = $this->isTutorAvailableAtTime($classTimeCarbon, $dayTimes);
+                    
+                    if ($isAvailable) {
+                        $availableTutors[] = [
+                            'tutorID' => $tutor->tutorID,
+                            'username' => $tutor->tusername,
+                            'email' => $tutor->email,
+                            'first_name' => $tutor->first_name,
+                            'last_name' => $tutor->last_name,
+                            'full_name' => $tutor->full_name
+                        ];
+                    }
+                }
+            }
             
             return response()->json([
                 'success' => true,
-                'tutors' => $tutors
+                'tutors' => $availableTutors
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to fetch available tutors: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch tutors: ' . $e->getMessage()
             ], 500);
         }
+    }
+    
+    /**
+     * Check if tutor is available at a specific time
+     */
+    private function isTutorAvailableAtTime($classTime, $dayTimes)
+    {
+        $classMinutes = $classTime->hour * 60 + $classTime->minute;
+        
+        foreach ($dayTimes as $timeRange) {
+            if (strpos($timeRange, '-') !== false) {
+                [$startTime, $endTime] = explode('-', $timeRange);
+                
+                $startMinutes = $this->timeToMinutes($startTime);
+                $endMinutes = $this->timeToMinutes($endTime);
+                
+                // Check if class time falls within this time range
+                if ($classMinutes >= $startMinutes && $classMinutes < $endMinutes) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Convert time string to minutes since midnight
+     */
+    private function timeToMinutes($timeString)
+    {
+        $time = \Carbon\Carbon::createFromFormat('H:i', $timeString);
+        return $time->hour * 60 + $time->minute;
     }
 
     /**
@@ -1006,37 +1152,31 @@ class ScheduleController extends Controller
                                                   ->where('is_backup', true)
                                                   ->get();
             
-            if (empty($tutorNames)) {
-                Log::info('No tutors in request - preserving existing main assignments', [
-                    'existing_main_count' => $existingMainTutors->count()
-                ]);
-                
-                $assignedCount = $existingMainTutors->count();
-            } else {
-                Log::info('Replacing main assignments with provided tutors', [
-                    'tutor_count' => count($tutorNames)
-                ]);
-                
-                TutorAssignment::where('daily_data_id', $classId)
-                              ->where('is_backup', false)
-                              ->delete();
-                
-                $assignedCount = 0;
-                foreach ($tutorNames as $tutorName) {
-                    if (trim($tutorName) !== '') {
-                        $tutor = Tutor::where('tusername', $tutorName)->first();
-                        if ($tutor) {
-                            TutorAssignment::create([
-                                'daily_data_id' => $classId,
-                                'tutor_id' => $tutor->tutorID,
-                                'is_backup' => false,
-                                'assigned_at' => now(),
-                            ]);
-                            $assignedCount++;
-                            Log::info("Assigned main tutor: {$tutorName} to class {$classId}");
-                        } else {
-                            Log::warning("Tutor not found: {$tutorName}");
-                        }
+            // Always replace main assignments with provided tutors (even if empty array)
+            // This allows users to explicitly remove all tutors by sending an empty array
+            Log::info('Replacing main assignments with provided tutors', [
+                'tutor_count' => count($tutorNames)
+            ]);
+            
+            TutorAssignment::where('daily_data_id', $classId)
+                          ->where('is_backup', false)
+                          ->delete();
+            
+            $assignedCount = 0;
+            foreach ($tutorNames as $tutorName) {
+                if (trim($tutorName) !== '') {
+                    $tutor = Tutor::where('tusername', $tutorName)->first();
+                    if ($tutor) {
+                        TutorAssignment::create([
+                            'daily_data_id' => $classId,
+                            'tutor_id' => $tutor->tutorID,
+                            'is_backup' => false,
+                            'assigned_at' => now(),
+                        ]);
+                        $assignedCount++;
+                        Log::info("Assigned main tutor: {$tutorName} to class {$classId}");
+                    } else {
+                        Log::warning("Tutor not found: {$tutorName}");
                     }
                 }
             }
@@ -1156,7 +1296,7 @@ class ScheduleController extends Controller
             $query = DailyData::query();
             
             $query->where(function($q) {
-                $q->where('schedule_status', '!=', 'final')
+                $q->where('schedule_status', '!=', 'finalized')
                   ->orWhereNull('schedule_status');
             });
             
@@ -1169,11 +1309,17 @@ class ScheduleController extends Controller
             }
             
             if ($request->filled('day')) {
-                $query->where('day', strtolower(substr($request->day, 0, 4)));
-            }
-            
-            if ($request->filled('status')) {
-                $this->applyStatusFilter($query, $request->status);
+                // Handle both full day names and abbreviated day names
+                $day = $request->day;
+                if (strlen($day) <= 4) {
+                    // Convert lowercase abbreviated day name to capitalized abbreviated form for database query
+                    $dayMap = [
+                        'mon' => 'Mon', 'tue' => 'Tue', 'wed' => 'Wed',
+                        'thur' => 'Thu', 'fri' => 'Fri', 'sat' => 'Sat', 'sun' => 'Sun'
+                    ];
+                    $day = $dayMap[$day] ?? ucfirst($day);
+                }
+                $query->where('day', $day);
             }
             
             $selectRaw = 'date, day, 
@@ -1187,7 +1333,8 @@ class ScheduleController extends Controller
                      SELECT dd2.id FROM daily_data dd2 
                      WHERE dd2.date = daily_data.date AND dd2.day = daily_data.day'
                  . ($request->filled('search') ? ' AND dd2.school LIKE ?' : '') . '
-                 ) AND (ta.is_backup = 0 OR ta.is_backup IS NULL)) as total_assigned';
+                 ) AND (ta.is_backup = 0 OR ta.is_backup IS NULL)) as total_assigned,
+                GROUP_CONCAT(DISTINCT assigned_supervisor ORDER BY assigned_supervisor ASC SEPARATOR ", ") as assigned_supervisors';
             
             $bindings = [];
             if ($request->filled('search')) {
@@ -1196,8 +1343,13 @@ class ScheduleController extends Controller
             
             $dailyData = $query
                 ->selectRaw($selectRaw, $bindings)
-                ->groupBy('date', 'day')
-                ->orderBy('date', 'desc')
+                ->groupBy('date', 'day');
+
+            if ($request->filled('status')) {
+                $this->applyStatusFilter($dailyData, $request->status);
+            }
+
+            $dailyData = $dailyData->orderBy('date', 'desc')
                 ->paginate(5)
                 ->withQueryString();
             
@@ -2810,6 +2962,137 @@ class ScheduleController extends Controller
         } catch (\Exception $e) {
             // If conversion fails, return the original time as string
             return (string)$time;
+        }
+    }
+
+    /**
+     * AJAX endpoint for searching tutors in employee availability tab
+     */
+    public function searchTutors(Request $request)
+    {
+        try {
+            Log::info('Tutor search request received:', $request->all());
+            
+            $query = Tutor::with(['accounts' => function($query) {
+                $query->forAccount('GLS')->active();
+            }])
+            ->whereHas('accounts', function($query) {
+                $query->forAccount('GLS')->active();
+            });
+            
+            if ($request->filled('search')) {
+                $query->where(function($q) use ($request) {
+                    $q->where('tusername', 'like', '%' . $request->search . '%')
+                      ->orWhere('first_name', 'like', '%' . $request->search . '%')
+                      ->orWhere('last_name', 'like', '%' . $request->search . '%')
+                      ->orWhere('email', 'like', '%' . $request->search . '%')
+                      ->orWhere('phone_number', 'like', '%' . $request->search . '%')
+                      ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ['%' . $request->search . '%']);
+                });
+            }
+            
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+            
+            if ($request->filled('time_slot')) {
+                // Convert "07:00 - 08:00" to "07:00-08:00" to match database format
+                $timeSlot = str_replace(' - ', '-', $request->time_slot);
+                
+                $query->whereHas('accounts', function($q) use ($timeSlot) {
+                    $q->forAccount('GLS')->active()
+                      ->where('available_times', 'like', '%' . $timeSlot . '%');
+                });
+            }
+            
+            if ($request->filled('day')) {
+                // Convert abbreviated day to full day name for matching
+                $dayMap = [
+                    'mon' => 'Monday',
+                    'tue' => 'Tuesday', 
+                    'wed' => 'Wednesday',
+                    'thur' => 'Thursday',
+                    'fri' => 'Friday',
+                    'sat' => 'Saturday',
+                    'sun' => 'Sunday'
+                ];
+                
+                $dayName = $dayMap[$request->day] ?? ucfirst($request->day);
+                
+                $query->whereHas('accounts', function($q) use ($dayName) {
+                    $q->forAccount('GLS')->active()
+                      ->where('available_times', 'like', '%' . $dayName . '%');
+                });
+            }
+            
+            $tutors = $query->paginate(5)->withQueryString();
+            
+            // Render the table rows
+            $html = view('schedules.tabs.partials.tutor-table-rows', compact('tutors'))->render();
+            
+            // Render custom pagination with correct total
+            $paginationHtml = view('schedules.tabs.partials.tutor-pagination', compact('tutors'))->render();
+            
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'pagination' => $paginationHtml,
+                'total' => $tutors->total(),
+                'current_page' => $tutors->currentPage(),
+                'last_page' => $tutors->lastPage()
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error in searchTutors: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while searching tutors.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get available time slots from tutor accounts
+     */
+    private function getAvailableTimeSlots()
+    {
+        try {
+            // Get all unique time slots from tutor accounts
+            $timeSlots = TutorAccount::where('account_name', 'GLS')
+                ->where('status', 'active')
+                ->whereNotNull('available_times')
+                ->pluck('available_times')
+                ->filter()
+                ->flatMap(function($times) {
+                    $slots = [];
+                    
+                    // Handle JSON format: {"Friday":["07:00-08:00","08:00-09:00"],"Tuesday":["08:00-09:00"]}
+                    if (is_string($times)) {
+                        $decoded = json_decode($times, true);
+                        if (is_array($decoded)) {
+                            foreach ($decoded as $day => $daySlots) {
+                                if (is_array($daySlots)) {
+                                    foreach ($daySlots as $slot) {
+                                        $timeSlot = $slot; // Already in "07:00-08:00" format
+                                        if (!in_array($timeSlot, $slots)) {
+                                            $slots[] = $timeSlot;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    return $slots;
+                })
+                ->unique()
+                ->sort()
+                ->values();
+
+            return $timeSlots;
+        } catch (\Exception $e) {
+            Log::error('Error getting available time slots: ' . $e->getMessage());
+            return collect();
         }
     }
 }
