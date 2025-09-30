@@ -12,8 +12,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const noResultsRow = document.getElementById('noResultsRow');
     const resultCount = document.getElementById('resultCount');
     const searchResults = document.getElementById('searchResults');
+    const tutorTableBody = document.getElementById('tutorTableBody');
+    const paginationSection = document.getElementById('paginationSection');
 
     let searchTimeout;
+    let isSearchActive = false;
 
     if (searchInput) {
         searchInput.addEventListener('input', function() {
@@ -37,7 +40,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Debounce search
             searchTimeout = setTimeout(() => {
-                performSearch(query);
+                // Always use AJAX search to ensure we get all tutors from server
+                performTutorSearch();
+                
                 if (searchSpinner) {
                     searchSpinner.classList.add('hidden');
                 }
@@ -51,7 +56,173 @@ document.addEventListener('DOMContentLoaded', function() {
         clearSearchBtn.addEventListener('click', function() {
             searchInput.value = '';
             clearSearchBtn.classList.add('hidden');
-            performSearch('');
+            // Always use AJAX search when clearing to show all tutors
+            performTutorSearch();
+        });
+    }
+
+    // Global AJAX search function
+    window.performTutorSearch = function() {
+        const searchValue = searchInput ? searchInput.value.trim() : '';
+        const statusValue = document.getElementById('filterStatus') ? document.getElementById('filterStatus').value : '';
+        const timeSlotValue = document.getElementById('filterTimeSlot') ? document.getElementById('filterTimeSlot').value : '';
+        const dayValue = document.getElementById('filterDay') ? document.getElementById('filterDay').value : '';
+        
+        // Build query parameters
+        const params = new URLSearchParams();
+        // Always include search parameter, even when empty, to ensure server knows to clear search
+        params.append('search', searchValue);
+        if (statusValue) params.append('status', statusValue);
+        if (timeSlotValue) params.append('time_slot', timeSlotValue);
+        if (dayValue) params.append('day', dayValue);
+        
+        // Reset to page 1 when filtering (unless it's a pagination request)
+        const currentUrl = new URL(window.location);
+        const currentPage = currentUrl.searchParams.get('page');
+        if (currentPage && currentPage !== '1') {
+            // If we're not on page 1, reset to page 1 for new filter results
+            params.set('page', '1');
+        }
+        
+        // Show loading state
+        if (searchSpinner) {
+            searchSpinner.classList.remove('hidden');
+        }
+        
+        fetch(`/api/search-tutors?${params.toString()}`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update table body
+                if (tutorTableBody) {
+                    tutorTableBody.innerHTML = data.html;
+                }
+                
+                // Update pagination
+                if (paginationSection) {
+                    paginationSection.innerHTML = data.pagination;
+                }
+                
+                // Update result count
+                if (resultCount) {
+                    resultCount.textContent = data.total;
+                }
+                
+                
+                // Update URL to reflect current filters and page
+                const newUrl = new URL(window.location);
+                newUrl.search = params.toString();
+                window.history.pushState({}, '', newUrl);
+                
+                // Handle pagination events
+                handlePaginationEvents();
+                
+                isSearchActive = true;
+            } else {
+                console.error('Search failed:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        })
+        .finally(() => {
+            if (searchSpinner) {
+                searchSpinner.classList.add('hidden');
+            }
+        });
+    };
+    
+    // Handle pagination events
+    function handlePaginationEvents() {
+        const paginationLinks = document.querySelectorAll('#paginationSection a');
+        paginationLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const page = this.getAttribute('data-page');
+                
+                // Update URL without reloading
+                const currentUrl = new URL(window.location);
+                if (page) {
+                    currentUrl.searchParams.set('page', page);
+                } else {
+                    currentUrl.searchParams.delete('page');
+                }
+                window.history.pushState({}, '', currentUrl);
+                
+                // Perform search with new page
+                performTutorSearchWithPage(page);
+            });
+        });
+    }
+    
+    // Perform search with specific page
+    function performTutorSearchWithPage(page) {
+        const searchValue = searchInput ? searchInput.value.trim() : '';
+        const statusValue = document.getElementById('filterStatus') ? document.getElementById('filterStatus').value : '';
+        const timeSlotValue = document.getElementById('filterTimeSlot') ? document.getElementById('filterTimeSlot').value : '';
+        const dayValue = document.getElementById('filterDay') ? document.getElementById('filterDay').value : '';
+        
+        // Build query parameters
+        const params = new URLSearchParams();
+        // Always include search parameter, even when empty, to ensure server knows to clear search
+        params.append('search', searchValue);
+        if (statusValue) params.append('status', statusValue);
+        if (timeSlotValue) params.append('time_slot', timeSlotValue);
+        if (dayValue) params.append('day', dayValue);
+        if (page) params.append('page', page);
+        
+        // Show loading state
+        if (searchSpinner) {
+            searchSpinner.classList.remove('hidden');
+        }
+        
+        fetch(`/api/search-tutors?${params.toString()}`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update table body
+                if (tutorTableBody) {
+                    tutorTableBody.innerHTML = data.html;
+                }
+                
+                // Update pagination
+                if (paginationSection) {
+                    paginationSection.innerHTML = data.pagination;
+                }
+                
+                // Update result count
+                if (resultCount) {
+                    resultCount.textContent = data.total;
+                }
+                
+                
+                // Handle pagination events
+                handlePaginationEvents();
+                
+                isSearchActive = true;
+            } else {
+                console.error('Search failed:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        })
+        .finally(() => {
+            if (searchSpinner) {
+                searchSpinner.classList.add('hidden');
+            }
         });
     }
 

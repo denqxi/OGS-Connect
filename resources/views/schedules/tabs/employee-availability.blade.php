@@ -33,7 +33,7 @@
                     </button>
                 </div>
                 
-                <select name="status" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
+                <select name="status" id="filterStatus" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="handleTutorFilterChange('status')">
                     <option value="">All Status</option>
                     <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
                     <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
@@ -43,14 +43,24 @@
             <!-- Right side -->
             <div class="flex items-center space-x-4">
                 <span class="text-sm text-gray-600">Available at:</span>
-                <select name="time_range" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
+                <select name="time_slot" id="filterTimeSlot" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="handleTutorFilterChange('time_slot')">
                     <option value="">All Times</option>
-                    <option value="morning" {{ request('time_range') == 'morning' ? 'selected' : '' }}>Morning (6AM-12PM)</option>
-                    <option value="afternoon" {{ request('time_range') == 'afternoon' ? 'selected' : '' }}>Afternoon (12PM-6PM)</option>
-                    <option value="evening" {{ request('time_range') == 'evening' ? 'selected' : '' }}>Evening (6PM-12AM)</option>
+                    @if(isset($availableTimeSlots) && $availableTimeSlots->count() > 0)
+                        @foreach($availableTimeSlots as $timeSlot)
+                            <option value="{{ $timeSlot }}" {{ request('time_slot') == $timeSlot ? 'selected' : '' }}>
+                                {{ $timeSlot }}
+                            </option>
+                        @endforeach
+                    @else
+                        <!-- Fallback options if availableTimeSlots is not set or empty -->
+                        <option value="07:00 - 08:00" {{ request('time_slot') == '07:00 - 08:00' ? 'selected' : '' }}>07:00 - 08:00</option>
+                        <option value="08:00 - 09:00" {{ request('time_slot') == '08:00 - 09:00' ? 'selected' : '' }}>08:00 - 09:00</option>
+                        <option value="09:00 - 10:00" {{ request('time_slot') == '09:00 - 10:00' ? 'selected' : '' }}>09:00 - 10:00</option>
+                        <option value="10:00 - 11:00" {{ request('time_slot') == '10:00 - 11:00' ? 'selected' : '' }}>10:00 - 11:00</option>
+                    @endif
                 </select>
                 
-                <select name="day" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
+                <select name="day" id="filterDay" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="handleTutorFilterChange('day')">
                     <option value="">All Days</option>
                     <option value="monday" {{ request('day') == 'monday' ? 'selected' : '' }}>Monday</option>
                     <option value="tuesday" {{ request('day') == 'tuesday' ? 'selected' : '' }}>Tuesday</option>
@@ -61,7 +71,7 @@
                     <option value="sunday" {{ request('day') == 'sunday' ? 'selected' : '' }}>Sunday</option>
                 </select>
 
-                @if(request()->hasAny(['search', 'status', 'time_range', 'day']))
+                @if(request()->hasAny(['search', 'status', 'time_slot', 'day']))
                     <a href="{{ route('schedules.index', ['tab' => 'employee']) }}" 
                        class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors">
                         Clear
@@ -149,54 +159,19 @@
 </div>
 
 <!-- Pagination -->
-@if(isset($tutors) && method_exists($tutors, 'hasPages') && $tutors->hasPages())
-<div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between" id="paginationSection">
-    <div class="text-sm text-gray-500">
-        Showing {{ $tutors->count() }} of {{ $tutors->total() }} results
-    </div>
-    <div class="flex items-center space-x-2">
-        @if ($tutors->onFirstPage())
-            <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
-                <i class="fas fa-chevron-left"></i>
-            </button>
-        @else
-            <a href="{{ $tutors->appends(request()->query())->previousPageUrl() }}" 
-               class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">
-                <i class="fas fa-chevron-left"></i>
-            </a>
-        @endif
-
-        @foreach ($tutors->appends(request()->query())->getUrlRange(1, $tutors->lastPage()) as $page => $url)
-            @if ($page == $tutors->currentPage())
-                <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">{{ $page }}</button>
-            @else
-                <a href="{{ $url }}" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">{{ $page }}</a>
-            @endif
-        @endforeach
-
-        @if ($tutors->hasMorePages())
-            <a href="{{ $tutors->appends(request()->query())->nextPageUrl() }}" 
-               class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">
-                <i class="fas fa-chevron-right"></i>
-            </a>
-        @else
-            <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
-                <i class="fas fa-chevron-right"></i>
-            </button>
-        @endif
-    </div>
-</div>
+@if(isset($tutors))
+    @include('schedules.tabs.partials.tutor-pagination', ['tutors' => $tutors])
 @else
-<div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between" id="paginationSection">
+<div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between h-16 w-full" id="paginationSection">
     <div class="text-sm text-gray-500">
-        Showing <span id="resultCount">{{ count($tutors ?? []) }}</span> results
+        Showing 0 results
     </div>
-    <div class="flex items-center space-x-2">
-        <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
+    <div class="flex items-center justify-center space-x-2 w-[300px]">
+        <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center" disabled>
             <i class="fas fa-chevron-left"></i>
         </button>
-        <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">1</button>
-        <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
+        <button class="w-8 h-8 bg-slate-700 text-white rounded text-sm flex items-center justify-center">1</button>
+        <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center" disabled>
             <i class="fas fa-chevron-right"></i>
         </button>
     </div>
@@ -205,6 +180,25 @@
 
 <script>
     window.tutorTotalResults = @json(isset($tutors) && method_exists($tutors, 'total') ? $tutors->total() : 0);
+    
+    function handleTutorFilterChange(changed) {
+        // Only one filter can be active at a time
+        if (changed === 'time_slot') {
+            document.getElementById('filterDay').selectedIndex = 0;
+            document.getElementById('filterStatus').selectedIndex = 0;
+        } else if (changed === 'day') {
+            document.getElementById('filterTimeSlot').selectedIndex = 0;
+            document.getElementById('filterStatus').selectedIndex = 0;
+        } else if (changed === 'status') {
+            document.getElementById('filterTimeSlot').selectedIndex = 0;
+            document.getElementById('filterDay').selectedIndex = 0;
+        }
+        
+        // Trigger AJAX search
+        if (window.performTutorSearch) {
+            window.performTutorSearch();
+        }
+    }
 </script>
 <script src="{{ asset('js/employee-availability-globals.js') }}"></script>
 <script src="{{ asset('js/employee-availability-search.js') }}"></script>
