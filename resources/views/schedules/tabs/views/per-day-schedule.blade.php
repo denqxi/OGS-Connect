@@ -490,8 +490,10 @@
             <hr class="my-3">
 
             <!-- Tutor Grid -->
-            <div id="tutorGrid" class="grid grid-cols-2 gap-4">
-                <!-- Tutors will be inserted here -->
+            <div class="max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                <div id="tutorGrid" class="grid grid-cols-2 gap-4">
+                    <!-- Tutors will be inserted here -->
+                </div>
             </div>
 
             <hr class="my-3">
