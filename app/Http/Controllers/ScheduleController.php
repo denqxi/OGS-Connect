@@ -1292,6 +1292,19 @@ class ScheduleController extends Controller
                 $supervisorId = Auth::guard('supervisor')->user()->supID;
             }
 
+            // Check if ANY class in the same schedule (same date) is owned by another supervisor
+            $existingOwner = DailyData::where('date', $date)
+                ->whereNotNull('assigned_supervisor')
+                ->where('assigned_supervisor', '!=', $supervisorId)
+                ->first();
+            
+            if ($existingOwner) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "This schedule is being handled by another supervisor. You cannot finalize it."
+                ], 403);
+            }
+
             $updated = DailyData::where('date', $date)
                 ->update([
                     'schedule_status' => 'finalized',
@@ -1344,9 +1357,6 @@ class ScheduleController extends Controller
                 ->where(function($q) {
                     $q->where('schedule_status', '!=', 'finalized')
                         ->orWhereNull('schedule_status');
-                })
-                ->where(function($q) {
-                    $q->whereNull('class_status')->orWhere('class_status', '!=', 'cancelled');
                 });
 
             if ($request->has('date') && $request->date) {
@@ -1357,6 +1367,7 @@ class ScheduleController extends Controller
                 ->orderBy('school')
                 ->orderBy('time_jst')
                 ->get();
+
 
             if ($schedules->isEmpty()) {
                 if ($request->expectsJson() || $request->ajax()) {
@@ -1474,24 +1485,12 @@ class ScheduleController extends Controller
                         $groupedSchedules[$slotKey]['main_tutors'][] = $tutor->full_name;
                     }
                 }
-                if (empty($mainTutors) && $schedule->class_status === 'cancelled') {
-                    $mainTutors[] = [
-                        'glsID' => '',
-                        'full_name' => 'CLASS CANCELLED',
-                        'glsUsername' => '',
-                        'glsScreenName' => '',
-                        'sex' => '',
-                        'supervisor' => $scheduleSupervisorName,
-                        'is_backup' => false,
-                        'is_cancelled' => true,
-                    ];
-                }
                 $classSheetsData[$sheetKey] = array_merge($mainTutors, $backupTutors);
             }
             $overviewSheet = $spreadsheet->getActiveSheet();
             $this->createOverviewSheet($overviewSheet, $groupedSchedules);
             $overviewSheet->setTitle('Overview');
-            $this->createClassSheets($spreadsheet, $classSheetsData, true, true);
+            $this->createClassSheets($spreadsheet, $classSheetsData, true, false);
             $writer = new Xlsx($spreadsheet);
             $fileName = 'Tentative_Schedule_' . now()->format('Ymd_His') . '.xlsx';
 
@@ -1748,6 +1747,11 @@ class ScheduleController extends Controller
         $uniqueTimeSlots = array_unique($timeSlots);
         $fillRate = $totalSlots > 0 ? round(($totalMainTutors / $totalSlots) * 100, 1) : 0;
         
+        // Format time slots as strings for display (convert JST to PHT)
+        $formattedTimeSlots = array_map(function($time) {
+            return $this->convertJstToPht($time);
+        }, $uniqueTimeSlots);
+        
         // Set column widths for overview sheet
         $sheet->getColumnDimension('A')->setWidth(20);
         $sheet->getColumnDimension('B')->setWidth(15);
@@ -1759,7 +1763,7 @@ class ScheduleController extends Controller
         $sheet->getColumnDimension('H')->setWidth(25);
         
         // Create summary section at the top
-        $this->createSummarySection($sheet, $totalClasses, $totalSlots, $totalMainTutors, $totalBackupTutors, count($uniqueSchools), count($uniqueTimeSlots), $fillRate);
+        $this->createSummarySection($sheet, $totalClasses, $totalSlots, $totalMainTutors, $totalBackupTutors, count($uniqueSchools), $formattedTimeSlots, $fillRate);
         
         // Create visualizations section
         $this->createVisualizationSection($sheet, $groupedSchedules, $uniqueSchools, $uniqueTimeSlots);
@@ -1773,7 +1777,7 @@ class ScheduleController extends Controller
     /**
      * Create summary statistics section
      */
-    private function createSummarySection($sheet, $totalClasses, $totalSlots, $totalMainTutors, $totalBackupTutors, $uniqueSchools, $uniqueTimeSlots, $fillRate)
+    private function createSummarySection($sheet, $totalClasses, $totalSlots, $totalMainTutors, $totalBackupTutors, $uniqueSchools, $formattedTimeSlots, $fillRate)
     {
         // Title
         $sheet->setCellValue('A1', 'SCHEDULE OVERVIEW & ANALYTICS');
@@ -1792,7 +1796,7 @@ class ScheduleController extends Controller
             ['Main Tutors Assigned', $totalMainTutors],
             ['Backup Tutors Assigned', $totalBackupTutors],
             ['Schools Involved', $uniqueSchools],
-            ['Time Slots', $uniqueTimeSlots],
+            ['Time Slots', implode(', ', $formattedTimeSlots)],
             ['Fill Rate', $fillRate . '%']
         ];
         
@@ -1885,9 +1889,9 @@ class ScheduleController extends Controller
         foreach ($uniqueTimeSlots as $time) {
             $classCount = 0;
             $tutorCount = 0;
-            $timeStr = is_object($time) ? $time->format('H:i:s') : (string)$time;
+            $timeStr = $this->convertJstToPht($time);
             foreach ($groupedSchedules as $data) {
-                $dataTimeStr = is_object($data['time']) ? $data['time']->format('H:i:s') : (string)$data['time'];
+                $dataTimeStr = $this->convertJstToPht($data['time']);
                 if ($dataTimeStr === $timeStr) {
                     $classCount++;
                     $tutorCount += count($data['main_tutors'] ?? []);
@@ -2752,5 +2756,60 @@ class ScheduleController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Convert JST time to PHT time
+     * JST is UTC+9, PHT is UTC+8, so we subtract 1 hour
+     */
+    private function convertJstToPht($time)
+    {
+        if (empty($time)) {
+            return '';
+        }
+
+        try {
+            $timeStr = (string)$time;
+            
+            // Debug: Log the original time
+            Log::debug('Converting JST to PHT', [
+                'original_time' => $time,
+                'time_string' => $timeStr,
+                'type' => gettype($time)
+            ]);
+            
+            // Try different time formats (including 12-hour format with AM/PM)
+            $formats = ['H:i:s', 'H:i', 'g:i A', 'g:i:s A', 'g:iA', 'g:i:sA'];
+            $timeObj = null;
+            
+            foreach ($formats as $format) {
+                try {
+                    $timeObj = \Carbon\Carbon::createFromFormat($format, $timeStr);
+                    break;
+                } catch (\Exception $e) {
+                    continue;
+                }
+            }
+            
+            if (!$timeObj) {
+                // If no format works, try to parse as a general time
+                $timeObj = \Carbon\Carbon::parse($timeStr);
+            }
+
+            // Convert JST to PHT (subtract 1 hour)
+            $phtTime = $timeObj->subHour();
+            $result = $phtTime->format('H:i');
+            
+            // Debug: Log the conversion result
+            Log::debug('JST to PHT conversion result', [
+                'original' => $timeStr,
+                'converted' => $result
+            ]);
+            
+            return $result;
+        } catch (\Exception $e) {
+            // If conversion fails, return the original time as string
+            return (string)$time;
+        }
     }
 }
