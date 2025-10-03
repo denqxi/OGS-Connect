@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let tutors = [];
     let backupTutor = null; // Store selected backup tutor
     let currentClassId = null; // Store current class ID for saving changes
+    let currentClassInfo = null; // Store current class information (date, day, time_slot)
     const tutorGrid = document.getElementById("tutorGrid");
     const addTutorSelect = document.getElementById("addTutorSelect");
     const backupTutorSelect = document.getElementById("backupTutorSelect");
@@ -73,9 +74,31 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Build URL with class information for availability filtering
         let url = '/api/available-tutors';
+        const params = new URLSearchParams();
+        
         if (currentClassId) {
-            url += `?class_id=${currentClassId}`;
+            params.append('class_id', currentClassId);
         }
+        
+        // Add class-specific filtering parameters
+        if (currentClassInfo) {
+            if (currentClassInfo.date) {
+                params.append('date', currentClassInfo.date);
+            }
+            if (currentClassInfo.day) {
+                params.append('day', currentClassInfo.day);
+            }
+            if (currentClassInfo.time_slot) {
+                params.append('time_slot', currentClassInfo.time_slot);
+            }
+        }
+        
+        if (params.toString()) {
+            url += '?' + params.toString();
+        }
+        
+        console.log('Fetching available tutors with URL:', url);
+        console.log('Current class info:', currentClassInfo);
         
         fetch(url, {
             method: 'GET',
@@ -93,20 +116,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 );
                 // Get username of currently assigned backup tutor
                 const assignedBackupTutorUsername = backupTutor ? backupTutor.username : null;
-                // Main tutor dropdown: exclude already assigned main tutors (but NOT backup tutor)
+                // Main tutor dropdown: server already excludes main tutors but includes backup tutors
                 const availableMainTutors = data.tutors.filter(tutor => {
                     const isAssignedMain = assignedMainTutorUsernames.some(username => 
                         username && tutor.username && username.trim().toLowerCase() === tutor.username.trim().toLowerCase()
                     );
+                    // Server already filtered out main tutors, but double-check here
+                    // Allow backup tutors to be available for promotion to main
                     return !isAssignedMain;
                 });
-                // Backup tutor dropdown: exclude already assigned main tutors and exclude if already selected as main
+                // Backup tutor dropdown: exclude already assigned main tutors, but allow current backup to stay visible
                 const availableBackupTutors = data.tutors.filter(tutor => {
                     const isAssignedMain = assignedMainTutorUsernames.some(username => 
                         username && tutor.username && username.trim().toLowerCase() === tutor.username.trim().toLowerCase()
                     );
-                    // If this tutor is already selected as main, don't show in backup
-                    return !isAssignedMain && (!backupTutor || tutor.username !== backupTutor.username);
+                    // Don't exclude current backup tutor - they should remain visible
+                    return !isAssignedMain;
                 });
                 
                 // Populate main tutor dropdown
@@ -143,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
                 
-                // Store original options for search functionality
+                // Store original options for search functionality - use the same filtered lists
                 originalMainTutorOptions = availableMainTutors;
                 originalBackupTutorOptions = availableBackupTutors;
             } else {
@@ -164,6 +189,16 @@ document.addEventListener('DOMContentLoaded', function() {
             alert(`Cannot add more tutors. Maximum of ${requiredTutors} tutors allowed for this class.`);
             closeDropdown('main');
             return;
+        }
+        
+        // Check if this tutor is currently the backup tutor
+        if (backupTutor && tutor.username === backupTutor.username) {
+            // Clear backup tutor since they're being promoted to main
+            backupTutor = null;
+            if (backupTutorSearch) {
+                backupTutorSearch.value = '';
+                backupTutorSearch.placeholder = 'Select backup tutor';
+            }
         }
         
         // Check for time conflicts before adding
@@ -189,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Backup tutor selected:', tutor);
         
         // Check for time conflicts before assigning backup tutor
-        if (tutor.username && currentClassId) {
+        if (tutor.username && currentClassId && currentClassInfo) {
             fetch('/api/check-tutor-time-conflict', {
                 method: 'POST',
                 headers: {
@@ -199,19 +234,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({
                     tutor_username: tutor.username,
-                    class_id: currentClassId
+                    date: currentClassInfo.date,
+                    time_slot: currentClassInfo.time_slot,
+                    exclude_class_id: currentClassId
                 })
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success && !data.has_conflict) {
+                if (!data.has_conflict) {
                     backupTutor = {
                         fullName: tutor.full_name,
                         username: tutor.username
                     };
                     fetchAvailableTutors();
                 } else if (data.has_conflict) {
-                    const proceed = confirm(`BACKUP TUTOR TIME CONFLICT WARNING: ${data.message}\n\nDo you still want to assign this backup tutor?`);
+                    const conflictDetails = data.conflicts ? 
+                        data.conflicts.map(c => `• ${c.class} at ${c.school} (${c.time})`).join('\n') : '';
+                    const proceed = confirm(`BACKUP TUTOR TIME CONFLICT WARNING: ${data.message}\n\nConflicting classes:\n${conflictDetails}\n\nDo you still want to assign this backup tutor?`);
                     if (proceed) {
                         backupTutor = {
                             fullName: tutor.full_name,
@@ -257,12 +296,14 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             body: JSON.stringify({
                 tutor_username: tutor.username,
-                class_id: currentClassId
+                date: currentClassInfo ? currentClassInfo.date : null,
+                time_slot: currentClassInfo ? currentClassInfo.time_slot : null,
+                exclude_class_id: currentClassId
             })
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success && !data.has_conflict) {
+            if (!data.has_conflict) {
                 // No conflict
                 if (isBackup) {
                     backupTutor = {
@@ -270,6 +311,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         username: tutor.username
                     };
                 } else {
+                    // Check if this tutor was previously the backup tutor
+                    if (backupTutor && tutor.username === backupTutor.username) {
+                        // Clear backup tutor since they're being promoted to main
+                        backupTutor = null;
+                        if (backupTutorSearch) {
+                            backupTutorSearch.value = '';
+                            backupTutorSearch.placeholder = 'Select backup tutor';
+                        }
+                    }
+                    
                     tutors.push({
                         fullName: tutor.full_name,
                         username: tutor.username
@@ -279,9 +330,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 fetchAvailableTutors();
             } else if (data.has_conflict) {
                 // Conflict detected
+                const conflictDetails = data.conflicts ? 
+                    data.conflicts.map(c => `• ${c.class} at ${c.school} (${c.time})`).join('\n') : '';
                 const message = isBackup ? 
-                    `BACKUP TUTOR TIME CONFLICT WARNING: ${data.message}\n\nDo you still want to assign this backup tutor?` :
-                    `TIME CONFLICT WARNING: ${data.message}\n\nDo you still want to assign this tutor?`;
+                    `BACKUP TUTOR TIME CONFLICT WARNING: ${data.message}\n\nConflicting classes:\n${conflictDetails}\n\nDo you still want to assign this backup tutor?` :
+                    `TIME CONFLICT WARNING: ${data.message}\n\nConflicting classes:\n${conflictDetails}\n\nDo you still want to assign this tutor?`;
                 
                 const proceed = confirm(message);
                 if (proceed) {
@@ -291,6 +344,16 @@ document.addEventListener('DOMContentLoaded', function() {
                             username: tutor.username
                         };
                     } else {
+                        // Check if this tutor was previously the backup tutor
+                        if (backupTutor && tutor.username === backupTutor.username) {
+                            // Clear backup tutor since they're being promoted to main
+                            backupTutor = null;
+                            if (backupTutorSearch) {
+                                backupTutorSearch.value = '';
+                                backupTutorSearch.placeholder = 'Select backup tutor';
+                            }
+                        }
+                        
                         tutors.push({
                             fullName: tutor.full_name,
                             username: tutor.username
@@ -313,6 +376,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         username: tutor.username
                     };
                 } else {
+                    // Check if this tutor was previously the backup tutor
+                    if (backupTutor && tutor.username === backupTutor.username) {
+                        // Clear backup tutor since they're being promoted to main
+                        backupTutor = null;
+                        if (backupTutorSearch) {
+                            backupTutorSearch.value = '';
+                            backupTutorSearch.placeholder = 'Select backup tutor';
+                        }
+                    }
+                    
                     tutors.push({
                         fullName: tutor.full_name,
                         username: tutor.username
@@ -556,6 +629,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (modalRequired) modalRequired.textContent = btn.dataset.required;
             
             currentClassId = btn.dataset.classId; // Store class ID for saving
+            
+            // Store class information for filtering available tutors
+            currentClassInfo = {
+                date: btn.dataset.rawDate,
+                day: btn.dataset.day,
+                time_slot: btn.dataset.timeSlot
+            };
             
             // Clear tutors array and backup tutor first
             tutors = [];

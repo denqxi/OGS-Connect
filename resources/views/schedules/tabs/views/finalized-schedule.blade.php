@@ -44,7 +44,7 @@
     // Get grouped information for the header (excluding cancelled classes for statistics)
     $dayInfo = \App\Models\DailyData::select([
         'date',
-        'day',
+        \DB::raw('DAYNAME(date) as day'),
         \DB::raw('GROUP_CONCAT(DISTINCT school ORDER BY school ASC SEPARATOR ", ") as schools'),
         \DB::raw('COUNT(*) as class_count'),
         \DB::raw('SUM(number_required) as total_required')
@@ -52,7 +52,7 @@
     ->where('date', $date)
     ->where('schedule_status', 'finalized')
     ->where('class_status', '!=', 'cancelled') // Only count active classes in statistics
-    ->groupBy('date', 'day')
+    ->groupBy('date')
     ->first();
 @endphp
 

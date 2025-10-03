@@ -27,8 +27,22 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'login_id' => ['required', 'string'],
+            'login_id' => [
+                'required', 
+                'string',
+                'regex:/^(OGS-[ST]\d{4}|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/'
+            ],
             'password' => ['required', 'string'],
+        ];
+    }
+
+    /**
+     * Get custom validation messages.
+     */
+    public function messages(): array
+    {
+        return [
+            'login_id.regex' => 'Please enter a valid ID (e.g., OGS-S1001) or email address (e.g., admin@ogsconnect.com).',
         ];
     }
 

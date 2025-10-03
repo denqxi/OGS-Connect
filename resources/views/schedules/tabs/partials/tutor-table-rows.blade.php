@@ -28,14 +28,14 @@
     </td>
     <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
         @if($tutor->status === 'active')
-            <button class="w-8 h-8 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+            <button class="px-3 py-1 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors text-xs font-medium"
                     onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'inactive')">
-                <i class="fas fa-times text-xs"></i>
+                Deactivate
             </button>
         @else
-            <button class="w-8 h-8 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors"
+            <button class="px-3 py-1 bg-green-100 text-green-600 rounded-md hover:bg-green-200 transition-colors text-xs font-medium"
                     onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'active')">
-                <i class="fas fa-check text-xs"></i>
+                Activate
             </button>
         @endif
     </td>

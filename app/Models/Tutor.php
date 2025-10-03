@@ -66,10 +66,6 @@ class Tutor extends Authenticatable
         return 'OGS-T' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
     }
 
-    public function availabilities()
-    {
-        return $this->hasMany(Availability::class, 'tutorID', 'tutorID');
-    }
 
     // Relationship to tutor accounts (new multi-account system)
     public function accounts()
@@ -131,27 +127,10 @@ class Tutor extends Authenticatable
             return $firstAccount->getFormattedAvailableTimeAttribute();
         }
         
-        // Final fallback to old availabilities table if no accounts exist
-        $availableSlots = $this->availabilities()
-            ->where('availStatus', 'available')
-            ->with('timeSlot')
-            ->get();
-
-        if ($availableSlots->isEmpty()) {
-            return 'No availability set';
-        }
-
-        return $availableSlots->map(function($availability) {
-            if ($availability->timeSlot) {
-                $timeSlot = $availability->timeSlot;
-                $day = Carbon::parse($timeSlot->date)->format('D'); // Short day name
-                $start = Carbon::parse($timeSlot->startTime)->format('g A');
-                $end = Carbon::parse($timeSlot->endTime)->format('g A');
-                return $day . ' | ' . $start . ' - ' . $end;
-            }
-            return 'Invalid time slot';
-        })->take(3)->join(', ') . ($availableSlots->count() > 3 ? '...' : '');
+        // No fallback needed - return message if no accounts exist
+        return 'No availability set';
     }
+
 
     // Full name accessor
     public function getFullNameAttribute()
@@ -162,5 +141,39 @@ class Tutor extends Authenticatable
         
         // Fallback to username if no full name
         return $this->tusername ?? 'N/A';
+    }
+
+    /**
+     * Get the security question for this tutor
+     */
+    public function securityQuestion()
+    {
+        return $this->hasOne(SecurityQuestion::class, 'user_id', 'tutorID')
+                    ->where('user_type', 'tutor');
+    }
+
+    /**
+     * Check if tutor has a security question set up
+     */
+    public function hasSecurityQuestion()
+    {
+        return $this->securityQuestion()->exists();
+    }
+
+    /**
+     * Get the payment information for this tutor
+     */
+    public function paymentInformation()
+    {
+        return $this->hasOne(EmployeePaymentInformation::class, 'employee_id', 'tutorID')
+                    ->where('employee_type', 'tutor');
+    }
+
+    /**
+     * Get the tutor details for this tutor
+     */
+    public function tutorDetails()
+    {
+        return $this->hasOne(TutorDetails::class, 'tutor_id', 'tutorID');
     }
 }

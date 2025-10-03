@@ -33,6 +33,17 @@ Route::middleware('guest')->group(function () {
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
         ->name('password.store');
+
+    // Simple password reset routes (no email required)
+    Route::post('forgot-password-simple', [\App\Http\Controllers\Auth\SimplePasswordResetController::class, 'requestReset'])
+        ->name('password.reset.request');
+
+    Route::get('reset-password-simple', [\App\Http\Controllers\Auth\SimplePasswordResetController::class, 'showResetForm'])
+        ->name('password.reset.form');
+
+    Route::post('reset-password-simple', [\App\Http\Controllers\Auth\SimplePasswordResetController::class, 'resetPassword'])
+        ->name('password.reset.store');
+
 });
 
 Route::middleware('auth')->group(function () {

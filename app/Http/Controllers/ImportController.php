@@ -261,7 +261,7 @@ class ImportController extends Controller
                                           ->where('school', $validRow['school'])
                                           ->where('class', $validRow['class'])
                                           ->where('time_jst', $validRow['time_jst'])
-                                          ->where('day', $validRow['day'])
+                                          ->whereRaw('DAYNAME(date) = ?', [$this->validateDayName($validRow['day'])])
                                           ->where('number_required', $validRow['number_required'])
                                           ->first();
                     

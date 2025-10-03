@@ -30,6 +30,7 @@ class TutorAccount extends Model
         'tutor_id',
         'account_name',
         'gls_id',          // GLS numeric ID
+        'account_number',  // Account number for all account types
         'username',        // Added username field
         'screen_name',     // Added screen_name field
         'available_days',

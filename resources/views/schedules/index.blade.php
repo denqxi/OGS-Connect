@@ -6,6 +6,61 @@
     <!-- Header -->
     @include('layouts.header', ['pageTitle' => 'GLS Scheduling'])
 
+<style>
+    /* Fix dropdown z-index conflicts */
+    .searchable-select .absolute {
+        z-index: 40 !important;
+    }
+    
+    /* Ensure header dropdown has highest z-index */
+    [x-data] .absolute {
+        z-index: 60 !important;
+    }
+    
+    /* Fix dropdown positioning */
+    .searchable-select {
+        position: relative;
+    }
+    
+    /* Prevent dropdown overflow issues */
+    .searchable-select .absolute {
+        position: absolute !important;
+        top: 100% !important;
+        left: 0 !important;
+        right: 0 !important;
+    }
+</style>
+
+<script>
+    // Reset dropdowns on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Close any open dropdowns
+        const dropdowns = document.querySelectorAll('.searchable-select .absolute');
+        dropdowns.forEach(dropdown => {
+            dropdown.classList.add('hidden');
+        });
+        
+        // Reset search inputs
+        const searchInputs = document.querySelectorAll('#addTutorSearch, #backupTutorSearch');
+        searchInputs.forEach(input => {
+            if (input) {
+                input.setAttribute('readonly', 'readonly');
+                input.value = '';
+            }
+        });
+        
+        // Close any open modals
+        const modals = document.querySelectorAll('#editScheduleModal, #uploadModal');
+        modals.forEach(modal => {
+            modal.classList.add('hidden');
+        });
+        
+        // Restore body scrolling
+        document.body.style.overflow = '';
+    });
+</script>
+
+
     <!-- Tab Navigation -->
     <div class="bg-white border-b border-gray-200 px-4 md:px-6 rounded-xl shadow-sm mb-6">
         <nav class="flex overflow-x-auto md:space-x-8 no-scrollbar">

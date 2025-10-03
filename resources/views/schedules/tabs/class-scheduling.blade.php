@@ -1,6 +1,14 @@
 @if (request('view_date'))
     {{-- Show the daily schedule view --}}
-    @include('schedules.tabs.views.per-day-schedule', ['date' => request('view_date')])
+    @include('schedules.tabs.views.per-day-schedule', [
+        'date' => request('view_date'),
+        'dayClasses' => $dayClasses ?? collect(),
+        'isFinalized' => $isFinalized ?? false,
+        'finalizedAt' => $finalizedAt ?? null,
+        'dayInfo' => $dayInfo ?? null,
+        'availableTutors' => $availableTutors ?? collect(),
+        'availableTimeSlots' => $availableTimeSlots ?? collect()
+    ])
 @else
     <!-- Page Title with Upload Button -->
     <div class="bg-white border-b border-gray-200 px-6 py-4">
@@ -57,11 +65,16 @@
                     <!-- Only one filter active at a time -->
                     <select name="date" id="filterDate" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="handleFilterChange('date')">
                         <option value="">All Dates</option>
-                        @foreach($availableDates ?? [] as $date)
-                            <option value="{{ $date }}" {{ request('date') == $date ? 'selected' : '' }}>
-                                {{ \Carbon\Carbon::parse($date)->format('M d, Y') }}
-                            </option>
-                        @endforeach
+                        @if(isset($availableDates) && $availableDates->count() > 0)
+                            @foreach($availableDates as $date)
+                                <option value="{{ $date }}" {{ request('date') == $date ? 'selected' : '' }}>
+                                    {{ \Carbon\Carbon::parse($date)->format('M d, Y') }}
+                                </option>
+                            @endforeach
+                        @else
+                            <!-- Debug: Show if availableDates is not set or empty -->
+                            <option value="" disabled>No dates available (Debug: availableDates not set or empty)</option>
+                        @endif
                     </select>
                     <select name="day" id="filterDay" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="handleFilterChange('day')">
                         <option value="">All Days</option>
@@ -130,24 +143,20 @@
                 function handleFilterChange(changed) {
                     // Only one filter can be active at a time
                     if (changed === 'date') {
-                        document.getElementById('filterDay').selectedIndex = 0;
-                        document.getElementById('filterStatus').selectedIndex = 0;
+                        document.getElementById('filterDay').value = '';
+                        document.getElementById('filterStatus').value = '';
                     } else if (changed === 'day') {
-                        document.getElementById('filterDate').selectedIndex = 0;
-                        document.getElementById('filterStatus').selectedIndex = 0;
+                        document.getElementById('filterDate').value = '';
+                        document.getElementById('filterStatus').value = '';
                     } else if (changed === 'status') {
-                        document.getElementById('filterDate').selectedIndex = 0;
-                        document.getElementById('filterDay').selectedIndex = 0;
+                        document.getElementById('filterDate').value = '';
+                        document.getElementById('filterDay').value = '';
                     }
                     
-                    // Trigger AJAX search instead of form submission
-                    const searchInput = document.getElementById('realTimeSearch');
-                    if (searchInput && window.performRealTimeSearch) {
-                        window.performRealTimeSearch(searchInput.value.trim());
-                    } else {
-                        // Fallback to form submission if AJAX search is not available
+                    // Use requestAnimationFrame to ensure DOM is updated
+                    requestAnimationFrame(function() {
                         document.getElementById('filterForm').submit();
-                    }
+                    });
                 }
             </script>
         </form>

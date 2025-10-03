@@ -28,7 +28,7 @@ class TutorAssignment extends Model
 
     public function dailyData()
     {
-        return $this->belongsTo(DailyData::class);
+        return $this->belongsTo(DailyData::class, 'daily_data_id', 'id');
     }
 
     public function tutor()

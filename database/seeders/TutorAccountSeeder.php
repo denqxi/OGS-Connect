@@ -35,10 +35,10 @@ class TutorAccountSeeder extends Seeder
                 'company_notes' => 'Tutlo has open hours - no time restrictions',
                 'preferred_time_range' => 'flexible'
             ],
-            'Talk195' => [
+            'Talk915' => [
                 'restricted_start_time' => null,
                 'restricted_end_time' => null,
-                'company_notes' => 'Talk195 has open hours - no time restrictions',
+                'company_notes' => 'Talk915 has open hours - no time restrictions',
                 'preferred_time_range' => 'flexible'
             ]
         ];
@@ -48,7 +48,12 @@ class TutorAccountSeeder extends Seeder
         $usedGlsIds = []; // Track used GLS IDs to avoid duplicates
 
         foreach ($tutors as $tutor) {
-            foreach ($companies as $companyName => $config) {
+            // Determine which companies this tutor should have accounts for
+            $assignedCompanies = $this->getAssignedCompaniesForTutor($tutor);
+            
+            foreach ($assignedCompanies as $companyName) {
+                $config = $companies[$companyName];
+                
                 // Get personalized availability for this tutor and company
                 $personalizedAvailability = $this->getPersonalizedAvailability($tutor, $companyName, $config);
                 
@@ -67,7 +72,7 @@ class TutorAccountSeeder extends Seeder
                     'status' => 'active'
                 ];
 
-                // Add GLS-specific fields
+                // Add account-specific fields
                 if ($companyName === 'GLS') {
                     // Generate random GLS ID between 100-9999 (hundreds to thousands)
                     do {
@@ -76,8 +81,21 @@ class TutorAccountSeeder extends Seeder
                     
                     $usedGlsIds[] = $glsId;
                     $accountData['gls_id'] = (string)$glsId;
-                    $accountData['username'] = 'OGS-' . $tutor->first_name; // GLS username is OGS-{FirstName}
+                    $accountData['account_number'] = (string)$glsId; // Use GLS ID as account number
+                    $accountData['username'] = 'OGS-' . strtolower($tutor->first_name); // GLS username is OGS-{FirstName}
                     $accountData['screen_name'] = 'OGS-' . $tutor->first_name; // GLS screen_name is OGS-{FirstName}
+                } elseif ($companyName === 'Babilala') {
+                    $accountData['username'] = strtolower($tutor->first_name) . '.' . strtolower($tutor->last_name); // Babilala username is firstname.lastname
+                    $accountData['screen_name'] = $tutor->first_name . ' ' . $tutor->last_name; // Babilala screen_name is full name
+                    $accountData['account_number'] = 'BAB-' . rand(100, 999) . '-' . rand(100, 999); // Babilala account number format
+                } elseif ($companyName === 'Tutlo') {
+                    $accountData['username'] = 'tutlo_' . strtolower($tutor->first_name) . strtolower(substr($tutor->last_name, 0, 3)); // Tutlo username is tutlo_firstname+3letters
+                    $accountData['screen_name'] = $tutor->first_name . ' ' . $tutor->last_name; // Tutlo screen_name is full name
+                    $accountData['account_number'] = 'TUT-' . rand(100000, 999999); // Tutlo account number format
+                } elseif ($companyName === 'Talk915') {
+                    $accountData['username'] = strtolower($tutor->first_name) . strtolower(substr($tutor->last_name, 0, 2)); // Talk915 username is firstname+2letters
+                    $accountData['screen_name'] = $tutor->first_name . ' ' . $tutor->last_name; // Talk915 screen_name is full name
+                    $accountData['account_number'] = 'T915-' . rand(10000, 99999); // Talk915 account number format
                 }
 
                 TutorAccount::create($accountData);
@@ -86,10 +104,42 @@ class TutorAccountSeeder extends Seeder
         }
 
         $this->command->info("✅ Created {$accountCount} tutor accounts across 4 companies");
-        $this->command->info("   - GLS: 7:00 AM - 3:30 PM (Morning hours)");
-        $this->command->info("   - Babilala: 8:00 PM - 10:00 PM (Evening hours)");
-        $this->command->info("   - Tutlo: Open hours (Flexible)");
-        $this->command->info("   - Talk195: Open hours (Flexible)");
+        $this->command->info("   - GLS: 7:00 AM - 3:30 PM (Morning hours) - All tutors");
+        $this->command->info("   - Babilala: 8:00 PM - 10:00 PM (Evening hours) - Some tutors");
+        $this->command->info("   - Tutlo: Open hours (Flexible) - Some tutors");
+        $this->command->info("   - Talk915: Open hours (Flexible) - Some tutors");
+    }
+
+    /**
+     * Determine which companies a tutor should have accounts for
+     * This creates selective assignment instead of giving all tutors all accounts
+     */
+    private function getAssignedCompaniesForTutor($tutor): array
+    {
+        // Create a seed based on tutor ID for consistent assignment
+        $seed = crc32($tutor->tutorID);
+        mt_srand($seed);
+        
+        // All available companies
+        $allCompanies = ['GLS', 'Babilala', 'Tutlo', 'Talk915'];
+        
+        // Every tutor gets GLS account (primary account)
+        $assignedCompanies = ['GLS'];
+        
+        // Randomly assign 1-3 additional companies (some tutors, not all)
+        $numAdditionalCompanies = mt_rand(1, 3);
+        $availableCompanies = array_diff($allCompanies, $assignedCompanies);
+        
+        for ($i = 0; $i < $numAdditionalCompanies && !empty($availableCompanies); $i++) {
+            $randomIndex = mt_rand(0, count($availableCompanies) - 1);
+            $selectedCompany = array_values($availableCompanies)[$randomIndex];
+            $assignedCompanies[] = $selectedCompany;
+            
+            // Remove selected company from available options
+            $availableCompanies = array_diff($availableCompanies, [$selectedCompany]);
+        }
+        
+        return $assignedCompanies;
     }
 
     /**
@@ -108,8 +158,8 @@ class TutorAccountSeeder extends Seeder
                 return $this->getBabilalaAvailability($tutor, $seed, $config);
             case 'Tutlo':
                 return $this->getTutloAvailability($tutor, $seed, $config);
-            case 'Talk195':
-                return $this->getTalk195Availability($tutor, $seed, $config);
+            case 'Talk915':
+                return $this->getTalk915Availability($tutor, $seed, $config);
             default:
                 return $this->getDefaultAvailability($tutor, $seed, $config);
         }
@@ -271,11 +321,11 @@ class TutorAccountSeeder extends Seeder
     }
 
     /**
-     * Talk195 availability: Flexible hours, varied preferences
+     * Talk915 availability: Flexible hours, varied preferences
      */
-    private function getTalk195Availability($tutor, $seed, array $config): array
+    private function getTalk915Availability($tutor, $seed, array $config): array
     {
-        // All possible days for Talk195 (including weekends)
+        // All possible days for Talk915 (including weekends)
         $allDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         
         // Randomly select 3-7 days for this tutor
@@ -291,7 +341,7 @@ class TutorAccountSeeder extends Seeder
         
         sort($selectedDays); // Sort for consistent display
         
-        // All possible flexible time slots for Talk195
+        // All possible flexible time slots for Talk915
         $allTimeSlots = [
             '07:00-08:00', '08:00-09:00', '09:00-10:00', '10:00-11:00', '11:00-12:00',
             '12:00-13:00', '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00',
@@ -319,7 +369,7 @@ class TutorAccountSeeder extends Seeder
         return [
             'days' => $selectedDays,
             'times' => $times,
-            'notes' => "Talk195 account for {$tutor->first_name} - Flexible hours. Available on " . implode(', ', $selectedDays) . " with varied time slots."
+            'notes' => "Talk915 account for {$tutor->first_name} - Flexible hours. Available on " . implode(', ', $selectedDays) . " with varied time slots."
         ];
     }
 
@@ -388,7 +438,7 @@ class TutorAccountSeeder extends Seeder
                     '20:00-21:00', '21:00-22:00'
                 ];
             case 'Tutlo':
-            case 'Talk195':
+            case 'Talk915':
                 return [
                     '09:00-10:00', '10:00-11:00', '11:00-12:00', '14:00-15:00',
                     '15:00-16:00', '16:00-17:00', '19:00-20:00', '20:00-21:00'

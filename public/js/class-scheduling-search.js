@@ -33,8 +33,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Always enable AJAX pagination, regardless of filter state
-    window.alwaysUseAjaxPagination = true;
+    // Disable AJAX pagination to use normal form submission
+    window.alwaysUseAjaxPagination = false;
     
     if (searchInput) {
         // Real-time search on input
@@ -53,15 +53,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // Clear previous timeout
             clearTimeout(searchTimeout);
             
-            // Show spinner
-            if (query.length > 0) {
-                searchSpinner.classList.remove('hidden');
-                clearButton.classList.add('hidden');
-            }
-            
-            // Debounce search
+            // Debounce search - use normal form submission instead of AJAX
             searchTimeout = setTimeout(() => {
-                window.performRealTimeSearch(query);
+                // Submit the form normally instead of using AJAX
+                const form = document.getElementById('filterForm');
+                if (form) {
+                    form.submit();
+                }
             }, 500);
         });
         
@@ -78,7 +76,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     noResultsMessage.classList.add('hidden');
                 }
                 
-                window.performRealTimeSearch('');
+                // Submit the form normally instead of using AJAX
+                const form = document.getElementById('filterForm');
+                if (form) {
+                    form.submit();
+                }
             });
         }
     }
@@ -96,74 +98,74 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Handle pagination clicks with delegation - more comprehensive approach
-    document.addEventListener('click', function(e) {
-        // Check if this is any link that contains 'page=' parameter
-        let targetLink = e.target;
-        
-        // Walk up the DOM tree to find a link
-        while (targetLink && targetLink !== document) {
-            if (targetLink.tagName === 'A' && targetLink.href && targetLink.href.includes('page=')) {
-                break;
-            }
-            targetLink = targetLink.parentNode;
-        }
-        
-        // If we found a pagination link, always handle it with AJAX
-        if (targetLink && targetLink.href && targetLink.href.includes('page=')) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const url = new URL(targetLink.href);
-            const page = url.searchParams.get('page') || 1;
-            
-            // Perform search with the current search parameters and the new page
-            const currentSearch = searchInput ? searchInput.value.trim() : '';
-            window.performRealTimeSearch(currentSearch, page);
-            return false;
-        }
-    }, true); // Use capture phase to catch the event early
+    // Disable AJAX pagination - let normal links work
+    // document.addEventListener('click', function(e) {
+    //     // Check if this is any link that contains 'page=' parameter
+    //     let targetLink = e.target;
+    //     
+    //     // Walk up the DOM tree to find a link
+    //     while (targetLink && targetLink !== document) {
+    //         if (targetLink.tagName === 'A' && targetLink.href && targetLink.href.includes('page=')) {
+    //             break;
+    //         }
+    //         targetLink = targetLink.parentNode;
+    //     }
+    //     
+    //     // If we found a pagination link, always handle it with AJAX
+    //     if (targetLink && targetLink.href && targetLink.href.includes('page=')) {
+    //         e.preventDefault();
+    //         e.stopPropagation();
+    //         
+    //         const url = new URL(targetLink.href);
+    //         const page = url.searchParams.get('page') || 1;
+    //         
+    //         // Perform search with the current search parameters and the new page
+    //         const currentSearch = searchInput ? searchInput.value.trim() : '';
+    //         window.performRealTimeSearch(currentSearch, page);
+    //         return false;
+    //     }
+    // }, true); // Use capture phase to catch the event early
     
-    // Also add a specific event listener for the pagination container
-    const paginationContainer = document.getElementById('paginationContainer');
-    if (paginationContainer) {
-        paginationContainer.addEventListener('click', function(e) {
-            if (e.target.tagName === 'A' && e.target.href && e.target.href.includes('page=')) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const url = new URL(e.target.href);
-                const page = url.searchParams.get('page') || 1;
-                
-                // Perform search with the current search parameters and the new page
-                const currentSearch = searchInput ? searchInput.value.trim() : '';
-                window.performRealTimeSearch(currentSearch, page);
-                return false;
-            }
-        });
-    } else {
-        console.log('Pagination container not found during initialization');
-    }
+    // Disable AJAX pagination container event listener
+    // const paginationContainer = document.getElementById('paginationContainer');
+    // if (paginationContainer) {
+    //     paginationContainer.addEventListener('click', function(e) {
+    //         if (e.target.tagName === 'A' && e.target.href && e.target.href.includes('page=')) {
+    //             e.preventDefault();
+    //             e.stopPropagation();
+    //             
+    //             const url = new URL(e.target.href);
+    //             const page = url.searchParams.get('page') || 1;
+    //             
+    //             // Perform search with the current search parameters and the new page
+    //             const currentSearch = searchInput ? searchInput.value.trim() : '';
+    //             window.performRealTimeSearch(currentSearch, page);
+    //             return false;
+    //         }
+    //     });
+    // } else {
+    //     console.log('Pagination container not found during initialization');
+    // }
     
-    // Add a more robust event delegation for dynamically updated pagination
-    document.addEventListener('click', function(e) {
-        // Check if the clicked element is inside the pagination container
-        const paginationContainer = document.getElementById('paginationContainer');
-        if (paginationContainer && paginationContainer.contains(e.target)) {
-            if (e.target.tagName === 'A' && e.target.href && e.target.href.includes('page=')) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const url = new URL(e.target.href);
-                const page = url.searchParams.get('page') || 1;
-                
-                // Perform search with the current search parameters and the new page
-                const currentSearch = searchInput ? searchInput.value.trim() : '';
-                window.performRealTimeSearch(currentSearch, page);
-                return false;
-            }
-        }
-    });
+    // Disable AJAX pagination event delegation
+    // document.addEventListener('click', function(e) {
+    //     // Check if the clicked element is inside the pagination container
+    //     const paginationContainer = document.getElementById('paginationContainer');
+    //     if (paginationContainer && paginationContainer.contains(e.target)) {
+    //         if (e.target.tagName === 'A' && e.target.href && e.target.href.includes('page=')) {
+    //             e.preventDefault();
+    //             e.stopPropagation();
+    //             
+    //             const url = new URL(e.target.href);
+    //             const page = url.searchParams.get('page') || 1;
+    //             
+    //             // Perform search with the current search parameters and the new page
+    //             const currentSearch = searchInput ? searchInput.value.trim() : '';
+    //             window.performRealTimeSearch(currentSearch, page);
+    //             return false;
+    //         }
+    //     }
+    // });
     
     window.performRealTimeSearch = function(query, page = 1) {
         const searchRoute = window.searchSchedulesRoute || '/api/search-schedules';
@@ -267,8 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Search error:', error);
         })
         .finally(() => {
-            // Hide spinner and show clear button if there's text
-            if (searchSpinner) searchSpinner.classList.add('hidden');
+            // Show clear button if there's text
             if (query.length > 0 && clearButton) {
                 clearButton.classList.remove('hidden');
             }

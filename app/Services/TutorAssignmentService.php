@@ -30,9 +30,11 @@ class TutorAssignmentService
         }
         
         if ($day) {
-            // Convert day to match the day name from date
-            $dayName = ucfirst(strtolower($day));
-            $query->whereRaw('DAYNAME(date) = ?', [$dayName]);
+            // Validate and sanitize day name to prevent SQL injection
+            $dayName = $this->validateDayName($day);
+            if ($dayName) {
+                $query->whereRaw('DAYNAME(date) = ?', [$dayName]);
+            }
         }
 
         // Get current supervisor ID
@@ -218,20 +220,8 @@ class TutorAssignmentService
                     
                     $maxSimilarity = $this->calculateNewSystemSimilarity($classTime, $dayTimes, $tutor, $classDayName);
                 } else {
-                    // Final fallback to very old system
-                    $dayAvailabilities = $tutor->availabilities->filter(function($availability) use ($classDayName) {
-                        if (!$availability->timeSlot) {
-                            return false;
-                        }
-                        $slotDayName = Carbon::parse($availability->timeSlot->date)->format('l');
-                        return $slotDayName === $classDayName && $availability->availStatus === 'available';
-                    });
-
-                    if ($dayAvailabilities->isEmpty()) {
-                        continue;
-                    }
-
-                    $maxSimilarity = $this->calculateOldSystemSimilarity($classTime, $dayAvailabilities);
+                    // No availability data found - skip this tutor
+                    continue;
                 }
             }
 
@@ -729,5 +719,38 @@ class TutorAssignmentService
         }
         
         return false;
+    }
+
+    /**
+     * Validate and sanitize day name to prevent SQL injection
+     */
+    private function validateDayName($day)
+    {
+        $validDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        $day = strtolower(trim($day));
+        
+        // Handle abbreviated day names
+        if (strlen($day) <= 4) {
+            $dayMap = [
+                'mon' => 'Monday', 'tue' => 'Tuesday', 'wed' => 'Wednesday',
+                'thur' => 'Thursday', 'fri' => 'Friday', 'sat' => 'Saturday', 'sun' => 'Sunday'
+            ];
+            $normalizedDay = $dayMap[$day] ?? ucfirst($day);
+        } else {
+            // Handle full day names (lowercase)
+            $fullDayMap = [
+                'monday' => 'Monday', 'tuesday' => 'Tuesday', 'wednesday' => 'Wednesday',
+                'thursday' => 'Thursday', 'friday' => 'Friday', 'saturday' => 'Saturday', 'sunday' => 'Sunday'
+            ];
+            $normalizedDay = $fullDayMap[$day] ?? ucfirst($day);
+        }
+        
+        // Only return if it's a valid day name
+        if (in_array($normalizedDay, $validDays)) {
+            return $normalizedDay;
+        }
+        
+        // Return null for invalid day names
+        return null;
     }
 }

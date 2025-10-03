@@ -13,12 +13,10 @@ class DailyData extends Model
 
     protected $fillable = [
         'date',
-        'day', 
         'school',
         'class',
         'duration',
         'time_jst',
-        'time_pht',
         'number_required',
         'schedule_status',
         'finalized_at',
@@ -26,13 +24,13 @@ class DailyData extends Model
         'assigned_supervisor', // Added schedule ownership
         'assigned_at', // Added assignment timestamp
         'class_status', // Added class cancellation status
-        'cancelled_at'  // Added cancellation timestamp
+        'cancelled_at',  // Added cancellation timestamp
+        'cancellation_reason' // Added cancellation reason
     ];
 
     protected $casts = [
         'date' => 'date',
         'time_jst' => 'datetime:H:i:s',
-        'time_pht' => 'datetime:H:i:s',
         'finalized_at' => 'datetime',
         'assigned_at' => 'datetime', // Added assigned_at casting
         'cancelled_at' => 'datetime' // Added cancelled_at casting
@@ -185,5 +183,63 @@ class DailyData extends Model
             'old_data' => $oldData,
             'new_data' => $newData
         ]);
+    }
+
+    // 3NF Compliance: Derived fields as accessors
+    /**
+     * Get the day of the week from the date (derived field)
+     */
+    public function getDayAttribute()
+    {
+        return $this->date ? $this->date->format('l') : null; // Returns full day name (e.g., "Monday")
+    }
+
+    /**
+     * Get the day of the week in short format
+     */
+    public function getDayShortAttribute()
+    {
+        return $this->date ? $this->date->format('D') : null; // Returns short day name (e.g., "Mon")
+    }
+
+    /**
+     * Get the PHT time from JST time (derived field)
+     * PHT is 1 hour behind JST
+     */
+    public function getTimePhtAttribute()
+    {
+        if (!$this->time_jst) {
+            return null;
+        }
+        
+        // Convert JST to PHT (subtract 1 hour)
+        $jstTime = \Carbon\Carbon::parse($this->time_jst);
+        $phtTime = $jstTime->subHour();
+        
+        return $phtTime->format('H:i:s');
+    }
+
+    /**
+     * Get formatted PHT time
+     */
+    public function getFormattedTimePhtAttribute()
+    {
+        if (!$this->time_pht) {
+            return null;
+        }
+        
+        return \Carbon\Carbon::createFromFormat('H:i:s', $this->time_pht)->format('g:i A');
+    }
+
+    /**
+     * Get formatted JST time
+     */
+    public function getFormattedTimeJstAttribute()
+    {
+        if (!$this->time_jst) {
+            return null;
+        }
+        
+        return \Carbon\Carbon::createFromFormat('H:i:s', $this->time_jst)->format('g:i A');
     }
 }

@@ -1,27 +1,5 @@
 @php
-    // Get all classes for the selected date with tutor assignments (including cancelled for management)
-    $dayClasses = \App\Models\DailyData::where('date', $date)
-                                       ->with(['tutorAssignments.tutor'])
-                                       ->orderBy('school')
-                                       ->orderBy('time_jst')
-                                       ->get();
-    
-    // Check if this schedule is finalized
-    $isFinalized = $dayClasses->where('schedule_status', 'final')->count() > 0;
-    $finalizedAt = $isFinalized ? $dayClasses->where('schedule_status', 'final')->first()->finalized_at : null;
-    
-    // Get grouped information for the header (only active classes for statistics)
-    $dayInfo = \App\Models\DailyData::select([
-        'date',
-        'day',
-        \DB::raw('GROUP_CONCAT(DISTINCT school ORDER BY school ASC SEPARATOR ", ") as schools'),
-        \DB::raw('COUNT(*) as class_count'),
-        \DB::raw('SUM(number_required) as total_required')
-    ])
-    ->where('date', $date)
-    ->where('class_status', '!=', 'cancelled') // Only count active classes in statistics
-    ->groupBy('date', 'day')
-    ->first();
+    // Data is now passed from the controller - no need to query here
 
     // Determine currently logged in supervisor id (if any)
     $currentSupervisorId = session('supervisor_id');
@@ -243,6 +221,11 @@
                             <i class="fas fa-times-circle mr-1"></i>
                             Cancelled
                         </span>
+                        @if($class->cancellation_reason)
+                            <div class="mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded border border-red-200">
+                                <strong>Reason:</strong> {{ $class->cancellation_reason }}
+                            </div>
+                        @endif
                     </div>
                 @endif
             </div>
@@ -387,6 +370,9 @@
                                 data-class="{{ $class->class }}" 
                                 data-time="{{ $class->time_jst ? \Carbon\Carbon::parse($class->time_jst)->subHour()->format('g:i A') : 'N/A' }}" 
                                 data-date="{{ \Carbon\Carbon::parse($date)->format('F j, Y') }}"
+                                data-raw-date="{{ $date }}"
+                                data-day="{{ strtolower(\Carbon\Carbon::parse($date)->format('l')) }}"
+                                data-time-slot="{{ $class->time_jst ? \Carbon\Carbon::parse($class->time_jst)->subHour()->format('H:i') . ' - ' . \Carbon\Carbon::parse($class->time_jst)->format('H:i') : '' }}"
                                 data-school="{{ $class->school }}"
                                 data-required="{{ $class->number_required }}"
                                 data-class-id="{{ $class->id }}"
@@ -540,6 +526,13 @@
         </div>
     </div>
 </div>
+
+<!-- Pagination -->
+@if($dayClasses->hasPages())
+<div class="mt-8 flex justify-center">
+    {{ $dayClasses->appends(request()->query())->links() }}
+</div>
+@endif
 
 <!-- Modal Script -->
 <script src="{{ asset('js/per-day-schedule-modal.js') }}"></script>

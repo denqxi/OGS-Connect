@@ -1,5 +1,5 @@
 <div class="bg-white shadow-md rounded-xl px-6 py-2.5 flex items-center justify-between mb-6">
-    <h1 class="text-base md:text-lg font-bold text-[#0E335D]">@yield('page-title', 'GLS Scheduling')</h1>
+    <h1 class="text-base md:text-lg font-bold text-[#0E335D]">{{ $pageTitle ?? 'OGS Connect' }}</h1>
     
     <div class="flex items-center space-x-3 md:space-x-4">
         <!-- Theme Toggle -->
@@ -20,15 +20,21 @@
                  alt="Profile" class="w-full h-full object-cover rounded-full">
 
             <!-- Dropdown -->
-            <div x-show="open" @click.away="open = false"
-                 class="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                <a href="#profile" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+            <div x-show="open" x-cloak @click.away="open = false" x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
+                class="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <a href="{{ route('supervisor.profile') }}"
+                    class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                     <i class="fas fa-user mr-2"></i> Profile
                 </a>
+
                 <div class="border-t border-gray-200"></div>
                 <form method="POST" action="{{ route('supervisor.logout') }}" class="w-full">
                     @csrf
-                    <button type="submit" class="flex items-center w-full px-4 py-2 text-sm text-red-500 hover:bg-red-50">
+                    <button type="submit"
+                        class="flex items-center w-full px-4 py-2 text-sm text-red-500 hover:bg-red-50">
                         <i class="fas fa-sign-out-alt mr-2"></i> Logout
                     </button>
                 </form>

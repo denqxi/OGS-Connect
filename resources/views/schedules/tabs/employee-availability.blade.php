@@ -25,9 +25,6 @@
                            class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md text-sm 
                                   focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
                                   focus:ring-0 focus:shadow-xl">
-                    <div id="searchSpinner" class="absolute right-3 top-1/2 transform -translate-y-1/2 hidden">
-                        <i class="fas fa-spinner fa-spin text-gray-400"></i>
-                    </div>
                     <button type="button" id="clearSearch" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 {{ request('search') ? '' : 'hidden' }}">
                         <i class="fas fa-times"></i>
                     </button>
@@ -62,13 +59,43 @@
                 
                 <select name="day" id="filterDay" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="handleTutorFilterChange('day')">
                     <option value="">All Days</option>
-                    <option value="monday" {{ request('day') == 'monday' ? 'selected' : '' }}>Monday</option>
-                    <option value="tuesday" {{ request('day') == 'tuesday' ? 'selected' : '' }}>Tuesday</option>
-                    <option value="wednesday" {{ request('day') == 'wednesday' ? 'selected' : '' }}>Wednesday</option>
-                    <option value="thursday" {{ request('day') == 'thursday' ? 'selected' : '' }}>Thursday</option>
-                    <option value="friday" {{ request('day') == 'friday' ? 'selected' : '' }}>Friday</option>
-                    <option value="saturday" {{ request('day') == 'saturday' ? 'selected' : '' }}>Saturday</option>
-                    <option value="sunday" {{ request('day') == 'sunday' ? 'selected' : '' }}>Sunday</option>
+                    @if(isset($availableDays) && $availableDays->count() > 0)
+                        @foreach($availableDays as $day)
+                            @php
+                                // Handle capitalized abbreviated day names from database (Mon, Tue, Wed, Thu, Fri)
+                                $dayMap = [
+                                    'Mon' => 'mon', 'Tue' => 'tue', 'Wed' => 'wed',
+                                    'Thu' => 'thur', 'Fri' => 'fri',
+                                    'Monday' => 'mon', 'Tuesday' => 'tue', 'Wednesday' => 'wed',
+                                    'Thursday' => 'thur', 'Friday' => 'fri',
+                                    'mon' => 'mon', 'tue' => 'tue', 'wed' => 'wed',
+                                    'thur' => 'thur', 'fri' => 'fri'
+                                ];
+                                
+                                $displayMap = [
+                                    'Mon' => 'Monday', 'Tue' => 'Tuesday', 'Wed' => 'Wednesday',
+                                    'Thu' => 'Thursday', 'Fri' => 'Friday',
+                                    'Monday' => 'Monday', 'Tuesday' => 'Tuesday', 'Wednesday' => 'Wednesday',
+                                    'Thursday' => 'Thursday', 'Friday' => 'Friday',
+                                    'mon' => 'Monday', 'tue' => 'Tuesday', 'wed' => 'Wednesday',
+                                    'thur' => 'Thursday', 'fri' => 'Friday'
+                                ];
+                                
+                                $dayValue = $dayMap[$day] ?? strtolower($day);
+                                $dayDisplay = $displayMap[$day] ?? ucfirst($day);
+                            @endphp
+                            <option value="{{ $dayValue }}" {{ request('day') == $dayValue ? 'selected' : '' }}>
+                                {{ $dayDisplay }}
+                            </option>
+                        @endforeach
+                    @else
+                        <!-- Fallback options if availableDays is not set or empty -->
+                        <option value="mon" {{ request('day') == 'mon' ? 'selected' : '' }}>Monday</option>
+                        <option value="tue" {{ request('day') == 'tue' ? 'selected' : '' }}>Tuesday</option>
+                        <option value="wed" {{ request('day') == 'wed' ? 'selected' : '' }}>Wednesday</option>
+                        <option value="thur" {{ request('day') == 'thur' ? 'selected' : '' }}>Thursday</option>
+                        <option value="fri" {{ request('day') == 'fri' ? 'selected' : '' }}>Friday</option>
+                    @endif
                 </select>
 
                 @if(request()->hasAny(['search', 'status', 'time_slot', 'day']))
@@ -126,14 +153,14 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                     @if($tutor->status === 'active')
-                        <button class="w-8 h-8 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+                        <button class="px-3 py-1 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors text-xs font-medium"
                                 onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'inactive')">
-                            <i class="fas fa-times text-xs"></i>
+                            Deactivate
                         </button>
                     @else
-                        <button class="w-8 h-8 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors"
+                        <button class="px-3 py-1 bg-green-100 text-green-600 rounded-md hover:bg-green-200 transition-colors text-xs font-medium"
                                 onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'active')">
-                            <i class="fas fa-check text-xs"></i>
+                            Activate
                         </button>
                     @endif
                 </td>
@@ -184,21 +211,122 @@
     function handleTutorFilterChange(changed) {
         // Only one filter can be active at a time
         if (changed === 'time_slot') {
-            document.getElementById('filterDay').selectedIndex = 0;
-            document.getElementById('filterStatus').selectedIndex = 0;
+            document.getElementById('filterDay').value = '';
+            document.getElementById('filterStatus').value = '';
         } else if (changed === 'day') {
-            document.getElementById('filterTimeSlot').selectedIndex = 0;
-            document.getElementById('filterStatus').selectedIndex = 0;
+            document.getElementById('filterTimeSlot').value = '';
+            document.getElementById('filterStatus').value = '';
         } else if (changed === 'status') {
-            document.getElementById('filterTimeSlot').selectedIndex = 0;
-            document.getElementById('filterDay').selectedIndex = 0;
+            document.getElementById('filterTimeSlot').value = '';
+            document.getElementById('filterDay').value = '';
         }
         
-        // Trigger AJAX search
-        if (window.performTutorSearch) {
-            window.performTutorSearch();
+        // Submit the form to apply filters
+        document.getElementById('tutorFilterForm').submit();
+    }
+
+    // Handle search input - submit form on Enter or when user stops typing
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('tutorSearch');
+        const clearSearchBtn = document.getElementById('clearSearch');
+        const form = document.getElementById('tutorFilterForm');
+        let searchTimeout;
+
+        if (searchInput) {
+            // Handle search input with debounce
+            searchInput.addEventListener('input', function() {
+                const query = this.value.trim();
+                
+                // Show/hide clear button
+                if (query.length > 0) {
+                    if (clearSearchBtn) clearSearchBtn.classList.remove('hidden');
+                } else {
+                    if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
+                }
+
+                // Clear previous timeout
+                clearTimeout(searchTimeout);
+                
+                // Debounce search - auto-submit form after user stops typing for 800ms
+                searchTimeout = setTimeout(() => {
+                    form.submit();
+                }, 800);
+            });
+
+            // Handle Enter key
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    clearTimeout(searchTimeout);
+                    form.submit();
+                }
+            });
+
+            // Clear search
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', function() {
+                    searchInput.value = '';
+                    clearSearchBtn.classList.add('hidden');
+                    form.submit();
+                });
+            }
         }
+    });
+
+    // Toggle tutor status (active/inactive)
+    function toggleTutorStatus(tutorId, newStatus) {
+        if (!tutorId) {
+            alert('Error: Tutor ID not found');
+            return;
+        }
+
+        // Show confirmation dialog
+        const action = newStatus === 'active' ? 'activate' : 'deactivate';
+        if (!confirm(`Are you sure you want to ${action} this tutor?`)) {
+            return;
+        }
+
+        // Show loading state
+        const button = event.target;
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Updating...';
+
+        // Make AJAX request
+        fetch(`/tutors/${tutorId}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                status: newStatus
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                alert(data.message);
+                
+                // Reload the page to reflect changes
+                window.location.reload();
+            } else {
+                // Show error message
+                alert(data.message || 'Failed to update tutor status');
+                
+                // Restore button state
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while updating tutor status');
+            
+            // Restore button state
+            button.disabled = false;
+            button.textContent = originalText;
+        });
     }
 </script>
-<script src="{{ asset('js/employee-availability-globals.js') }}"></script>
-<script src="{{ asset('js/employee-availability-search.js') }}"></script>

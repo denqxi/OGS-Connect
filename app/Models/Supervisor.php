@@ -16,9 +16,16 @@ class Supervisor extends Authenticatable
         'sfname',
         'smname',
         'slname',
+        'birth_date',
         'semail',
         'sconNum',
-        'password'
+        'password',
+        'assigned_account',
+        'srole',
+        'saddress',
+        'steams',
+        'sshift',
+        'status'
     ];
 
     protected $hidden = [
@@ -58,6 +65,65 @@ class Supervisor extends Authenticatable
     }
 
     /**
+     * Get the email address for password reset.
+     */
+    public function getEmailForPasswordReset()
+    {
+        return $this->semail;
+    }
+
+    /**
+     * Get the name of the unique identifier for the user.
+     */
+    public function getAuthIdentifierName()
+    {
+        return 'supID';
+    }
+
+    /**
+     * Get the unique identifier for the user.
+     */
+    public function getAuthIdentifier()
+    {
+        return $this->getKey();
+    }
+
+    /**
+     * Get the password for the user.
+     */
+    public function getAuthPassword()
+    {
+        return $this->password;
+    }
+
+    /**
+     * Get the token value for the "remember me" session.
+     */
+    public function getRememberToken()
+    {
+        return $this->remember_token;
+    }
+
+    /**
+     * Set the token value for the "remember me" session.
+     */
+    public function setRememberToken($value)
+    {
+        $this->remember_token = $value;
+    }
+
+    /**
+     * Get the column name for the "remember me" token.
+     */
+    public function getRememberTokenName()
+    {
+        return 'remember_token';
+    }
+
+
+
+
+    /**
      * Get the full name of the supervisor
      */
     public function getFullNameAttribute()
@@ -86,5 +152,70 @@ class Supervisor extends Authenticatable
             });
         }
         return $query;
+    }
+
+    /**
+     * Get the security question for this supervisor
+     */
+    public function securityQuestion()
+    {
+        return $this->hasOne(SecurityQuestion::class, 'user_id', 'supID')
+                    ->where('user_type', 'supervisor');
+    }
+
+    /**
+     * Get all security questions for this supervisor
+     */
+    public function securityQuestions()
+    {
+        return $this->hasMany(SecurityQuestion::class, 'user_id', 'supID')
+                    ->where('user_type', 'supervisor');
+    }
+
+    /**
+     * Check if supervisor has a security question set up
+     */
+    public function hasSecurityQuestion()
+    {
+        return $this->securityQuestion()->exists();
+    }
+
+    /**
+     * Get the payment information for this supervisor
+     */
+    public function paymentInformation()
+    {
+        return $this->hasOne(EmployeePaymentInformation::class, 'employee_id', 'supID')
+                    ->where('employee_type', 'supervisor');
+    }
+
+    /**
+     * Get tutors assigned to this supervisor's account
+     */
+    public function assignedTutors()
+    {
+        if (!$this->assigned_account) {
+            return collect(); // Return empty collection if no account assigned
+        }
+        
+        return Tutor::whereHas('accounts', function($query) {
+            $query->where('account_name', $this->assigned_account);
+        })->get();
+    }
+
+    /**
+     * Get the account name with proper formatting
+     */
+    public function getAssignedAccountNameAttribute()
+    {
+        return $this->assigned_account ? $this->assigned_account . ' Supervisor' : 'Unassigned';
+    }
+
+    /**
+     * Scope to filter supervisors by assigned account
+     */
+    public function scopeForAccount($query, $accountName)
+    {
+        return $query->where('assigned_account', $accountName);
     }
 }
