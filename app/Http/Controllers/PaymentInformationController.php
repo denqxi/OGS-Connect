@@ -60,13 +60,22 @@ class PaymentInformationController extends Controller
             'is_active' => true,
         ];
 
-        EmployeePaymentInformation::updateOrCreate(
+        $paymentInfo = EmployeePaymentInformation::updateOrCreate(
             [
                 'employee_id' => $employeeId,
                 'employee_type' => $employeeType,
             ],
             $data
         );
+
+        // Check if request is AJAX
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment information updated successfully!',
+                'payment_info' => $paymentInfo
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Payment information updated successfully!');
     }

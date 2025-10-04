@@ -12,7 +12,13 @@ class EmployeePaymentInformation extends Model
     protected $fillable = [
         'employee_id',
         'employee_type',
-        'payment_method_id',
+        'payment_method',
+        'bank_name',
+        'account_number',
+        'account_name',
+        'paypal_email',
+        'gcash_number',
+        'paymaya_number',
         'hourly_rate',
         'monthly_salary',
         'payment_frequency',
@@ -40,30 +46,20 @@ class EmployeePaymentInformation extends Model
         return null;
     }
 
-    /**
-     * Get the payment method details
-     */
-    public function paymentMethodDetails()
-    {
-        return $this->belongsTo(PaymentMethodDetails::class, 'payment_method_id');
-    }
+
 
     /**
-     * Get the payment details (normalized fields)
-     */
-    public function paymentDetails()
-    {
-        return $this->hasMany(EmployeePaymentDetails::class, 'employee_payment_id');
-    }
-
-    /**
-     * Get payment method options from the normalized table
+     * Get payment method options
      */
     public static function getPaymentMethods()
     {
-        return PaymentMethodDetails::where('is_active', true)
-            ->pluck('description', 'payment_method_name')
-            ->toArray();
+        return [
+            'gcash' => 'GCash',
+            'paypal' => 'PayPal',
+            'paymaya' => 'PayMaya',
+            'bank_transfer' => 'Bank Transfer',
+            'cash' => 'Cash'
+        ];
     }
 
     /**
@@ -84,7 +80,7 @@ class EmployeePaymentInformation extends Model
      */
     public function getFormattedPaymentMethodAttribute()
     {
-        return $this->paymentMethodDetails->description ?? $this->paymentMethodDetails->payment_method_name ?? 'Unknown';
+        return self::getPaymentMethods()[$this->payment_method] ?? ucfirst($this->payment_method);
     }
 
     /**
@@ -100,40 +96,7 @@ class EmployeePaymentInformation extends Model
      */
     public function getPaymentMethodUppercaseAttribute()
     {
-        return strtoupper($this->paymentMethodDetails->payment_method_name ?? '');
+        return strtoupper($this->payment_method ?? '');
     }
 
-    /**
-     * Get the appropriate payment details based on payment method
-     */
-    public function getPaymentDetailsArrayAttribute()
-    {
-        $details = [];
-        
-        foreach ($this->paymentDetails as $detail) {
-            $details[$detail->field_name] = $detail->field_value;
-        }
-        
-        return $details;
-    }
-
-    /**
-     * Get a specific payment detail by field name
-     */
-    public function getPaymentDetail($fieldName)
-    {
-        $detail = $this->paymentDetails()->where('field_name', $fieldName)->first();
-        return $detail ? $detail->field_value : null;
-    }
-
-    /**
-     * Set a payment detail
-     */
-    public function setPaymentDetail($fieldName, $fieldValue)
-    {
-        $this->paymentDetails()->updateOrCreate(
-            ['field_name' => $fieldName],
-            ['field_value' => $fieldValue]
-        );
-    }
 }

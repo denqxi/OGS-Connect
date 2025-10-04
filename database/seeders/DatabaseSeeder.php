@@ -27,7 +27,6 @@ class DatabaseSeeder extends Seeder
             TutorSeeder::class,
             TutorDetailsSeeder::class,
             TutorAccountSeeder::class,
-            PaymentMethodDetailsSeeder::class,
             PaymentInformationSeeder::class,
             TutorAssignmentSeeder::class,
             SecurityQuestionsSeeder::class,

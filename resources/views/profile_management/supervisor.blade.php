@@ -189,47 +189,219 @@
             <div class="flex items-center justify-between">
                 <h3 class="text-base sm:text-lg md:text-xl font-semibold text-[#0E335D] border-b-2 border-[#0E335D] pb-2">
                     Payment Information</h3>
-                <a href="{{ route('payment-information.index') }}"
-                   class="px-4 py-2 bg-[#0E335D] text-white text-xs sm:text-sm rounded-lg hover:bg-gray-800 transform transition duration-200 hover:scale-105">
-                    Manage Payment Info
-                </a>
+                <button id="toggle-payment-form" type="button"
+                        class="px-4 py-2 bg-[#0E335D] text-white text-xs sm:text-sm rounded-lg hover:bg-gray-800 transform transition duration-200 hover:scale-105">
+                    <span id="toggle-text">Edit Payment Info</span>
+                </button>
             </div>
             
             @php
                 $paymentInfo = $supervisor->paymentInformation ?? null;
             @endphp
             
-            @if($paymentInfo)
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Payment Information Display -->
+            <div id="payment-display" class="space-y-4">
+                @if($paymentInfo)
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs sm:text-sm text-[#0E335D]">Payment Method</label>
+                            <div class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm bg-gray-50">
+                                {{ strtoupper($paymentInfo->payment_method ?? 'N/A') }}
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs sm:text-sm text-[#0E335D]">
+                                @switch($paymentInfo->payment_method)
+                                    @case('gcash')
+                                        GCash Number
+                                        @break
+                                    @case('paymaya')
+                                        PayMaya Number
+                                        @break
+                                    @case('paypal')
+                                        PayPal Email
+                                        @break
+                                    @case('bank_transfer')
+                                        Account Number
+                                        @break
+                                    @default
+                                        Account Number
+                                @endswitch
+                            </label>
+                            <div class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm bg-gray-50">
+                                @switch($paymentInfo->payment_method)
+                                    @case('gcash')
+                                        {{ $paymentInfo->gcash_number ?? 'N/A' }}
+                                        @break
+                                    @case('paymaya')
+                                        {{ $paymentInfo->paymaya_number ?? 'N/A' }}
+                                        @break
+                                    @case('paypal')
+                                        {{ $paymentInfo->paypal_email ?? 'N/A' }}
+                                        @break
+                                    @case('bank_transfer')
+                                        {{ $paymentInfo->account_number ?? 'N/A' }}
+                                        @break
+                                    @default
+                                        {{ $paymentInfo->account_number ?? 'N/A' }}
+                                @endswitch
+                            </div>
+                        </div>
+                        @if($paymentInfo->payment_method === 'bank_transfer')
+                        <div>
+                            <label class="text-xs sm:text-sm text-[#0E335D]">Bank Name</label>
+                            <div class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm bg-gray-50">
+                                {{ $paymentInfo->bank_name ?? 'N/A' }}
+                            </div>
+                        </div>
+                        @endif
+                        @if($paymentInfo->payment_method === 'bank_transfer' || $paymentInfo->account_name)
+                        <div>
+                            <label class="text-xs sm:text-sm text-[#0E335D]">Account Name</label>
+                            <div class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm bg-gray-50">
+                                {{ $paymentInfo->account_name ?? 'N/A' }}
+                            </div>
+                        </div>
+                        @endif
+                        @if($paymentInfo->notes)
+                        <div class="md:col-span-2">
+                            <label class="text-xs sm:text-sm text-[#0E335D]">Notes</label>
+                            <div class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm bg-gray-50">
+                                {{ $paymentInfo->notes }}
+                            </div>
+                        </div>
+                        @endif
+                    </div>
+                @else
+                    <div class="text-center py-8">
+                        <i class="fas fa-credit-card text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-600 mb-4">No payment information set up yet.</p>
+                    </div>
+                @endif
+            </div>
+
+            <!-- Payment Information Form -->
+            <div id="payment-form" class="space-y-4" style="display: none;">
+                <form id="payment-information-form" method="POST" action="{{ route('payment-information.store') }}">
+                    @csrf
+                    
+                    <!-- Payment Method -->
                     <div>
-                        <label class="text-xs sm:text-sm text-[#0E335D]">Payment Method</label>
-                        <div class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm bg-gray-50">
-                            {{ $paymentInfo->payment_method_uppercase ?? 'N/A' }}
+                        <label class="block text-sm font-medium text-[#0E335D] mb-2">Payment Method *</label>
+                        <select name="payment_method" id="payment_method" required
+                                class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
+                            <option value="gcash" {{ old('payment_method', $paymentInfo->payment_method ?? 'gcash') == 'gcash' ? 'selected' : '' }}>GCash</option>
+                            <option value="paypal" {{ old('payment_method', $paymentInfo->payment_method ?? '') == 'paypal' ? 'selected' : '' }}>PayPal</option>
+                            <option value="paymaya" {{ old('payment_method', $paymentInfo->payment_method ?? '') == 'paymaya' ? 'selected' : '' }}>PayMaya</option>
+                            <option value="bank_transfer" {{ old('payment_method', $paymentInfo->payment_method ?? '') == 'bank_transfer' ? 'selected' : '' }}>Bank Transfer</option>
+                            <option value="cash" {{ old('payment_method', $paymentInfo->payment_method ?? '') == 'cash' ? 'selected' : '' }}>Cash</option>
+                        </select>
+                        @error('payment_method')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Bank Transfer Details -->
+                    <div id="bank_details" class="space-y-4" style="display: none;">
+                        <h4 class="text-sm font-medium text-[#0E335D]">Bank Transfer Details</h4>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-[#0E335D] mb-2">Bank Name</label>
+                            <input type="text" name="bank_name" value="{{ old('bank_name', $paymentInfo->bank_name ?? '') }}"
+                                   class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
+                            @error('bank_name')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-[#0E335D] mb-2">Account Number</label>
+                            <input type="text" name="account_number" value="{{ old('account_number', $paymentInfo->account_number ?? '') }}"
+                                   class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
+                            @error('account_number')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-[#0E335D] mb-2">Account Name</label>
+                            <input type="text" name="account_name" value="{{ old('account_name', $paymentInfo->account_name ?? '') }}"
+                                   class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
+                            @error('account_name')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
-                    <div>
-                        <label class="text-xs sm:text-sm text-[#0E335D]">Account Number</label>
-                        <div class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm bg-gray-50">
-                            {{ $paymentInfo->account_number ?? 'N/A' }}
+
+                    <!-- PayPal Details -->
+                    <div id="paypal_details" class="space-y-4" style="display: none;">
+                        <h4 class="text-sm font-medium text-[#0E335D]">PayPal Details</h4>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-[#0E335D] mb-2">PayPal Email</label>
+                            <input type="email" name="paypal_email" value="{{ old('paypal_email', $paymentInfo->paypal_email ?? '') }}"
+                                   class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
+                            @error('paypal_email')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
-                    <div>
-                        <label class="text-xs sm:text-sm text-[#0E335D]">Account Name</label>
-                        <div class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm bg-gray-50">
-                            {{ $paymentInfo->account_name ?? 'N/A' }}
+
+                    <!-- GCash Details -->
+                    <div id="gcash_details" class="space-y-4" style="display: none;">
+                        <h4 class="text-sm font-medium text-[#0E335D]">GCash Details</h4>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-[#0E335D] mb-2">GCash Number</label>
+                            <input type="text" name="gcash_number" value="{{ old('gcash_number', $paymentInfo->gcash_number ?? '') }}"
+                                   class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
+                            @error('gcash_number')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
-                </div>
-            @else
-                <div class="text-center py-8">
-                    <i class="fas fa-credit-card text-4xl text-gray-400 mb-4"></i>
-                    <p class="text-gray-600 mb-4">No payment information set up yet.</p>
-                    <a href="{{ route('payment-information.index') }}"
-                       class="inline-block px-6 py-2 bg-[#0E335D] text-white text-sm rounded-lg hover:bg-gray-800 transform transition duration-200 hover:scale-105">
-                        Set Up Payment Information
-                    </a>
-                </div>
-            @endif
+
+                    <!-- PayMaya Details -->
+                    <div id="paymaya_details" class="space-y-4" style="display: none;">
+                        <h4 class="text-sm font-medium text-[#0E335D]">PayMaya Details</h4>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-[#0E335D] mb-2">PayMaya Number</label>
+                            <input type="text" name="paymaya_number" value="{{ old('paymaya_number', $paymentInfo->paymaya_number ?? '') }}"
+                                   class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
+                            @error('paymaya_number')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div>
+                        <label class="block text-sm font-medium text-[#0E335D] mb-2">Notes</label>
+                        <textarea name="notes" rows="3" 
+                                  class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent"
+                                  placeholder="Any additional notes about payment...">{{ old('notes', $paymentInfo->notes ?? '') }}</textarea>
+                        @error('notes')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" id="cancel-payment-form"
+                                class="px-4 py-2 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600 transform transition duration-200">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="px-6 py-3 bg-[#0E335D] text-white text-sm rounded-lg hover:bg-gray-800 transform transition duration-200 hover:scale-105">
+                            Update Payment Information
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Success/Error Messages -->
+            <div id="payment-messages" class="hidden"></div>
         </div>
 
         <!-- Security Section -->
@@ -379,10 +551,8 @@
     </div>
 
     <script>
-
-
-        // Auto-hide success/error messages after 5 seconds
         document.addEventListener('DOMContentLoaded', function() {
+            // Auto-hide success/error messages after 5 seconds
             const alerts = document.querySelectorAll('.bg-green-50, .bg-red-50');
             alerts.forEach(alert => {
                 setTimeout(() => {
@@ -393,6 +563,167 @@
                     }, 500);
                 }, 5000);
             });
+
+            // Payment Information Form Handling
+            const toggleButton = document.getElementById('toggle-payment-form');
+            const toggleText = document.getElementById('toggle-text');
+            const paymentDisplay = document.getElementById('payment-display');
+            const paymentForm = document.getElementById('payment-form');
+            const cancelButton = document.getElementById('cancel-payment-form');
+            const paymentFormElement = document.getElementById('payment-information-form');
+            const paymentMessages = document.getElementById('payment-messages');
+
+            // Toggle form visibility
+            toggleButton.addEventListener('click', function() {
+                if (paymentForm.style.display === 'none') {
+                    paymentForm.style.display = 'block';
+                    paymentDisplay.style.display = 'none';
+                    toggleText.textContent = 'View Payment Info';
+                    togglePaymentDetails(); // Show correct payment details
+                } else {
+                    paymentForm.style.display = 'none';
+                    paymentDisplay.style.display = 'block';
+                    toggleText.textContent = 'Edit Payment Info';
+                }
+            });
+
+            // Cancel form
+            cancelButton.addEventListener('click', function() {
+                paymentForm.style.display = 'none';
+                paymentDisplay.style.display = 'block';
+                toggleText.textContent = 'Edit Payment Info';
+                clearMessages();
+            });
+
+            // Handle form submission via AJAX
+            paymentFormElement.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const submitButton = this.querySelector('button[type="submit"]');
+                const originalText = submitButton.textContent;
+                
+                // Show loading state
+                submitButton.textContent = 'Updating...';
+                submitButton.disabled = true;
+                
+                fetch(this.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showMessage('success', data.message);
+                        // Update the display with new data
+                        updatePaymentDisplay(data.payment_info);
+                        // Hide form and show display
+                        paymentForm.style.display = 'none';
+                        paymentDisplay.style.display = 'block';
+                        toggleText.textContent = 'Edit Payment Info';
+                    } else {
+                        showMessage('error', data.message || 'An error occurred while updating payment information.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('error', 'An error occurred while updating payment information.');
+                })
+                .finally(() => {
+                    // Reset button state
+                    submitButton.textContent = originalText;
+                    submitButton.disabled = false;
+                });
+            });
+
+            // Payment method change handler
+            const paymentMethodSelect = document.getElementById('payment_method');
+            paymentMethodSelect.addEventListener('change', togglePaymentDetails);
+
+            function togglePaymentDetails() {
+                const bankDetails = document.getElementById('bank_details');
+                const paypalDetails = document.getElementById('paypal_details');
+                const gcashDetails = document.getElementById('gcash_details');
+                const paymayaDetails = document.getElementById('paymaya_details');
+
+                // Hide all details first
+                bankDetails.style.display = 'none';
+                paypalDetails.style.display = 'none';
+                gcashDetails.style.display = 'none';
+                paymayaDetails.style.display = 'none';
+
+                // Show relevant details based on selection
+                const selectedMethod = paymentMethodSelect.value;
+                switch(selectedMethod) {
+                    case 'bank_transfer':
+                        bankDetails.style.display = 'block';
+                        break;
+                    case 'paypal':
+                        paypalDetails.style.display = 'block';
+                        break;
+                    case 'gcash':
+                        gcashDetails.style.display = 'block';
+                        break;
+                    case 'paymaya':
+                        paymayaDetails.style.display = 'block';
+                        break;
+                }
+            }
+
+            function showMessage(type, message) {
+                clearMessages();
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `p-4 rounded-lg mb-4 ${
+                    type === 'success' 
+                        ? 'bg-green-50 border border-green-200 text-green-800' 
+                        : 'bg-red-50 border border-red-200 text-red-800'
+                }`;
+                messageDiv.innerHTML = `
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 ${type === 'success' ? 'text-green-400' : 'text-red-400'} mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${type === 'success' ? 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' : 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z'}"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium">${message}</p>
+                        </div>
+                    </div>
+                `;
+                paymentMessages.appendChild(messageDiv);
+                paymentMessages.classList.remove('hidden');
+
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    messageDiv.style.transition = 'opacity 0.5s ease-out';
+                    messageDiv.style.opacity = '0';
+                    setTimeout(() => {
+                        messageDiv.remove();
+                        if (paymentMessages.children.length === 0) {
+                            paymentMessages.classList.add('hidden');
+                        }
+                    }, 500);
+                }, 5000);
+            }
+
+            function clearMessages() {
+                paymentMessages.innerHTML = '';
+                paymentMessages.classList.add('hidden');
+            }
+
+            function updatePaymentDisplay(paymentInfo) {
+                // This function would update the display with the new payment information
+                // For now, we'll just reload the page section or update the display manually
+                // In a real implementation, you might want to update the DOM elements directly
+                location.reload(); // Simple solution - reload the page to show updated data
+            }
+
+            // Initialize payment details display
+            togglePaymentDetails();
         });
     </script>
 @endsection
