@@ -390,9 +390,21 @@ class ImportController extends Controller
                 'filename' => $file ? $file->getClientOriginalName() : 'unknown'
             ]);
 
+            // Provide more user-friendly error messages
+            $errorMessage = 'Upload failed';
+            if (strpos($e->getMessage(), 'Could not parse') !== false) {
+                $errorMessage = 'Invalid data format in Excel file. Please check that your file has the correct column structure.';
+            } elseif (strpos($e->getMessage(), 'timezone') !== false) {
+                $errorMessage = 'Invalid time format in Excel file. Please ensure time columns contain valid time values (e.g., 9:40).';
+            } elseif (strpos($e->getMessage(), 'date') !== false) {
+                $errorMessage = 'Invalid date format in Excel file. Please ensure date columns contain valid dates.';
+            } else {
+                $errorMessage = 'Upload failed: ' . $e->getMessage();
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'Upload failed: ' . $e->getMessage()
+                'message' => $errorMessage
             ], 400);
         }
     }
@@ -436,18 +448,32 @@ class ImportController extends Controller
         if (empty($value)) return null;
         
         try {
+            // Handle Excel numeric time values
             if (is_numeric($value) && $value < 1) {
                 return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value)->format('H:i:s');
             }
             
+            // Handle time format like "9:40" or "10:40"
             if (is_string($value) && preg_match('/^\d{1,2}:\d{2}$/', $value)) {
                 return Carbon::createFromFormat('H:i', $value)->format('H:i:s');
             }
             
+            // Handle time format like "9:40:00"
+            if (is_string($value) && preg_match('/^\d{1,2}:\d{2}:\d{2}$/', $value)) {
+                return Carbon::createFromFormat('H:i:s', $value)->format('H:i:s');
+            }
+            
+            // If it doesn't look like a time, return null instead of trying to parse it
+            if (is_string($value) && !preg_match('/^\d{1,2}[:\.]\d{2}/', $value)) {
+                Log::warning("Value doesn't look like a time format", ['input' => $value, 'row' => $rowNumber]);
+                return null;
+            }
+            
+            // Last resort: try to parse as time
             return Carbon::parse($value)->format('H:i:s');
         } catch (\Exception $e) {
-            Log::info("Time parsing failed, returning original", ['input' => $value, 'error' => $e->getMessage()]);
-            return is_string($value) ? $value : null;
+            Log::warning("Time parsing failed", ['input' => $value, 'error' => $e->getMessage(), 'row' => $rowNumber]);
+            return null;
         }
     }
 
