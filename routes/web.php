@@ -17,6 +17,10 @@ Route::get('/login', function () {
     return view('auth.login');
 })->name('login');
 
+// API route for getting security questions (moved from api.php to avoid CSRF issues)
+Route::post('/api/get-security-question', [\App\Http\Controllers\Auth\SimplePasswordResetController::class, 'getSecurityQuestion']);
+
+
 // APPLICATION FORM ROUTES
 Route::get('/application-form', function () {
     return view('application_form.application'); // main application form

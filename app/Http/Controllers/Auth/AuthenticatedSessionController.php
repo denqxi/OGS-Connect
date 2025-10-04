@@ -37,7 +37,7 @@ class AuthenticatedSessionController extends Controller
                 $request->session()->forget('url.intended');
                 
                 
-                return redirect('/scheduling?tab=employee');
+                return redirect('/dashboard');
             }
             return back()->withErrors([
                 'login_id' => 'Invalid supervisor ID or password.',
@@ -53,7 +53,7 @@ class AuthenticatedSessionController extends Controller
                 $request->session()->forget('url.intended');
                 
                 
-                return redirect('/scheduling?tab=employee');
+                return redirect('/dashboard');
             }
             return back()->withErrors([
                 'login_id' => 'Invalid tutor ID or password.',
@@ -69,7 +69,7 @@ class AuthenticatedSessionController extends Controller
                 $request->session()->forget('url.intended');
                 
                 
-                return redirect('/scheduling?tab=employee');
+                return redirect('/dashboard');
             }
             // Fallback: try supervisor email
             if (Auth::guard('supervisor')->attempt(['semail' => $loginId, 'password' => $password], $request->boolean('remember'))) {
@@ -83,7 +83,7 @@ class AuthenticatedSessionController extends Controller
                 $request->session()->forget('url.intended');
                 
                 
-                return redirect('/scheduling?tab=employee');
+                return redirect('/dashboard');
             }
             return back()->withErrors([
                 'login_id' => 'Invalid credentials.',

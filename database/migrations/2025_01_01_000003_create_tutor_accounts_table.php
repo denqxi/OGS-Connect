@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('tutor_accounts', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('tutor_id');
+            $table->string('tutor_id', 20);
             $table->string('account_name'); // 'GLS', 'Babilala', etc.
             $table->string('gls_id')->nullable(); // GLS numeric ID
             $table->string('account_number')->nullable(); // Account number for all account types

@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('tutor_details', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('tutor_id');
+            $table->string('tutor_id', 20);
             $table->text('address')->nullable();
             $table->text('esl_experience')->nullable();
-            $table->enum('work_setup', ['remote', 'onsite', 'hybrid'])->nullable();
+            $table->enum('work_setup', ['WFH', 'WAS', 'Hybrid'])->nullable();
             $table->date('first_day_teaching')->nullable();
             $table->enum('educational_attainment', [
                 'High School',

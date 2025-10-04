@@ -21,7 +21,7 @@ return new class extends Migration
             
             // Indexes
             $table->index(['user_type', 'user_id']);
-            $table->unique(['user_type', 'user_id']); // One security question per user
+            // Removed unique constraint to allow multiple questions per user
         });
     }
 

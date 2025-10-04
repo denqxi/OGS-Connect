@@ -12,6 +12,14 @@ class TutorSeeder extends Seeder
      */
     public function run(): void
     {
+        // Check if tutors already exist
+        if (Tutor::count() > 0) {
+            if ($this->command) {
+                $this->command->info('Tutors already exist, skipping...');
+            }
+            return;
+        }
+
         $tutors = [
             [
                 'tusername' => 'alicewong',

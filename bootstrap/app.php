@@ -23,11 +23,13 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SecurityHeaders::class,
         ]);
         
-        // Enable rate limiting for API routes
-        $middleware->throttleApi();
+        // Rate limiting can be configured here if needed
+        // $middleware->throttleApi();
         
         // Ensure CSRF protection is enabled for web routes
-        $middleware->validateCsrfTokens();
+        $middleware->validateCsrfTokens(except: [
+            'api/get-security-question'
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

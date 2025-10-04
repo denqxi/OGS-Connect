@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('tutor_assignments', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('daily_data_id');
-            $table->unsignedBigInteger('tutor_id');
+            $table->string('tutor_id', 20);
             $table->boolean('is_backup')->default(false);
             $table->boolean('was_promoted_from_backup')->default(false);
             $table->string('replaced_tutor_name')->nullable();

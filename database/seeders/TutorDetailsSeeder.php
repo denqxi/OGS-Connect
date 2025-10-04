@@ -71,6 +71,11 @@ class TutorDetailsSeeder extends Seeder
         ];
 
         foreach ($tutors as $tutor) {
+            // Check if tutor details already exist for this tutor
+            if (TutorDetails::where('tutor_id', $tutor->tutorID)->exists()) {
+                continue; // Skip if details already exist
+            }
+
             // Create a seed based on tutor ID for consistent assignment
             $seed = crc32($tutor->tutorID . 'details');
             mt_srand($seed);

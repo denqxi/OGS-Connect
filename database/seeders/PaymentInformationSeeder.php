@@ -104,7 +104,7 @@ class PaymentInformationSeeder extends Seeder
 
         // Add some variety with different payment methods
         $tutor = Tutor::skip(5)->first();
-        if ($tutor) {
+        if ($tutor && !$tutor->paymentInformation) {
             $gcashMethod = PaymentMethodDetails::where('payment_method_name', 'gcash')->first();
             $paymentInfo = EmployeePaymentInformation::create([
                 'employee_id' => $tutor->tutorID,
@@ -124,7 +124,7 @@ class PaymentInformationSeeder extends Seeder
         }
 
         $supervisor = Supervisor::skip(3)->first();
-        if ($supervisor) {
+        if ($supervisor && !$supervisor->paymentInformation) {
             $landbankMethod = PaymentMethodDetails::where('payment_method_name', 'landbank')->first();
             $paymentInfo = EmployeePaymentInformation::create([
                 'employee_id' => $supervisor->supID,

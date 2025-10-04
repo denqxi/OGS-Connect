@@ -207,11 +207,15 @@ class SimplePasswordResetController extends Controller
     public function getSecurityQuestion(Request $request)
     {
         try {
-            $request->validate([
-                'username' => 'required|string|max:255',
-            ]);
-
-            $username = $request->username;
+            // Handle both JSON and form data
+            $username = $request->input('username') ?? $request->json('username');
+            
+            if (!$username) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Username is required'
+                ], 400);
+            }
 
             // Auto-detect account type by searching both tutor and supervisor tables
             $user = null;

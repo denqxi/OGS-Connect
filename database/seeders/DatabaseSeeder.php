@@ -13,12 +13,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Create test user only if it doesn't exist
+        if (!User::where('email', 'test@example.com')->exists()) {
+            User::factory()->create([
+                'name' => 'Test User',
+                'email' => 'test@example.com',
+            ]);
+        }
 
         // Seed core data in proper order
         $this->call([
@@ -26,9 +27,10 @@ class DatabaseSeeder extends Seeder
             TutorSeeder::class,
             TutorDetailsSeeder::class,
             TutorAccountSeeder::class,
+            PaymentMethodDetailsSeeder::class,
             PaymentInformationSeeder::class,
             TutorAssignmentSeeder::class,
-            SampleScheduleSeeder::class,
+            SecurityQuestionsSeeder::class,
         ]);
     }
 }

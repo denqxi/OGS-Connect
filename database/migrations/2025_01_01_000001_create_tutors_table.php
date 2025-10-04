@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('tutors', function (Blueprint $table) {
-            $table->id('tutorID');
+            $table->string('tutorID', 20)->primary();
             $table->string('first_name', 50);
             $table->string('last_name', 50);
             $table->string('email', 100)->unique();
@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('tusername', 50)->unique();
             $table->string('tpassword', 255); // hashed password
             $table->enum('status', ['active', 'inactive'])->default('active');
-            $table->enum('sex', ['male', 'female', 'other'])->nullable();
+            $table->enum('sex', ['M', 'F', 'other'])->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

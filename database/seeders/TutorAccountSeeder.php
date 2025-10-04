@@ -52,6 +52,13 @@ class TutorAccountSeeder extends Seeder
             $assignedCompanies = $this->getAssignedCompaniesForTutor($tutor);
             
             foreach ($assignedCompanies as $companyName) {
+                // Check if account already exists for this tutor and company
+                if (TutorAccount::where('tutor_id', $tutor->tutorID)
+                    ->where('account_name', $companyName)
+                    ->exists()) {
+                    continue; // Skip if account already exists
+                }
+
                 $config = $companies[$companyName];
                 
                 // Get personalized availability for this tutor and company

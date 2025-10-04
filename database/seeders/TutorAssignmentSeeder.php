@@ -17,24 +17,16 @@ class TutorAssignmentSeeder extends Seeder
         $this->command->info('This will create data for cosine similarity-based tutor assignment');
         $this->command->newLine();
 
-        // Step 1: Seed additional tutors
-        $this->command->info('📚 Step 1: Adding more tutors...');
-        $this->call(TutorSeeder::class);
+        // Step 1: Check existing tutors
+        $this->command->info('📚 Step 1: Checking existing tutors...');
+        $tutorCount = \App\Models\Tutor::count();
+        $this->command->info("Found {$tutorCount} existing tutors");
         $this->command->newLine();
 
-        // Step 2: Create time slots for availability matching
-        $this->command->info('⏰ Step 2: Creating time slots...');
-        $this->call(TimeSlotSeeder::class);
-        $this->command->newLine();
-
-        // Step 3: Create tutor accounts for all companies
-        $this->command->info('🏢 Step 3: Creating tutor accounts for all companies...');
-        $this->call(TutorAccountSeeder::class);
-        $this->command->newLine();
-
-        // Step 4: Create tutor availability patterns
-        $this->command->info('👥 Step 4: Assigning tutor availability patterns...');
-        $this->call(TutorAvailabilitySeeder::class);
+        // Step 2: Check existing tutor accounts
+        $this->command->info('🏢 Step 2: Checking existing tutor accounts...');
+        $accountCount = \App\Models\TutorAccount::count();
+        $this->command->info("Found {$accountCount} existing tutor accounts");
         $this->command->newLine();
 
         // Step 5: Summary of seeded data
@@ -54,9 +46,7 @@ class TutorAssignmentSeeder extends Seeder
     {
         $tutorsCount = \App\Models\Tutor::count();
         $activeTutorsCount = \App\Models\Tutor::where('status', 'active')->count();
-        $timeSlotsCount = DB::table('time_slots')->count();
-        $availabilitiesCount = DB::table('availabilities')->count();
-        $availableCount = DB::table('availabilities')->where('availStatus', 'available')->count();
+        $accountsCount = \App\Models\TutorAccount::count();
         $classesCount = \App\Models\DailyData::count();
 
         $this->command->table([
@@ -64,23 +54,10 @@ class TutorAssignmentSeeder extends Seeder
         ], [
             ['Total Tutors', $tutorsCount],
             ['Active Tutors', $activeTutorsCount],
-            ['Time Slots Created', $timeSlotsCount],
-            ['Availability Records', $availabilitiesCount],
-            ['Available Slots', $availableCount],
+            ['Tutor Accounts', $accountsCount],
             ['Classes Requiring Tutors', $classesCount],
         ]);
 
-        // Show tutor availability distribution
-        $this->command->info('🔍 Tutor Availability Distribution:');
-        $tutors = \App\Models\Tutor::all();
-
-        foreach ($tutors as $tutor) {
-            $availableSlots = DB::table('availabilities')
-                ->where('tutorID', $tutor->tutorID)
-                ->where('availStatus', 'available')
-                ->count();
-            $status = $tutor->status === 'active' ? '🟢' : '🔴';
-            $this->command->info("  {$status} {$tutor->tusername}: {$availableSlots} available slots");
-        }
+        $this->command->info('✅ Tutor assignment system is ready for use!');
     }
 }

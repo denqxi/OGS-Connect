@@ -10,6 +10,14 @@ class SupervisorSeeder extends Seeder
 {
     public function run(): void
     {
+        // Check if supervisors already exist
+        if (DB::table('supervisors')->count() > 0) {
+            if ($this->command) {
+                $this->command->info('Supervisors already exist, skipping...');
+            }
+            return;
+        }
+
         // Insert supervisors with formatted IDs as primary keys
         DB::table('supervisors')->insert([
             [
@@ -19,7 +27,7 @@ class SupervisorSeeder extends Seeder
                 'slname' => 'Supervisor',
                 'semail' => 'admin@ogsconnect.com',
                 'sconNum' => '09171234567',
-                'password' => bcrypt('password123'),
+                'password' => bcrypt('admin3214'),
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -30,7 +38,7 @@ class SupervisorSeeder extends Seeder
                 'slname' => 'Smith',
                 'semail' => 'jane.smith@ogsconnect.com',
                 'sconNum' => '09179876543',
-                'password' => bcrypt('password123'),
+                'password' => bcrypt('admin3214'),
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
