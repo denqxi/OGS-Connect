@@ -496,4 +496,46 @@ class ImportController extends Controller
         if (empty($value)) return null;
         return trim((string) $value);
     }
+
+    /**
+     * Normalize day name (convert abbreviated to full)
+     */
+    private function normalizeDayName($day)
+    {
+        $day = strtolower(trim($day));
+        
+        // Handle abbreviated day names
+        if (strlen($day) <= 4) {
+            $dayMap = [
+                'mon' => 'Monday', 'tue' => 'Tuesday', 'wed' => 'Wednesday',
+                'thur' => 'Thursday', 'fri' => 'Friday', 'sat' => 'Saturday', 'sun' => 'Sunday'
+            ];
+            return $dayMap[$day] ?? ucfirst($day);
+        }
+        
+        // Handle full day names (lowercase)
+        $fullDayMap = [
+            'monday' => 'Monday', 'tuesday' => 'Tuesday', 'wednesday' => 'Wednesday',
+            'thursday' => 'Thursday', 'friday' => 'Friday', 'saturday' => 'Saturday', 'sunday' => 'Sunday'
+        ];
+        
+        return $fullDayMap[$day] ?? ucfirst($day);
+    }
+
+    /**
+     * Validate and sanitize day name to prevent SQL injection
+     */
+    private function validateDayName($day)
+    {
+        $validDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        $normalizedDay = $this->normalizeDayName($day);
+        
+        // Only return if it's a valid day name
+        if (in_array($normalizedDay, $validDays)) {
+            return $normalizedDay;
+        }
+        
+        // Return null for invalid day names
+        return null;
+    }
 }
