@@ -123,7 +123,7 @@
             <input type="text" name="login_id" id="login_id" placeholder="Supervisor/Tutor ID or Email" required
                     class="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-4 lg:py-5 bg-white border border-stone-300 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all duration-200 text-sm sm:text-base @error('login_id') border-red-500 @enderror"
                     value="{{ old('login_id') }}"
-                    pattern="^(OGS-[ST]\d{4}|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$"
+                    pattern="^(OGS-[ST]\d{4}|[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})$"
                     title="Please enter a valid ID or email address.">
             <div id="login_id_validation" class="mt-1 text-sm text-red-600 hidden">
               Please enter a valid ID or email address.
@@ -420,7 +420,7 @@
       // Validate ID format (OGS-S1001, OGS-T1001, etc.)
       const idPattern = /^OGS-[ST]\d{4}$/;
       // Validate email format
-      const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      const emailPattern = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
       
       if (idPattern.test(value) || emailPattern.test(value)) {
         // Valid input

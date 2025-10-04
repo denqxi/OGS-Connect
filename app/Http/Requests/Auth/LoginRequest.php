@@ -30,7 +30,7 @@ class LoginRequest extends FormRequest
             'login_id' => [
                 'required', 
                 'string',
-                'regex:/^(OGS-[ST]\d{4}|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/'
+                'regex:/^(OGS-[ST]\d{4}|[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})$/'
             ],
             'password' => ['required', 'string'],
         ];
