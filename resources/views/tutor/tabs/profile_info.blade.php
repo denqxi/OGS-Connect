@@ -124,23 +124,15 @@
                         <input type="checkbox"
                             class="w-4 h-4 accent-[#0E335D] border-gray-300 dark:border-gray-500"><span>Fri</span>
                     </label>
-                    <label class="flex items-center space-x-1 text-gray-700 dark:text-gray-300 text-sm">
-                        <input type="checkbox"
-                            class="w-4 h-4 accent-[#0E335D] border-gray-300 dark:border-gray-500"><span>Sat</span>
-                    </label>
-                    <label class="flex items-center space-x-1 text-gray-700 dark:text-gray-300 text-sm">
-                        <input type="checkbox"
-                            class="w-4 h-4 accent-[#0E335D] border-gray-300 dark:border-gray-500"><span>Sun</span>
-                    </label>
                 </div>
                 <div class="flex gap-2">
                     <select
                         class="flex-1 border border-gray-200 dark:border-gray-500 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-gray-100 hover:border-[#0E335D] focus:border-[#0E335D] focus:ring-1 focus:ring-[#0E335D] transition-all duration-150">
-                        <option>6:00 PM</option>
+                        <option>Start-time</option>
                     </select>
                     <select
                         class="flex-1 border border-gray-200 dark:border-gray-500 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-gray-100 hover:border-[#0E335D] focus:border-[#0E335D] focus:ring-1 focus:ring-[#0E335D] transition-all duration-150">
-                        <option>5:00 AM</option>
+                        <option>End-time</option>
                     </select>
                 </div>
             </div>
@@ -185,11 +177,11 @@
                 <div class="flex gap-2">
                     <select
                         class="flex-1 border border-gray-200 dark:border-gray-500 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-gray-100 hover:border-[#A78BFA] focus:border-[#A78BFA] focus:ring-1 focus:ring-[#A78BFA] transition-all duration-150">
-                        <option>6:00 PM</option>
+                        <option>Start-time</option>
                     </select>
                     <select
                         class="flex-1 border border-gray-200 dark:border-gray-500 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-gray-100 hover:border-[#A78BFA] focus:border-[#A78BFA] focus:ring-1 focus:ring-[#A78BFA] transition-all duration-150">
-                        <option>5:00 AM</option>
+                        <option>    End-time</option>
                     </select>
                 </div>
             </div>
@@ -234,11 +226,11 @@
                 <div class="flex gap-2">
                     <select
                         class="flex-1 border border-gray-200 dark:border-gray-500 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-gray-100 hover:border-[#E6B800] focus:border-[#E6B800] focus:ring-1 focus:ring-[#E6B800] transition-all duration-150">
-                        <option>6:00 PM</option>
+                        <option>Start-time</option>
                     </select>
                     <select
                         class="flex-1 border border-gray-200 dark:border-gray-500 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-gray-100 hover:border-[#E6B800] focus:border-[#E6B800] focus:ring-1 focus:ring-[#E6B800] transition-all duration-150">
-                        <option>5:00 AM</option>
+                        <option>End-time</option>
                     </select>
                 </div>
             </div>
@@ -283,101 +275,14 @@
                 <div class="flex gap-2">
                     <select
                         class="flex-1 border border-gray-200 dark:border-gray-500 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-gray-100 hover:border-[#128AD4] focus:border-[#128AD4] focus:ring-1 focus:ring-[#128AD4] transition-all duration-150">
-                        <option>6:00 PM</option>
+                        <option>Start-time</option>
                     </select>
                     <select
                         class="flex-1 border border-gray-200 dark:border-gray-500 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-gray-100 hover:border-[#128AD4] focus:border-[#128AD4] focus:ring-1 focus:ring-[#128AD4] transition-all duration-150">
-                        <option>5:00 AM</option>
+                        <option>End-time</option>
                     </select>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <hr class="border-gray-300 dark:border-gray-700">
-
-    <!-- Class Schedule -->
-    <h3 class="font-semibold text-gray-700 dark:text-gray-200 mb-3">Class Schedule</h3>
-    <div
-        class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 md:p-6 space-y-4 border border-gray-200 dark:border-gray-700">
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <!-- Single Class Card -->
-            <div
-                class="bg-white dark:bg-gray-700 shadow rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
-                <div class="bg-[#0E335D] dark:bg-[#1E3A5F] text-white px-4 py-2 font-semibold text-center">
-                    TAKADA | 3-SA | 8:40 AM
-                </div>
-                <div class="p-4 grid grid-cols-2 gap-2">
-                    <div
-                        class="bg-[#ECFDF5] dark:bg-gray-600 text-[#065F46] dark:text-[#D1FAE5] rounded-md px-3 py-2 text-center font-medium">
-                        Fatherine</div>
-                    <div
-                        class="bg-[#ECFDF5] dark:bg-gray-600 text-[#065F46] dark:text-[#D1FAE5] rounded-md px-3 py-2 text-center font-medium">
-                        Kath</div>
-                    <div
-                        class="bg-[#ECFDF5] dark:bg-gray-600 text-[#065F46] dark:text-[#D1FAE5] rounded-md px-3 py-2 text-center font-medium">
-                        Melky</div>
-                    <div
-                        class="bg-[#ECFDF5] dark:bg-gray-600 text-[#065F46] dark:text-[#D1FAE5] rounded-md px-3 py-2 text-center font-medium">
-                        Jody</div>
-                </div>
-                <div
-                    class="px-4 py-2 bg-[#F3F4F6] dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-xs text-center">
-                    Slots: 4/4
-                </div>
-            </div>
-            <!-- Single Class Card -->
-            <div
-                class="bg-white dark:bg-gray-700 shadow rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
-                <div class="bg-[#0E335D] dark:bg-[#1E3A5F] text-white px-4 py-2 font-semibold text-center">
-                    TENSHIN | 3-SA | 9:40 AM
-                </div>
-                <div class="p-4 grid grid-cols-2 gap-2">
-                    <div
-                        class="bg-[#ECFDF5] dark:bg-gray-600 text-[#065F46] dark:text-[#D1FAE5] rounded-md px-3 py-2 text-center font-medium">
-                        Fatherine</div>
-                    <div
-                        class="bg-[#ECFDF5] dark:bg-gray-600 text-[#065F46] dark:text-[#D1FAE5] rounded-md px-3 py-2 text-center font-medium">
-                        Kath</div>
-                    <div
-                        class="bg-[#ECFDF5] dark:bg-gray-600 text-[#065F46] dark:text-[#D1FAE5] rounded-md px-3 py-2 text-center font-medium">
-                        Melky</div>
-                    <div
-                        class="bg-[#ECFDF5] dark:bg-gray-600 text-[#065F46] dark:text-[#D1FAE5] rounded-md px-3 py-2 text-center font-medium">
-                        Jody</div>
-                </div>
-                <div
-                    class="px-4 py-2 bg-[#F3F4F6] dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-xs text-center">
-                    Slots: 4/4
-                </div>
-            </div>
-            <!-- Single Class Card -->
-            <div
-                class="bg-white dark:bg-gray-700 shadow rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
-                <div class="bg-[#0E335D] dark:bg-[#1E3A5F] text-white px-4 py-2 font-semibold text-center">
-                    SAKURAGAOKA | 5-SA | 10:40 AM
-                </div>
-                <div class="p-4 grid grid-cols-2 gap-2">
-                    <div
-                        class="bg-[#ECFDF5] dark:bg-gray-600 text-[#065F46] dark:text-[#D1FAE5] rounded-md px-3 py-2 text-center font-medium">
-                        Fatherine</div>
-                    <div
-                        class="bg-[#ECFDF5] dark:bg-gray-600 text-[#065F46] dark:text-[#D1FAE5] rounded-md px-3 py-2 text-center font-medium">
-                        Kath</div>
-                    <div
-                        class="bg-[#ECFDF5] dark:bg-gray-600 text-[#065F46] dark:text-[#D1FAE5] rounded-md px-3 py-2 text-center font-medium">
-                        Melky</div>
-                    <div
-                        class="bg-[#ECFDF5] dark:bg-gray-600 text-[#065F46] dark:text-[#D1FAE5] rounded-md px-3 py-2 text-center font-medium">
-                        Jody</div>
-                </div>
-                <div
-                    class="px-4 py-2 bg-[#F3F4F6] dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-xs text-center">
-                    Slots: 4/4
-                </div>
-            </div>
-            <!-- Repeat other class cards -->
         </div>
     </div>
 </div>

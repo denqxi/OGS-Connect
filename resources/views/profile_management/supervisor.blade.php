@@ -214,7 +214,7 @@
                 <h3 class="text-base sm:text-lg md:text-xl font-semibold text-[#0E335D] border-b-2 border-[#0E335D] pb-2">
                     Payment Information</h3>
                 <button id="toggle-payment-form" type="button"
-                    class="px-4 py-2 bg-[#0E335D] text-white text-xs sm:text-sm rounded-lg hover:bg-gray-800 transform transition duration-200 hover:scale-105">
+                    class="px-4 py-2 bg-[#0E335D] text-white text-xs sm:text-sm rounded-full hover:bg-gray-800 transform transition duration-200 hover:scale-105">
                     <span id="toggle-text">Edit Payment Info</span>
                 </button>
             </div>
@@ -437,11 +437,11 @@
                     <!-- Form Actions -->
                     <div class="flex justify-end space-x-3">
                         <button type="button" id="cancel-payment-form"
-                            class="px-4 py-2 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600 transform transition duration-200">
+                            class="px-4 py-2 bg-gray-500 text-white text-sm rounded-full hover:bg-gray-600 transform transition duration-200">
                             Cancel
                         </button>
                         <button type="submit"
-                            class="px-6 py-3 bg-[#0E335D] text-white text-sm rounded-lg hover:bg-gray-800 transform transition duration-200 hover:scale-105">
+                            class="px-6 py-3 bg-[#0E335D] text-white text-sm rounded-full hover:bg-gray-800 transform transition duration-200 hover:scale-105">
                             Update Payment Information
                         </button>
                     </div>
