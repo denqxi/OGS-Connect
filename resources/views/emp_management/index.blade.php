@@ -56,6 +56,14 @@
                 <span class="hidden sm:inline">Supervisors</span>
             </a>
 
+            <!-- Archive -->
+            <a href="{{ route('employees.index', ['tab' => 'archive']) }}"
+                class="flex-shrink-0 py-3 md:py-4 px-2 md:px-1 
+           {{ request('tab') == 'archive' ? 'border-b-2 border-[#E02F2F] text-[#E02F2F]' : 'text-[#E02F2F] hover:text-[#E02F2F]/70' }} 
+           font-medium text-sm md:text-base flex items-center space-x-2">
+                <i class="fas fa-archive"></i>
+                <span class="hidden sm:inline">Archive</span>
+            </a>
 
         </nav>
     </div>
@@ -74,6 +82,8 @@
                     @include('emp_management.tabs.talk915')
                 @elseif($activeTab == 'supervisors')
                     @include('emp_management.tabs.supervisors')
+                @elseif($activeTab == 'archive')
+                    @include('emp_management.tabs.employee_archive')
                 @endif
             </div>
         </div>

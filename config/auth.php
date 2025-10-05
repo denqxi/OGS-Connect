@@ -43,6 +43,10 @@ return [
             'driver' => 'session',
             'provider' => 'supervisors',
         ],
+        'tutor' => [
+            'driver' => 'session',
+            'provider' => 'tutors',
+        ],
     ],
 
     /*
@@ -65,11 +69,15 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\User::class,
+            'model' => App\Models\Tutor::class,
         ],
         'supervisors' => [
             'driver' => 'eloquent',
             'model' => App\Models\Supervisor::class,
+        ],
+        'tutors' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Tutor::class,
         ],
     ],
 

@@ -58,6 +58,12 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
     Route::get('/payment-information-all', [PaymentInformationController::class, 'getAll'])->name('payment-information.all');
 });
 
+Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
+    Route::get('/tutor_portal', function () {
+        return view('tutor.tutor_portal');
+    })->name('tutor.portal');
+});
+
 // Custom logout route for supervisors (doesn't require auth middleware)
 Route::post('/supervisor-logout', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])->name('supervisor.logout');
 

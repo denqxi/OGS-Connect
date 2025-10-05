@@ -8,12 +8,13 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
         <!-- Success Message -->
-        @if(session('success'))
+        @if (session('success'))
             <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
                 <div class="flex items-start">
                     <div class="flex-shrink-0">
                         <svg class="h-5 w-5 text-green-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                     </div>
                     <div class="ml-3">
@@ -29,12 +30,13 @@
         @endif
 
         <!-- Error Message -->
-        @if(session('error'))
+        @if (session('error'))
             <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
                 <div class="flex items-start">
                     <div class="flex-shrink-0">
                         <svg class="h-5 w-5 text-red-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                     </div>
                     <div class="ml-3">
@@ -73,8 +75,10 @@
 
 
                 <div class="text-left">
-                    <h2 class="text-lg sm:text-xl md:text-2xl font-semibold text-[#0E335D]">{{ $supervisor->full_name ?? 'Supervisor Name' }}</h2>
-                    <p class="text-xs sm:text-sm md:text-base text-[#0E335D]">{{ $supervisor->semail ?? 'supervisor@email.com' }}</p>
+                    <h2 class="text-lg sm:text-xl md:text-2xl font-semibold text-[#0E335D]">
+                        {{ $supervisor->full_name ?? 'Supervisor Name' }}</h2>
+                    <p class="text-xs sm:text-sm md:text-base text-[#0E335D]">
+                        {{ $supervisor->semail ?? 'supervisor@email.com' }}</p>
                 </div>
             </div>
 
@@ -84,7 +88,7 @@
                 <h3 class="text-sm sm:text-base md:text-lg font-semibold text-[#0E335D]">
                     {{ $supervisor->assigned_account ? $supervisor->assigned_account . ' Supervisor' : 'Supervisor' }}
                 </h3>
-                @if($supervisor->assigned_account)
+                @if ($supervisor->assigned_account)
                     <p class="text-xs text-gray-500 mt-1">Managing {{ $supervisor->assigned_account }} tutors</p>
                 @endif
             </div>
@@ -94,10 +98,10 @@
         <div class="bg-white shadow-md rounded-xl p-4 sm:p-6 space-y-4">
             <h3 class="text-base sm:text-lg md:text-xl font-semibold text-[#0E335D] border-b-2 border-[#0E335D] pb-2">
                 Personal Information</h3>
-            
+
             <form method="POST" action="{{ route('supervisor.personal-info.update') }}" class="space-y-4">
                 @csrf
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="text-xs sm:text-sm text-[#0E335D]">First Name *</label>
                         <input type="text" name="sfname" required
@@ -126,15 +130,6 @@
                         @enderror
                     </div>
                     <div>
-                        <label class="text-xs sm:text-sm text-[#0E335D]">Contact Number</label>
-                        <input type="text" name="sconNum"
-                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
-                            value="{{ old('sconNum', $supervisor->sconNum ?? '+639123456789') }}">
-                        @error('sconNum')
-                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div>
                         <label class="text-xs sm:text-sm text-[#0E335D]">Address</label>
                         <input type="text" name="saddress"
                             class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
@@ -144,24 +139,52 @@
                         @enderror
                     </div>
                     <div>
+                        <label class="text-xs sm:text-sm text-[#0E335D]">Contact Number</label>
+                        <input type="text" name="sconNum"
+                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
+                            value="{{ old('sconNum', $supervisor->sconNum ?? '+639123456789') }}">
+                        @error('sconNum')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="text-xs sm:text-sm text-[#0E335D]">Email</label>
+                        <input type="text" name="semail"
+                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
+                            value="{{ old('semail', $supervisor->semail ?? 'admin@ogsconnect.com') }}">
+                        @error('semail')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
                         <label class="text-xs sm:text-sm text-[#0E335D]">MS Teams Account</label>
                         <input type="email" name="steams"
                             class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
-                            value="{{ old('steams', $supervisor->steams ?? '') }}"
-                            placeholder="Enter your MS Teams email">
+                            value="{{ old('steams', $supervisor->steams ?? '') }}" placeholder="Enter your MS Teams email">
                         @error('steams')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
                         <label class="text-xs sm:text-sm text-[#0E335D]">Shift</label>
-                        <select name="sshift" class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]">
+                        <select name="sshift"
+                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]">
                             <option value="">Select Shift</option>
-                            <option value="Day Shift" {{ old('sshift', $supervisor->sshift ?? '') == 'Day Shift' ? 'selected' : '' }}>Day Shift</option>
-                            <option value="Night Shift" {{ old('sshift', $supervisor->sshift ?? '') == 'Night Shift' ? 'selected' : '' }}>Night Shift</option>
-                            <option value="Evening Shift" {{ old('sshift', $supervisor->sshift ?? '') == 'Evening Shift' ? 'selected' : '' }}>Evening Shift</option>
-                            <option value="Morning Shift" {{ old('sshift', $supervisor->sshift ?? '') == 'Morning Shift' ? 'selected' : '' }}>Morning Shift</option>
-                            <option value="Flexible" {{ old('sshift', $supervisor->sshift ?? '') == 'Flexible' ? 'selected' : '' }}>Flexible</option>
+                            <option value="Day Shift"
+                                {{ old('sshift', $supervisor->sshift ?? '') == 'Day Shift' ? 'selected' : '' }}>Day Shift
+                            </option>
+                            <option value="Night Shift"
+                                {{ old('sshift', $supervisor->sshift ?? '') == 'Night Shift' ? 'selected' : '' }}>Night
+                                Shift</option>
+                            <option value="Evening Shift"
+                                {{ old('sshift', $supervisor->sshift ?? '') == 'Evening Shift' ? 'selected' : '' }}>Evening
+                                Shift</option>
+                            <option value="Morning Shift"
+                                {{ old('sshift', $supervisor->sshift ?? '') == 'Morning Shift' ? 'selected' : '' }}>Morning
+                                Shift</option>
+                            <option value="Flexible"
+                                {{ old('sshift', $supervisor->sshift ?? '') == 'Flexible' ? 'selected' : '' }}>Flexible
+                            </option>
                         </select>
                         @error('sshift')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -172,7 +195,8 @@
                         <div class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm bg-gray-50">
                             {{ $supervisor->supID ?? 'Not assigned' }}
                         </div>
-                        <p class="mt-1 text-xs text-gray-500">System ID is automatically assigned and cannot be changed.</p>
+                        <p class="mt-1 text-xs text-gray-500">System ID is automatically assigned and cannot be changed.
+                        </p>
                     </div>
                 </div>
                 <div class="flex justify-end">
@@ -190,18 +214,18 @@
                 <h3 class="text-base sm:text-lg md:text-xl font-semibold text-[#0E335D] border-b-2 border-[#0E335D] pb-2">
                     Payment Information</h3>
                 <button id="toggle-payment-form" type="button"
-                        class="px-4 py-2 bg-[#0E335D] text-white text-xs sm:text-sm rounded-lg hover:bg-gray-800 transform transition duration-200 hover:scale-105">
+                    class="px-4 py-2 bg-[#0E335D] text-white text-xs sm:text-sm rounded-lg hover:bg-gray-800 transform transition duration-200 hover:scale-105">
                     <span id="toggle-text">Edit Payment Info</span>
                 </button>
             </div>
-            
+
             @php
                 $paymentInfo = $supervisor->paymentInformation ?? null;
             @endphp
-            
+
             <!-- Payment Information Display -->
             <div id="payment-display" class="space-y-4">
-                @if($paymentInfo)
+                @if ($paymentInfo)
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="text-xs sm:text-sm text-[#0E335D]">Payment Method</label>
@@ -214,16 +238,20 @@
                                 @switch($paymentInfo->payment_method)
                                     @case('gcash')
                                         GCash Number
-                                        @break
+                                    @break
+
                                     @case('paymaya')
                                         PayMaya Number
-                                        @break
+                                    @break
+
                                     @case('paypal')
                                         PayPal Email
-                                        @break
+                                    @break
+
                                     @case('bank_transfer')
                                         Account Number
-                                        @break
+                                    @break
+
                                     @default
                                         Account Number
                                 @endswitch
@@ -232,44 +260,48 @@
                                 @switch($paymentInfo->payment_method)
                                     @case('gcash')
                                         {{ $paymentInfo->gcash_number ?? 'N/A' }}
-                                        @break
+                                    @break
+
                                     @case('paymaya')
                                         {{ $paymentInfo->paymaya_number ?? 'N/A' }}
-                                        @break
+                                    @break
+
                                     @case('paypal')
                                         {{ $paymentInfo->paypal_email ?? 'N/A' }}
-                                        @break
+                                    @break
+
                                     @case('bank_transfer')
                                         {{ $paymentInfo->account_number ?? 'N/A' }}
-                                        @break
+                                    @break
+
                                     @default
                                         {{ $paymentInfo->account_number ?? 'N/A' }}
                                 @endswitch
                             </div>
                         </div>
-                        @if($paymentInfo->payment_method === 'bank_transfer')
-                        <div>
-                            <label class="text-xs sm:text-sm text-[#0E335D]">Bank Name</label>
-                            <div class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm bg-gray-50">
-                                {{ $paymentInfo->bank_name ?? 'N/A' }}
+                        @if ($paymentInfo->payment_method === 'bank_transfer')
+                            <div>
+                                <label class="text-xs sm:text-sm text-[#0E335D]">Bank Name</label>
+                                <div class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm bg-gray-50">
+                                    {{ $paymentInfo->bank_name ?? 'N/A' }}
+                                </div>
                             </div>
-                        </div>
                         @endif
-                        @if($paymentInfo->payment_method === 'bank_transfer' || $paymentInfo->account_name)
-                        <div>
-                            <label class="text-xs sm:text-sm text-[#0E335D]">Account Name</label>
-                            <div class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm bg-gray-50">
-                                {{ $paymentInfo->account_name ?? 'N/A' }}
+                        @if ($paymentInfo->payment_method === 'bank_transfer' || $paymentInfo->account_name)
+                            <div>
+                                <label class="text-xs sm:text-sm text-[#0E335D]">Account Name</label>
+                                <div class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm bg-gray-50">
+                                    {{ $paymentInfo->account_name ?? 'N/A' }}
+                                </div>
                             </div>
-                        </div>
                         @endif
-                        @if($paymentInfo->notes)
-                        <div class="md:col-span-2">
-                            <label class="text-xs sm:text-sm text-[#0E335D]">Notes</label>
-                            <div class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm bg-gray-50">
-                                {{ $paymentInfo->notes }}
+                        @if ($paymentInfo->notes)
+                            <div class="md:col-span-2">
+                                <label class="text-xs sm:text-sm text-[#0E335D]">Notes</label>
+                                <div class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm bg-gray-50">
+                                    {{ $paymentInfo->notes }}
+                                </div>
                             </div>
-                        </div>
                         @endif
                     </div>
                 @else
@@ -284,17 +316,27 @@
             <div id="payment-form" class="space-y-4" style="display: none;">
                 <form id="payment-information-form" method="POST" action="{{ route('payment-information.store') }}">
                     @csrf
-                    
+
                     <!-- Payment Method -->
                     <div>
                         <label class="block text-sm font-medium text-[#0E335D] mb-2">Payment Method *</label>
                         <select name="payment_method" id="payment_method" required
-                                class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
-                            <option value="gcash" {{ old('payment_method', $paymentInfo->payment_method ?? 'gcash') == 'gcash' ? 'selected' : '' }}>GCash</option>
-                            <option value="paypal" {{ old('payment_method', $paymentInfo->payment_method ?? '') == 'paypal' ? 'selected' : '' }}>PayPal</option>
-                            <option value="paymaya" {{ old('payment_method', $paymentInfo->payment_method ?? '') == 'paymaya' ? 'selected' : '' }}>PayMaya</option>
-                            <option value="bank_transfer" {{ old('payment_method', $paymentInfo->payment_method ?? '') == 'bank_transfer' ? 'selected' : '' }}>Bank Transfer</option>
-                            <option value="cash" {{ old('payment_method', $paymentInfo->payment_method ?? '') == 'cash' ? 'selected' : '' }}>Cash</option>
+                            class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
+                            <option value="gcash"
+                                {{ old('payment_method', $paymentInfo->payment_method ?? 'gcash') == 'gcash' ? 'selected' : '' }}>
+                                GCash</option>
+                            <option value="paypal"
+                                {{ old('payment_method', $paymentInfo->payment_method ?? '') == 'paypal' ? 'selected' : '' }}>
+                                PayPal</option>
+                            <option value="paymaya"
+                                {{ old('payment_method', $paymentInfo->payment_method ?? '') == 'paymaya' ? 'selected' : '' }}>
+                                PayMaya</option>
+                            <option value="bank_transfer"
+                                {{ old('payment_method', $paymentInfo->payment_method ?? '') == 'bank_transfer' ? 'selected' : '' }}>
+                                Bank Transfer</option>
+                            <option value="cash"
+                                {{ old('payment_method', $paymentInfo->payment_method ?? '') == 'cash' ? 'selected' : '' }}>
+                                Cash</option>
                         </select>
                         @error('payment_method')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -304,29 +346,32 @@
                     <!-- Bank Transfer Details -->
                     <div id="bank_details" class="space-y-4" style="display: none;">
                         <h4 class="text-sm font-medium text-[#0E335D]">Bank Transfer Details</h4>
-                        
+
                         <div>
                             <label class="block text-sm font-medium text-[#0E335D] mb-2">Bank Name</label>
-                            <input type="text" name="bank_name" value="{{ old('bank_name', $paymentInfo->bank_name ?? '') }}"
-                                   class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
+                            <input type="text" name="bank_name"
+                                value="{{ old('bank_name', $paymentInfo->bank_name ?? '') }}"
+                                class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
                             @error('bank_name')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
-                        
+
                         <div>
                             <label class="block text-sm font-medium text-[#0E335D] mb-2">Account Number</label>
-                            <input type="text" name="account_number" value="{{ old('account_number', $paymentInfo->account_number ?? '') }}"
-                                   class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
+                            <input type="text" name="account_number"
+                                value="{{ old('account_number', $paymentInfo->account_number ?? '') }}"
+                                class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
                             @error('account_number')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
-                        
+
                         <div>
                             <label class="block text-sm font-medium text-[#0E335D] mb-2">Account Name</label>
-                            <input type="text" name="account_name" value="{{ old('account_name', $paymentInfo->account_name ?? '') }}"
-                                   class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
+                            <input type="text" name="account_name"
+                                value="{{ old('account_name', $paymentInfo->account_name ?? '') }}"
+                                class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
                             @error('account_name')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -336,11 +381,12 @@
                     <!-- PayPal Details -->
                     <div id="paypal_details" class="space-y-4" style="display: none;">
                         <h4 class="text-sm font-medium text-[#0E335D]">PayPal Details</h4>
-                        
+
                         <div>
                             <label class="block text-sm font-medium text-[#0E335D] mb-2">PayPal Email</label>
-                            <input type="email" name="paypal_email" value="{{ old('paypal_email', $paymentInfo->paypal_email ?? '') }}"
-                                   class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
+                            <input type="email" name="paypal_email"
+                                value="{{ old('paypal_email', $paymentInfo->paypal_email ?? '') }}"
+                                class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
                             @error('paypal_email')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -350,11 +396,12 @@
                     <!-- GCash Details -->
                     <div id="gcash_details" class="space-y-4" style="display: none;">
                         <h4 class="text-sm font-medium text-[#0E335D]">GCash Details</h4>
-                        
+
                         <div>
                             <label class="block text-sm font-medium text-[#0E335D] mb-2">GCash Number</label>
-                            <input type="text" name="gcash_number" value="{{ old('gcash_number', $paymentInfo->gcash_number ?? '') }}"
-                                   class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
+                            <input type="text" name="gcash_number"
+                                value="{{ old('gcash_number', $paymentInfo->gcash_number ?? '') }}"
+                                class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
                             @error('gcash_number')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -364,11 +411,12 @@
                     <!-- PayMaya Details -->
                     <div id="paymaya_details" class="space-y-4" style="display: none;">
                         <h4 class="text-sm font-medium text-[#0E335D]">PayMaya Details</h4>
-                        
+
                         <div>
                             <label class="block text-sm font-medium text-[#0E335D] mb-2">PayMaya Number</label>
-                            <input type="text" name="paymaya_number" value="{{ old('paymaya_number', $paymentInfo->paymaya_number ?? '') }}"
-                                   class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
+                            <input type="text" name="paymaya_number"
+                                value="{{ old('paymaya_number', $paymentInfo->paymaya_number ?? '') }}"
+                                class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
                             @error('paymaya_number')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -378,9 +426,9 @@
                     <!-- Notes -->
                     <div>
                         <label class="block text-sm font-medium text-[#0E335D] mb-2">Notes</label>
-                        <textarea name="notes" rows="3" 
-                                  class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent"
-                                  placeholder="Any additional notes about payment...">{{ old('notes', $paymentInfo->notes ?? '') }}</textarea>
+                        <textarea name="notes" rows="3"
+                            class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent"
+                            placeholder="Any additional notes about payment...">{{ old('notes', $paymentInfo->notes ?? '') }}</textarea>
                         @error('notes')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -389,11 +437,11 @@
                     <!-- Form Actions -->
                     <div class="flex justify-end space-x-3">
                         <button type="button" id="cancel-payment-form"
-                                class="px-4 py-2 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600 transform transition duration-200">
+                            class="px-4 py-2 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600 transform transition duration-200">
                             Cancel
                         </button>
                         <button type="submit"
-                                class="px-6 py-3 bg-[#0E335D] text-white text-sm rounded-lg hover:bg-gray-800 transform transition duration-200 hover:scale-105">
+                            class="px-6 py-3 bg-[#0E335D] text-white text-sm rounded-lg hover:bg-gray-800 transform transition duration-200 hover:scale-105">
                             Update Payment Information
                         </button>
                     </div>
@@ -470,75 +518,105 @@
                     password.
                     Please choose questions and answers that only you would know.
                 </p>
-                
+
                 <form method="POST" action="{{ route('supervisor.security-questions.update') }}" class="space-y-4">
                     @csrf
-                    
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs sm:text-sm text-[#0E335D] mb-2">Security Question 1 *</label>
                             <select name="security_question1" required
-                                    class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
+                                class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
                                 <option value="">Select a security question</option>
-                                <option value="What is your mother's maiden name?" {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == "What is your mother's maiden name?" ? 'selected' : '' }}>What is your mother's maiden name?</option>
-                                <option value="What was the name of your first pet?" {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == "What was the name of your first pet?" ? 'selected' : '' }}>What was the name of your first pet?</option>
-                                <option value="What city were you born in?" {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == "What city were you born in?" ? 'selected' : '' }}>What city were you born in?</option>
-                                <option value="What was your favorite subject in school?" {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == "What was your favorite subject in school?" ? 'selected' : '' }}>What was your favorite subject in school?</option>
-                                <option value="What is the name of your childhood best friend?" {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == "What is the name of your childhood best friend?" ? 'selected' : '' }}>What is the name of your childhood best friend?</option>
-                                <option value="What was your first car?" {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == "What was your first car?" ? 'selected' : '' }}>What was your first car?</option>
-                                <option value="What is your favorite color?" {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == "What is your favorite color?" ? 'selected' : '' }}>What is your favorite color?</option>
-                                <option value="What was the name of your elementary school?" {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == "What was the name of your elementary school?" ? 'selected' : '' }}>What was the name of your elementary school?</option>
+                                <option value="What is your mother's maiden name?"
+                                    {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == "What is your mother's maiden name?" ? 'selected' : '' }}>
+                                    What is your mother's maiden name?</option>
+                                <option value="What was the name of your first pet?"
+                                    {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == 'What was the name of your first pet?' ? 'selected' : '' }}>
+                                    What was the name of your first pet?</option>
+                                <option value="What city were you born in?"
+                                    {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == 'What city were you born in?' ? 'selected' : '' }}>
+                                    What city were you born in?</option>
+                                <option value="What was your favorite subject in school?"
+                                    {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == 'What was your favorite subject in school?' ? 'selected' : '' }}>
+                                    What was your favorite subject in school?</option>
+                                <option value="What is the name of your childhood best friend?"
+                                    {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == 'What is the name of your childhood best friend?' ? 'selected' : '' }}>
+                                    What is the name of your childhood best friend?</option>
+                                <option value="What was your first car?"
+                                    {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == 'What was your first car?' ? 'selected' : '' }}>
+                                    What was your first car?</option>
+                                <option value="What is your favorite color?"
+                                    {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == 'What is your favorite color?' ? 'selected' : '' }}>
+                                    What is your favorite color?</option>
+                                <option value="What was the name of your elementary school?"
+                                    {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == 'What was the name of your elementary school?' ? 'selected' : '' }}>
+                                    What was the name of your elementary school?</option>
                             </select>
                             @error('security_question1')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
-                        
+
                         <div>
                             <label class="block text-xs sm:text-sm text-[#0E335D] mb-2">Answer 1 *</label>
                             <input type="text" name="security_answer1" required
-                                   class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent"
-                                   placeholder="Enter your answer"
-                                   value="{{ old('security_answer1', '') }}">
+                                class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent"
+                                placeholder="Enter your answer" value="{{ old('security_answer1', '') }}">
                             @error('security_answer1')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
-                        
+
                         <div>
                             <label class="block text-xs sm:text-sm text-[#0E335D] mb-2">Security Question 2 *</label>
                             <select name="security_question2" required
-                                    class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
+                                class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
                                 <option value="">Select a security question</option>
-                                <option value="What is your mother's maiden name?" {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == "What is your mother's maiden name?" ? 'selected' : '' }}>What is your mother's maiden name?</option>
-                                <option value="What was the name of your first pet?" {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == "What was the name of your first pet?" ? 'selected' : '' }}>What was the name of your first pet?</option>
-                                <option value="What city were you born in?" {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == "What city were you born in?" ? 'selected' : '' }}>What city were you born in?</option>
-                                <option value="What was your favorite subject in school?" {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == "What was your favorite subject in school?" ? 'selected' : '' }}>What was your favorite subject in school?</option>
-                                <option value="What is the name of your childhood best friend?" {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == "What is the name of your childhood best friend?" ? 'selected' : '' }}>What is the name of your childhood best friend?</option>
-                                <option value="What was your first car?" {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == "What was your first car?" ? 'selected' : '' }}>What was your first car?</option>
-                                <option value="What is your favorite color?" {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == "What is your favorite color?" ? 'selected' : '' }}>What is your favorite color?</option>
-                                <option value="What was the name of your elementary school?" {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == "What was the name of your elementary school?" ? 'selected' : '' }}>What was the name of your elementary school?</option>
+                                <option value="What is your mother's maiden name?"
+                                    {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == "What is your mother's maiden name?" ? 'selected' : '' }}>
+                                    What is your mother's maiden name?</option>
+                                <option value="What was the name of your first pet?"
+                                    {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == 'What was the name of your first pet?' ? 'selected' : '' }}>
+                                    What was the name of your first pet?</option>
+                                <option value="What city were you born in?"
+                                    {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == 'What city were you born in?' ? 'selected' : '' }}>
+                                    What city were you born in?</option>
+                                <option value="What was your favorite subject in school?"
+                                    {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == 'What was your favorite subject in school?' ? 'selected' : '' }}>
+                                    What was your favorite subject in school?</option>
+                                <option value="What is the name of your childhood best friend?"
+                                    {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == 'What is the name of your childhood best friend?' ? 'selected' : '' }}>
+                                    What is the name of your childhood best friend?</option>
+                                <option value="What was your first car?"
+                                    {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == 'What was your first car?' ? 'selected' : '' }}>
+                                    What was your first car?</option>
+                                <option value="What is your favorite color?"
+                                    {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == 'What is your favorite color?' ? 'selected' : '' }}>
+                                    What is your favorite color?</option>
+                                <option value="What was the name of your elementary school?"
+                                    {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == 'What was the name of your elementary school?' ? 'selected' : '' }}>
+                                    What was the name of your elementary school?</option>
                             </select>
                             @error('security_question2')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
-                        
+
                         <div>
                             <label class="block text-xs sm:text-sm text-[#0E335D] mb-2">Answer 2 *</label>
                             <input type="text" name="security_answer2" required
-                                   class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent"
-                                   placeholder="Enter your answer"
-                                   value="{{ old('security_answer2', '') }}">
+                                class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent"
+                                placeholder="Enter your answer" value="{{ old('security_answer2', '') }}">
                             @error('security_answer2')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
                     </div>
-                    
+
                     <div class="flex justify-end">
                         <button type="submit"
-                                class="px-4 py-2 sm:px-6 sm:py-2 bg-[#0E335D] text-white text-xs sm:text-sm rounded-full hover:bg-gray-800 transform transition duration-200 hover:scale-105 w-full sm:w-auto">
+                            class="px-4 py-2 sm:px-6 sm:py-2 bg-[#0E335D] text-white text-xs sm:text-sm rounded-full hover:bg-gray-800 transform transition duration-200 hover:scale-105 w-full sm:w-auto">
                             Update Security Questions
                         </button>
                     </div>
@@ -598,46 +676,48 @@
             // Handle form submission via AJAX
             paymentFormElement.addEventListener('submit', function(e) {
                 e.preventDefault();
-                
+
                 const formData = new FormData(this);
                 const submitButton = this.querySelector('button[type="submit"]');
                 const originalText = submitButton.textContent;
-                
+
                 // Show loading state
                 submitButton.textContent = 'Updating...';
                 submitButton.disabled = true;
-                
+
                 fetch(this.action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showMessage('success', data.message);
-                        // Update the display with new data
-                        updatePaymentDisplay(data.payment_info);
-                        // Hide form and show display
-                        paymentForm.style.display = 'none';
-                        paymentDisplay.style.display = 'block';
-                        toggleText.textContent = 'Edit Payment Info';
-                    } else {
-                        showMessage('error', data.message || 'An error occurred while updating payment information.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showMessage('error', 'An error occurred while updating payment information.');
-                })
-                .finally(() => {
-                    // Reset button state
-                    submitButton.textContent = originalText;
-                    submitButton.disabled = false;
-                });
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                .getAttribute('content')
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showMessage('success', data.message);
+                            // Update the display with new data
+                            updatePaymentDisplay(data.payment_info);
+                            // Hide form and show display
+                            paymentForm.style.display = 'none';
+                            paymentDisplay.style.display = 'block';
+                            toggleText.textContent = 'Edit Payment Info';
+                        } else {
+                            showMessage('error', data.message ||
+                                'An error occurred while updating payment information.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showMessage('error', 'An error occurred while updating payment information.');
+                    })
+                    .finally(() => {
+                        // Reset button state
+                        submitButton.textContent = originalText;
+                        submitButton.disabled = false;
+                    });
             });
 
             // Payment method change handler
@@ -658,7 +738,7 @@
 
                 // Show relevant details based on selection
                 const selectedMethod = paymentMethodSelect.value;
-                switch(selectedMethod) {
+                switch (selectedMethod) {
                     case 'bank_transfer':
                         bankDetails.style.display = 'block';
                         break;
