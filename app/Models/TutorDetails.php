@@ -13,6 +13,7 @@ class TutorDetails extends Model
     protected $fillable = [
         'tutor_id',
         'address',
+        'ms_teams_id',
         'esl_experience',
         'work_setup',
         'first_day_teaching',

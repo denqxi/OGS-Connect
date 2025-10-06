@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Tutor Portal</title>
 
     <!-- Tailwind CSS -->
@@ -51,8 +52,7 @@
 
                 <!-- Name -->
                 <span
-                    class="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200 uppercase hidden sm:inline">JOSH
-                    DANIEL</span>
+                    class="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200 uppercase hidden sm:inline">{{ $tutor->full_name ?? 'TUTOR' }}</span>
 
                 <!-- Notifications -->
                 <button
@@ -86,7 +86,7 @@
                         <div class="border-t border-gray-200 dark:border-gray-700"></div>
 
                         <!-- Logout -->
-                        <form method="POST" action="{{ route('supervisor.logout') }}" class="w-full">
+                        <form method="POST" action="{{ route('tutor.logout') }}" class="w-full">
                             @csrf
                             <button type="submit"
                                 class="flex items-center w-full px-4 py-2 text-sm text-red-500 hover:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors duration-200">

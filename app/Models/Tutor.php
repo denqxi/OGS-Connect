@@ -21,6 +21,7 @@ class Tutor extends Authenticatable
         'tpassword',
         'phone_number',
         'sex',
+        'date_of_birth',
         'status'
     ];
 
@@ -149,6 +150,15 @@ class Tutor extends Authenticatable
     public function securityQuestion()
     {
         return $this->hasOne(SecurityQuestion::class, 'user_id', 'tutorID')
+                    ->where('user_type', 'tutor');
+    }
+
+    /**
+     * Get all security questions for this tutor
+     */
+    public function securityQuestions()
+    {
+        return $this->hasMany(SecurityQuestion::class, 'user_id', 'tutorID')
                     ->where('user_type', 'tutor');
     }
 

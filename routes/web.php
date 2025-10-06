@@ -60,12 +60,31 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
 
 Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
     Route::get('/tutor_portal', function () {
-        return view('tutor.tutor_portal');
+        $tutor = Auth::guard('tutor')->user();
+        $tutor->load(['tutorDetails', 'paymentInformation', 'securityQuestions']); // Load the tutorDetails, paymentInformation, and securityQuestions relationships
+        return view('tutor.tutor_portal', compact('tutor'));
     })->name('tutor.portal');
+    
+    
+    // Tutor availability management routes
+    Route::prefix('tutor/availability')->name('tutor.availability.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\TutorAvailabilityController::class, 'getAvailability'])->name('get');
+        Route::post('/update', [\App\Http\Controllers\TutorAvailabilityController::class, 'updateAvailability'])->name('update');
+        Route::post('/update-multiple', [\App\Http\Controllers\TutorAvailabilityController::class, 'updateMultipleAccounts'])->name('update.multiple');
+        Route::get('/time-slots', [\App\Http\Controllers\TutorAvailabilityController::class, 'getTimeSlots'])->name('time.slots');
+    });
 });
 
 // Custom logout route for supervisors (doesn't require auth middleware)
 Route::post('/supervisor-logout', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])->name('supervisor.logout');
+
+// Custom logout route for tutors (doesn't require auth middleware)
+Route::post('/tutor-logout', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])->name('tutor.logout');
+
+// Hiring & Onboarding routes
+Route::get('/hiring-onboarding', function () {
+    return view('hiring_onboarding.index');
+})->name('hiring_onboarding.index');
 
 // Protected API routes - require authentication
 Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {

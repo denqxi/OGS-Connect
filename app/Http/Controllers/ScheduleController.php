@@ -166,7 +166,7 @@ class ScheduleController extends Controller
             
             $tutors = $query->orderBy('first_name')->orderBy('last_name')->paginate(5)->withQueryString();
             $availableTimeSlots = $this->getAvailableTimeSlots();
-            $availableDays = $this->getAvailableDays();
+            $availableDays = $this->getAvailableDaysFromTutorAccounts();
             
             return view('schedules.index', compact('tutors', 'availableTimeSlots', 'availableDays'));
     }
@@ -982,17 +982,68 @@ class ScheduleController extends Controller
      */
     private function getAvailableDays()
     {
-        $days = DailyData::where(function($q) {
+        $dates = DailyData::where(function($q) {
             $q->where('schedule_status', '!=', 'finalized')
               ->orWhereNull('schedule_status');
         })
-        ->selectRaw('DAYNAME(date) as day')
+        ->select('date')
         ->distinct()
-        ->pluck('day');
+        ->pluck('date');
         
-        // Sort days in chronological order
-        $dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        return $days->sortBy(function($day) use ($dayOrder) {
+        // Convert dates to day names using Carbon
+        $days = $dates->map(function($date) {
+            try {
+                return \Carbon\Carbon::parse($date)->format('l'); // 'l' gives full day name
+            } catch (\Exception $e) {
+                return null;
+            }
+        })->filter()->unique();
+        
+        // Filter out weekends and sort days in chronological order (weekdays only)
+        $weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        $filteredDays = $days->filter(function($day) use ($weekdays) {
+            return in_array($day, $weekdays);
+        });
+        
+        $dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        return $filteredDays->sortBy(function($day) use ($dayOrder) {
+            return array_search($day, $dayOrder);
+        })->values();
+    }
+
+    /**
+     * Get available days from tutor accounts for employee availability filtering
+     */
+    private function getAvailableDaysFromTutorAccounts()
+    {
+        $tutorAccounts = \App\Models\TutorAccount::where('status', 'active')
+            ->whereNotNull('available_days')
+            ->get();
+        
+        $allDays = collect();
+        
+        foreach ($tutorAccounts as $account) {
+            $availableDays = $account->available_days;
+            
+            // Handle case where available_days might be a string instead of array
+            if (is_string($availableDays)) {
+                $availableDays = json_decode($availableDays, true) ?? [];
+            }
+            
+            if (is_array($availableDays)) {
+                $allDays = $allDays->merge($availableDays);
+            }
+        }
+        
+        // Get unique days and filter out empty values and weekends
+        $weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        $uniqueDays = $allDays->filter()->unique()->filter(function($day) use ($weekdays) {
+            return in_array($day, $weekdays);
+        })->values();
+        
+        // Sort days in chronological order (weekdays only)
+        $dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        return $uniqueDays->sortBy(function($day) use ($dayOrder) {
             return array_search($day, $dayOrder);
         })->values();
     }

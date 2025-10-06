@@ -78,6 +78,10 @@ class TutorAccount extends Model
             return 'No availability set';
         }
 
+        // Sort available_days in chronological order
+        $dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        $availableDays = array_values(array_intersect($dayOrder, $availableDays));
+
         $dayLabels = [
             'monday' => 'Monday', 'tuesday' => 'Tuesday', 'wednesday' => 'Wednesday', 
             'thursday' => 'Thursday', 'friday' => 'Friday', 'saturday' => 'Saturday', 'sunday' => 'Sunday'
