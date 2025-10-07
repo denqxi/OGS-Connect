@@ -60,13 +60,33 @@ function initializeClassScheduling() {
 function autoAssignSpecificSchedule(date, day) {
     const dayName = getDayName(day);
     
-    if (!confirm(`This will automatically assign tutors for ${dayName}, ${date}. Continue?`)) {
-        return;
-    }
+    // Show custom confirmation modal
+    showAutoAssignConfirmation(`This will automatically assign tutors for ${dayName}, ${date}. Continue?`, () => {
+        performAutoAssignSpecificSchedule(date, day);
+    });
+}
 
-    // Show loading state
-    const button = event.target.closest('button');
+function performAutoAssignSpecificSchedule(date, day) {
+    // Find the original auto-assign button
+    let button = document.querySelector(`button[onclick*="autoAssignSpecificSchedule('${date}', '${day}')"]`);
+    if (!button) {
+        // Fallback: find any button that might be the auto-assign button
+        const buttons = document.querySelectorAll('button');
+        const autoAssignButton = Array.from(buttons).find(btn => 
+            btn.textContent.includes('Auto Assign') || 
+            btn.textContent.includes('auto-assign') ||
+            (btn.onclick && btn.onclick.toString().includes('autoAssignSpecificSchedule'))
+        );
+        if (!autoAssignButton) {
+            showNotification('Auto-assign button not found', 'error');
+            return;
+        }
+        button = autoAssignButton;
+    }
+    
     const originalHTML = button.innerHTML;
+    
+    // Show loading state
     button.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i>';
     button.disabled = true;
 
@@ -91,15 +111,15 @@ function autoAssignSpecificSchedule(date, day) {
                 message += `\n• Classes with new assignments: ${data.data.summary.classes_with_assignments}`;
             }
             
-            alert(message);
+            showNotification(message, 'success');
             location.reload(); // Refresh to show new assignments
         } else {
-            alert('Auto-assignment failed: ' + data.message);
+            showNotification('Auto-assignment failed: ' + data.message, 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Auto-assignment failed. Please try again.');
+        showNotification('Auto-assignment failed. Please try again.', 'error');
     })
     .finally(() => {
         // Restore button
@@ -121,15 +141,106 @@ function getDayName(day) {
     return dayMap[day] || day;
 }
 
-// Keep your existing autoAssignTutors function for bulk assignment
-function autoAssignTutors() {
-    if (!confirm('This will automatically assign tutors to all unassigned/partially assigned schedules. Continue?')) {
-        return;
+// Auto-assign confirmation modal functionality
+let autoAssignCallback = null;
+
+function showAutoAssignConfirmation(message, callback) {
+    const modal = document.getElementById('autoAssignConfirmationModal');
+    const messageElement = document.getElementById('autoAssignMessage');
+    
+    if (messageElement) {
+        messageElement.textContent = message;
+    }
+    
+    autoAssignCallback = callback;
+    
+    if (modal) {
+        modal.classList.remove('hidden');
+    } else {
+        console.error('Auto-assign confirmation modal not found');
+    }
+}
+
+function hideAutoAssignConfirmation() {
+    const modal = document.getElementById('autoAssignConfirmationModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    // Don't clear the callback immediately - let the callback execute first
+    setTimeout(() => {
+        autoAssignCallback = null;
+    }, 100);
+}
+
+// Auto-assign modal event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    const closeAutoAssignModal = document.getElementById('closeAutoAssignModal');
+    const cancelAutoAssign = document.getElementById('cancelAutoAssign');
+    const confirmAutoAssign = document.getElementById('confirmAutoAssign');
+    const autoAssignModal = document.getElementById('autoAssignConfirmationModal');
+
+    if (closeAutoAssignModal) {
+        closeAutoAssignModal.addEventListener('click', hideAutoAssignConfirmation);
     }
 
-    // Show loading state
-    const button = event.target.closest('button');
+    if (cancelAutoAssign) {
+        cancelAutoAssign.addEventListener('click', hideAutoAssignConfirmation);
+    }
+
+    if (confirmAutoAssign) {
+        confirmAutoAssign.addEventListener('click', () => {
+            if (autoAssignCallback) {
+                // Execute callback first, then hide modal
+                autoAssignCallback();
+                hideAutoAssignConfirmation();
+            } else {
+                console.error('No auto-assign callback found');
+                hideAutoAssignConfirmation();
+            }
+        });
+    } else {
+        console.error('confirmAutoAssign button not found');
+    }
+
+    // Close modal when clicking outside
+    if (autoAssignModal) {
+        autoAssignModal.addEventListener('click', (e) => {
+            if (e.target === autoAssignModal) {
+                hideAutoAssignConfirmation();
+            }
+        });
+    }
+});
+
+// Keep your existing autoAssignTutors function for bulk assignment
+function autoAssignTutors() {
+    // Show custom confirmation modal
+    showAutoAssignConfirmation('This will automatically assign tutors to all unassigned/partially assigned schedules. Continue?', () => {
+        performAutoAssignTutors();
+    });
+}
+
+function performAutoAssignTutors() {
+    // Find the original auto-assign button
+    let button = document.querySelector('button[onclick*="autoAssignTutors()"]');
+    if (!button) {
+        // Fallback: find any button that might be the auto-assign button
+        const buttons = document.querySelectorAll('button');
+        const autoAssignButton = Array.from(buttons).find(btn => 
+            btn.textContent.includes('Auto Assign') || 
+            btn.textContent.includes('auto-assign') ||
+            (btn.onclick && btn.onclick.toString().includes('autoAssignTutors'))
+        );
+        if (!autoAssignButton) {
+            showNotification('Auto-assign button not found', 'error');
+            return;
+        }
+        button = autoAssignButton;
+    }
+    
     const originalText = button.innerHTML;
+    
+    // Show loading state
     button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Assigning...</span>';
     button.disabled = true;
 
@@ -149,15 +260,15 @@ function autoAssignTutors() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(data.message);
+            showNotification(data.message, 'success');
             location.reload(); // Refresh to show new assignments
         } else {
-            alert('Auto-assignment failed: ' + data.message);
+            showNotification('Auto-assignment failed: ' + data.message, 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Auto-assignment failed. Please try again.');
+        showNotification('Auto-assignment failed. Please try again.', 'error');
     })
     .finally(() => {
         // Restore button
@@ -170,11 +281,31 @@ function autoAssignTutors() {
  * Auto-assign tutors for a specific day
  */
 function autoAssignForThisDay(date) {
-    if (!confirm('Are you sure you want to auto-assign tutors for all classes on ' + date + '?')) {
+    // Show custom confirmation modal
+    showAutoAssignConfirmation('Are you sure you want to auto-assign tutors for all classes on ' + date + '?', () => {
+        performAutoAssignForThisDay(date);
+    });
+}
+
+function performAutoAssignForThisDay(date) {
+    // Find the original auto-assign button - try multiple selectors
+    let button = document.querySelector(`button[onclick*="autoAssignForThisDay('${date}')"]`);
+    
+    if (!button) {
+        // Try finding by text content
+        const buttons = document.querySelectorAll('button');
+        button = Array.from(buttons).find(btn => 
+            btn.textContent.includes('Auto Assign All') || 
+            btn.textContent.includes('Auto Assign')
+        );
+    }
+    
+    if (!button) {
+        console.error('Auto-assign button not found for date:', date);
+        showNotification('Auto-assign button not found', 'error');
         return;
     }
-
-    const button = event.target;
+    
     const originalText = button.innerHTML;
     
     // Show loading state
@@ -193,15 +324,15 @@ function autoAssignForThisDay(date) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(`Auto-assignment completed! ${data.assigned} tutors assigned to classes.`);
+            showNotification(`Auto-assignment completed! ${data.assigned} tutors assigned to classes.`, 'success');
             location.reload(); // Refresh to show new assignments
         } else {
-            alert('Auto-assignment failed: ' + (data.message || 'Unknown error'));
+            showNotification('Auto-assignment failed: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('Auto-assignment failed. Please try again.');
+        console.error('Auto-assignment error:', error);
+        showNotification('Auto-assignment failed. Please try again.', 'error');
     })
     .finally(() => {
         // Restore button

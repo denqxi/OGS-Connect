@@ -427,6 +427,158 @@
     @endif
 </div>
 
+<!-- Save as Final Confirmation Modal -->
+<div id="saveFinalConfirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] hidden">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
+        <!-- Header -->
+        <div class="flex justify-between items-center bg-red-500 text-white px-4 py-3 rounded-t-lg">
+            <h2 class="text-lg font-bold">Finalize Schedule</h2>
+            <button id="closeSaveFinalModal" class="text-white font-bold text-xl">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6">
+            <div class="flex items-center mb-4">
+                <div class="flex-shrink-0">
+                    <svg class="h-8 w-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-lg font-medium text-gray-900">Finalize Schedule?</h3>
+                    <p class="text-sm text-gray-500 mt-1" id="saveFinalMessage">Are you sure you want to finalize this schedule?</p>
+                </div>
+            </div>
+            
+            <div class="bg-red-50 rounded-lg p-3 mb-4">
+                <p class="text-sm text-red-800">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <strong>Warning:</strong> Once saved as FINAL, these schedules will be locked and can only be cancelled or rescheduled!
+                </p>
+            </div>
+            
+            <div class="bg-gray-50 rounded-lg p-3">
+                <p class="text-sm text-gray-600">
+                    <span class="font-semibold">Date:</span> <span id="saveFinalDate">N/A</span><br>
+                    <span class="font-semibold">Status:</span> <span class="text-red-600 font-semibold">FINAL</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex justify-end items-center space-x-3 px-6 py-4 border-t">
+            <button id="cancelSaveFinal"
+                class="px-4 py-2 rounded-full border border-gray-300 text-gray-600 
+                   hover:bg-gray-200 transform transition duration-200 hover:scale-105">
+                Cancel
+            </button>
+
+            <button id="confirmSaveFinal"
+                class="px-4 py-2 rounded-full bg-red-500 text-white 
+                   hover:bg-red-600 transform transition duration-200 hover:scale-105">
+                <i class="fas fa-lock mr-1"></i>Finalize Schedule
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Auto-Assign Confirmation Modal -->
+<div id="autoAssignConfirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] hidden">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
+        <!-- Header -->
+        <div class="flex justify-between items-center bg-green-500 text-white px-4 py-3 rounded-t-lg">
+            <h2 class="text-lg font-bold">Auto-Assign Tutors</h2>
+            <button id="closeAutoAssignModal" class="text-white font-bold text-xl">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6">
+            <div class="flex items-center mb-4">
+                <div class="flex-shrink-0">
+                    <svg class="h-8 w-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-lg font-medium text-gray-900">Confirm Auto-Assignment</h3>
+                    <p class="text-sm text-gray-500 mt-1" id="autoAssignMessage">Are you sure you want to auto-assign tutors?</p>
+                </div>
+            </div>
+            
+            <div class="bg-blue-50 rounded-lg p-3 mb-4">
+                <p class="text-sm text-blue-800">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    This will automatically assign available tutors to unassigned classes based on their availability and preferences.
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex justify-end items-center space-x-3 px-6 py-4 border-t">
+            <button id="cancelAutoAssign"
+                class="px-4 py-2 rounded-full border border-gray-300 text-gray-600 
+                   hover:bg-gray-200 transform transition duration-200 hover:scale-105">
+                Cancel
+            </button>
+
+            <button id="confirmAutoAssign"
+                class="px-4 py-2 rounded-full bg-green-500 text-white 
+                   hover:bg-green-600 transform transition duration-200 hover:scale-105">
+                <i class="fas fa-magic mr-1"></i>Auto Assign
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] hidden">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
+        <!-- Header -->
+        <div class="flex justify-between items-center bg-blue-500 text-white px-4 py-3 rounded-t-lg">
+            <h2 class="text-lg font-bold">Confirm Changes</h2>
+            <button id="closeConfirmationModal" class="text-white font-bold text-xl">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6">
+            <div class="flex items-center mb-4">
+                <div class="flex-shrink-0">
+                    <svg class="h-8 w-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-lg font-medium text-gray-900">Save Changes?</h3>
+                    <p class="text-sm text-gray-500 mt-1">Are you sure you want to save the tutor assignments for this class?</p>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 rounded-lg p-3 mb-4">
+                <p class="text-sm text-gray-600">
+                    <span class="font-semibold">Class:</span> <span id="confirmClass">N/A</span><br>
+                    <span class="font-semibold">Date:</span> <span id="confirmDate">N/A</span><br>
+                    <span class="font-semibold">Time:</span> <span id="confirmTime">N/A</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex justify-end items-center space-x-3 px-6 py-4 border-t">
+            <button id="cancelConfirmation"
+                class="px-4 py-2 rounded-full border border-gray-300 text-gray-600 
+                   hover:bg-gray-200 transform transition duration-200 hover:scale-105">
+                Cancel
+            </button>
+
+            <button id="confirmSave"
+                class="px-4 py-2 rounded-full bg-green-500 text-white 
+                   hover:bg-green-600 transform transition duration-200 hover:scale-105">
+                <i class="fas fa-save mr-1"></i>Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Edit Schedule Modal -->
 <div id="editScheduleModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-lg shadow-lg w-full max-w-lg">

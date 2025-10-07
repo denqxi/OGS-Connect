@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Check if we've reached the required tutor limit
         if (tutors.length >= requiredTutors) {
-            alert(`Cannot add more tutors. Maximum of ${requiredTutors} tutors allowed for this class.`);
+            showNotification(`Cannot add more tutors. Maximum of ${requiredTutors} tutors allowed for this class.`, 'warning');
             closeDropdown('main');
             return;
         }
@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         fetchAvailableTutors();
                     }
                 } else {
-                    alert('Error checking time conflicts: ' + (data.message || 'Unknown error'));
+                    showNotification('Error checking time conflicts: ' + (data.message || 'Unknown error'), 'error');
                 }
             })
             .catch(error => {
@@ -363,7 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     fetchAvailableTutors();
                 }
             } else {
-                alert('Error checking time conflicts: ' + (data.message || 'Unknown error'));
+                showNotification('Error checking time conflicts: ' + (data.message || 'Unknown error'), 'error');
             }
         })
         .catch(error => {
@@ -616,8 +616,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Use event delegation for edit buttons (since they're dynamically rendered)
     document.addEventListener("click", function(e) {
-        console.log('Click detected:', e.target);
-        
         if (e.target.closest(".editBtn")) {
             console.log('Edit button clicked!');
             const btn = e.target.closest(".editBtn");
@@ -773,72 +771,203 @@ document.addEventListener('DOMContentLoaded', function() {
     if (saveBtn) {
         saveBtn.addEventListener("click", () => {
             if (!currentClassId) {
-                alert('No class selected');
+                showNotification('No class selected', 'error');
                 return;
             }
 
-            // Show loading state
-            const originalText = saveBtn.textContent;
-            saveBtn.textContent = 'Saving...';
-            saveBtn.disabled = true;
+            // Show confirmation modal
+            showConfirmationModal();
+        });
+    }
 
-            // Convert tutor objects to usernames for the API
-            const tutorUsernames = tutors.map(tutor => {
-                if (typeof tutor === 'object' && tutor.username) {
-                    return tutor.username;
+    // Confirmation modal functionality
+    function showConfirmationModal() {
+        const confirmationModal = document.getElementById("confirmationModal");
+        const confirmClass = document.getElementById("confirmClass");
+        const confirmDate = document.getElementById("confirmDate");
+        const confirmTime = document.getElementById("confirmTime");
+        
+        // Populate confirmation modal with current class details
+        if (confirmClass && confirmDate && confirmTime) {
+            confirmClass.textContent = document.getElementById("modalClass")?.textContent || "N/A";
+            confirmDate.textContent = document.getElementById("modalDate")?.textContent || "N/A";
+            confirmTime.textContent = document.getElementById("modalTime")?.textContent || "N/A";
+        }
+        
+        confirmationModal.classList.remove("hidden");
+    }
+
+    function hideConfirmationModal() {
+        const confirmationModal = document.getElementById("confirmationModal");
+        confirmationModal.classList.add("hidden");
+    }
+
+    // Confirmation modal event listeners
+    const closeConfirmationModal = document.getElementById("closeConfirmationModal");
+    const cancelConfirmation = document.getElementById("cancelConfirmation");
+    const confirmSave = document.getElementById("confirmSave");
+
+    if (closeConfirmationModal) {
+        closeConfirmationModal.addEventListener("click", hideConfirmationModal);
+    }
+
+    if (cancelConfirmation) {
+        cancelConfirmation.addEventListener("click", hideConfirmationModal);
+    }
+
+    if (confirmSave) {
+        confirmSave.addEventListener("click", () => {
+            // Show loading state on confirmation button
+            const originalText = confirmSave.textContent;
+            confirmSave.textContent = 'Saving...';
+            confirmSave.disabled = true;
+            
+            performSave(originalText);
+        });
+    }
+
+    // Close confirmation modal when clicking outside
+    const confirmationModal = document.getElementById("confirmationModal");
+    if (confirmationModal) {
+        confirmationModal.addEventListener("click", (e) => {
+            if (e.target === confirmationModal) {
+                hideConfirmationModal();
+            }
+        });
+    }
+
+    function performSave(originalText) {
+
+        // Convert tutor objects to usernames for the API
+        const tutorUsernames = tutors.map(tutor => {
+            if (typeof tutor === 'object' && tutor.username) {
+                return tutor.username;
+            }
+            return tutor;
+        }).filter(username => {
+            return username && typeof username === 'string' && username.trim() !== '';
+        });
+
+        // Prepare backup tutor for saving (if database field exists)
+        const backupTutorData = backupTutor ? {
+            username: backupTutor.username,
+            full_name: backupTutor.fullName
+        } : null;
+
+        fetch('/api/save-tutor-assignments', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                class_id: currentClassId,
+                tutors: tutorUsernames,
+                backup_tutor: backupTutorData
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.text().then(text => {
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    throw new Error('Invalid JSON response: ' + text);
                 }
-                return tutor;
-            }).filter(username => {
-                return username && typeof username === 'string' && username.trim() !== '';
             });
+        })
+        .then(data => {
+            if (data.success) {
+                showNotification('Tutor assignments saved successfully!', 'success');
+                closeModal();
+                location.reload();
+            } else {
+                showNotification('Error saving assignments: ' + (data.message || 'Unknown error'), 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('Error saving assignments: ' + error.message, 'error');
+        })
+        .finally(() => {
+            confirmSave.textContent = originalText;
+            confirmSave.disabled = false;
+        });
+    }
+});
 
-            // Prepare backup tutor for saving (if database field exists)
-            const backupTutorData = backupTutor ? {
-                username: backupTutor.username,
-                full_name: backupTutor.fullName
-            } : null;
+// Save as Final confirmation modal functionality
+let saveFinalCallback = null;
 
-            fetch('/api/save-tutor-assignments', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({
-                    class_id: currentClassId,
-                    tutors: tutorUsernames,
-                    backup_tutor: backupTutorData
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.text().then(text => {
-                    try {
-                        return JSON.parse(text);
-                    } catch (e) {
-                        throw new Error('Invalid JSON response: ' + text);
-                    }
-                });
-            })
-            .then(data => {
-                if (data.success) {
-                    alert('Tutor assignments saved successfully!');
-                    closeModal();
-                    location.reload();
-                } else {
-                    alert('Error saving assignments: ' + (data.message || 'Unknown error'));
-                }
-            })
-            .catch(error => {
-                alert('Error saving assignments: ' + error.message);
-            })
-            .finally(() => {
-                saveBtn.textContent = originalText;
-                saveBtn.disabled = false;
-            });
+function showSaveFinalConfirmation(date, callback) {
+    const modal = document.getElementById('saveFinalConfirmationModal');
+    const messageElement = document.getElementById('saveFinalMessage');
+    const dateElement = document.getElementById('saveFinalDate');
+    
+    if (messageElement) {
+        messageElement.textContent = `Are you sure you want to finalize the schedule for ${date}? This will archive it and it cannot be modified.`;
+    }
+    
+    if (dateElement) {
+        dateElement.textContent = date;
+    }
+    
+    saveFinalCallback = callback;
+    
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+function hideSaveFinalConfirmation() {
+    const modal = document.getElementById('saveFinalConfirmationModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    // Don't clear the callback immediately - let the callback execute first
+    setTimeout(() => {
+        saveFinalCallback = null;
+    }, 100);
+}
+
+// Save as Final modal event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    const closeSaveFinalModal = document.getElementById('closeSaveFinalModal');
+    const cancelSaveFinal = document.getElementById('cancelSaveFinal');
+    const confirmSaveFinal = document.getElementById('confirmSaveFinal');
+    const saveFinalModal = document.getElementById('saveFinalConfirmationModal');
+
+    if (closeSaveFinalModal) {
+        closeSaveFinalModal.addEventListener('click', hideSaveFinalConfirmation);
+    }
+
+    if (cancelSaveFinal) {
+        cancelSaveFinal.addEventListener('click', hideSaveFinalConfirmation);
+    }
+
+    if (confirmSaveFinal) {
+        confirmSaveFinal.addEventListener('click', () => {
+            if (saveFinalCallback) {
+                // Execute callback first, then hide modal
+                saveFinalCallback();
+                hideSaveFinalConfirmation();
+            } else {
+                console.error('No save final callback found');
+                hideSaveFinalConfirmation();
+            }
+        });
+    } else {
+        console.error('confirmSaveFinal button not found');
+    }
+
+    // Close modal when clicking outside
+    if (saveFinalModal) {
+        saveFinalModal.addEventListener('click', (e) => {
+            if (e.target === saveFinalModal) {
+                hideSaveFinalConfirmation();
+            }
         });
     }
 });
@@ -848,45 +977,60 @@ document.addEventListener('DOMContentLoaded', function() {
  */
 function saveScheduleAs(status, date) {
     const statusText = status === 'partial' ? 'Partial' : 'Final';
-    const confirmMessage = status === 'final' 
-        ? `Are you sure you want to finalize the schedule for ${date}? This will archive it and it cannot be modified.`
-        : `Save the schedule for ${date} as ${statusText}?`;
     
-    if (!confirm(confirmMessage)) {
-        return;
+    if (status === 'final') {
+        // Show custom confirmation modal for final save
+        showSaveFinalConfirmation(date, () => {
+            performSaveScheduleAs(status, date);
+        });
+    } else {
+        // For partial saves, use simple confirm for now
+        if (!confirm(`Save the schedule for ${date} as ${statusText}?`)) {
+            return;
+        }
+        performSaveScheduleAs(status, date);
     }
+}
+
+function performSaveScheduleAs(status, date) {
 
     const button = event.target;
     const originalText = button.textContent;
     button.textContent = 'Saving...';
     button.disabled = true;
 
-    fetch(`/schedules/save-as-${status}/${date}`, {
+    fetch('/schedules/save-schedule', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
             'X-Requested-With': 'XMLHttpRequest'
-        }
+        },
+        body: JSON.stringify({
+            date: date,
+            status: status
+        })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(data.message);
+            showNotification(data.message, 'success');
             if (status === 'final') {
-                // Redirect back to class scheduling after finalizing
-                window.location.href = '/scheduling?tab=class';
+                // Redirect to schedule history after finalizing
+                setTimeout(() => {
+                    window.location.href = '/scheduling?tab=history';
+                }, 1200);
             } else {
                 // Just reload the current page for partial save
                 window.location.reload();
             }
         } else {
-            alert('Error saving schedule: ' + data.message);
+            showNotification('Error saving schedule: ' + data.message, 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error saving schedule. Please try again.');
+        showNotification('Error saving schedule. Please try again.', 'error');
     })
     .finally(() => {
         button.textContent = originalText;

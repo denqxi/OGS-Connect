@@ -1,10 +1,13 @@
 // save-schedule.js
 // Function to save schedule with specified status
 function saveScheduleAs(status, date) {
-    // Confirm action - since we only have 'final' now, simplify the logic
-    if (!confirm(`Are you sure you want to save all classes for ${date} as FINAL?\n\n⚠️ WARNING: Once saved as FINAL, these schedules will be locked and can only be cancelled or rescheduled!`)) {
-        return;
-    }
+    // Show custom confirmation modal for final save
+    showSaveFinalConfirmation(date, () => {
+        performSaveScheduleAs(status, date);
+    });
+}
+
+function performSaveScheduleAs(status, date) {
 
     // Show loading state
     const buttons = document.querySelectorAll('button');
@@ -66,6 +69,80 @@ function resetSaveButtons() {
         }
     });
 }
+
+// Save as Final confirmation modal functionality
+let saveFinalCallback = null;
+
+function showSaveFinalConfirmation(date, callback) {
+    const modal = document.getElementById('saveFinalConfirmationModal');
+    const messageElement = document.getElementById('saveFinalMessage');
+    const dateElement = document.getElementById('saveFinalDate');
+    
+    if (messageElement) {
+        messageElement.textContent = `Are you sure you want to save all classes for ${date} as FINAL?`;
+    }
+    
+    if (dateElement) {
+        dateElement.textContent = date;
+    }
+    
+    saveFinalCallback = callback;
+    
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+function hideSaveFinalConfirmation() {
+    const modal = document.getElementById('saveFinalConfirmationModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    // Don't clear the callback immediately - let the callback execute first
+    setTimeout(() => {
+        saveFinalCallback = null;
+    }, 100);
+}
+
+// Save as Final modal event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    const closeSaveFinalModal = document.getElementById('closeSaveFinalModal');
+    const cancelSaveFinal = document.getElementById('cancelSaveFinal');
+    const confirmSaveFinal = document.getElementById('confirmSaveFinal');
+    const saveFinalModal = document.getElementById('saveFinalConfirmationModal');
+
+    if (closeSaveFinalModal) {
+        closeSaveFinalModal.addEventListener('click', hideSaveFinalConfirmation);
+    }
+
+    if (cancelSaveFinal) {
+        cancelSaveFinal.addEventListener('click', hideSaveFinalConfirmation);
+    }
+
+    if (confirmSaveFinal) {
+        confirmSaveFinal.addEventListener('click', () => {
+            if (saveFinalCallback) {
+                // Execute callback first, then hide modal
+                saveFinalCallback();
+                hideSaveFinalConfirmation();
+            } else {
+                console.error('No save final callback found');
+                hideSaveFinalConfirmation();
+            }
+        });
+    } else {
+        console.error('confirmSaveFinal button not found');
+    }
+
+    // Close modal when clicking outside
+    if (saveFinalModal) {
+        saveFinalModal.addEventListener('click', (e) => {
+            if (e.target === saveFinalModal) {
+                hideSaveFinalConfirmation();
+            }
+        });
+    }
+});
 
 // Function to show notifications (reuse from class-cancellation.js if available)
 if (typeof showNotification === 'undefined') {
