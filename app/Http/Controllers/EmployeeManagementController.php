@@ -251,4 +251,76 @@ class EmployeeManagementController extends Controller
 
         return view('emp_management.index', compact('supervisors', 'tab'));
     }
+
+    public function viewTutor(Tutor $tutor)
+    {
+        $tutor->load(['accounts', 'tutorDetails', 'paymentInformation']);
+        
+        // Return JSON data for modal
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $tutor->tutorID,
+                'full_name' => $tutor->full_name,
+                'first_name' => $tutor->first_name,
+                'last_name' => $tutor->last_name,
+                'email' => $tutor->email,
+                'phone_number' => $tutor->phone_number,
+                'date_of_birth' => $tutor->date_of_birth,
+                'created_at' => $tutor->created_at ? $tutor->created_at->format('M j, Y') : null,
+                'status' => $tutor->status,
+                'payment_information' => $tutor->paymentInformation ? [
+                    'payment_method' => $tutor->paymentInformation->payment_method,
+                    'payment_method_uppercase' => $tutor->paymentInformation->payment_method_uppercase,
+                    'bank_name' => $tutor->paymentInformation->bank_name,
+                    'account_number' => $tutor->paymentInformation->account_number,
+                    'account_name' => $tutor->paymentInformation->account_name,
+                    'gcash_number' => $tutor->paymentInformation->gcash_number,
+                    'gcash_name' => $tutor->paymentInformation->gcash_name,
+                    'paypal_email' => $tutor->paymentInformation->paypal_email,
+                ] : null,
+                'accounts' => $tutor->accounts->map(function($account) {
+                    return [
+                        'account_name' => $account->account_name,
+                        'status' => $account->status,
+                        'gls_id' => $account->gls_id,
+                        'formatted_available_time' => $account->formatted_available_time,
+                        'formatted_available_days' => $account->formatted_available_days,
+                        'ms_teams_id' => $account->ms_teams_id,
+                        'available_times' => $account->available_times,
+                        'available_days' => $account->available_days,
+                    ];
+                }),
+                'tutor_details' => $tutor->tutorDetails ? [
+                    'address' => $tutor->tutorDetails->address,
+                    'educational_attainment' => $tutor->tutorDetails->educational_attainment,
+                    'esl_teaching_experience' => $tutor->tutorDetails->esl_teaching_experience,
+                    'work_setup' => $tutor->tutorDetails->work_setup,
+                    'first_day_of_teaching' => $tutor->tutorDetails->first_day_of_teaching,
+                ] : null,
+            ]
+        ]);
+    }
+
+    public function viewSupervisor(Supervisor $supervisor)
+    {
+        // Return JSON data for modal
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $supervisor->supID,
+                'full_name' => $supervisor->full_name,
+                'email' => $supervisor->semail,
+                'phone_number' => $supervisor->sconNum,
+                'birth_date' => $supervisor->birth_date,
+                'created_at' => $supervisor->created_at ? $supervisor->created_at->format('M j, Y') : null,
+                'updated_at' => $supervisor->updated_at ? $supervisor->updated_at->format('M j, Y g:i A') : null,
+                'status' => $supervisor->status,
+                'assigned_account' => $supervisor->assigned_account,
+                'role' => $supervisor->srole,
+                'shift' => $supervisor->sshift,
+                'ms_teams' => $supervisor->steams,
+            ]
+        ]);
+    }
 }

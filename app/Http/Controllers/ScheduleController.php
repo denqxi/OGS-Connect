@@ -90,7 +90,11 @@ class ScheduleController extends Controller
             } elseif ($dayFilter && trim($dayFilter) !== '') {
                 $day = $this->validateDayName($dayFilter);
                 if ($day) {
-                    $query->whereRaw('DAYNAME(date) = ?', [$day]);
+                    // Use DAYOFWEEK instead of DAYNAME for more reliable filtering
+                    $dayOfWeek = $this->getDayOfWeek($day);
+                    if ($dayOfWeek) {
+                        $query->whereRaw('DAYOFWEEK(date) = ?', [$dayOfWeek]);
+                    }
                 }
             }
 
@@ -125,50 +129,177 @@ class ScheduleController extends Controller
      */
     private function showEmployeeAvailability(Request $request)
     {
-            $query = Tutor::with(['accounts' => function($query) {
+        $query = Tutor::with(['accounts' => function($query) {
             $query->where('account_name', 'GLS')->where('status', 'active');
-            }])
-            ->whereHas('accounts', function($query) {
+        }])
+        ->whereHas('accounts', function($query) {
             $query->where('account_name', 'GLS')->where('status', 'active');
-            });
-            
+        });
+        
         // Apply filters
-            if ($request->filled('search')) {
-                $query->where(function($q) use ($request) {
-                    $q->where('tusername', 'like', '%' . $request->search . '%')
-                      ->orWhere('first_name', 'like', '%' . $request->search . '%')
-                      ->orWhere('last_name', 'like', '%' . $request->search . '%')
-                      ->orWhere('email', 'like', '%' . $request->search . '%')
-                      ->orWhere('phone_number', 'like', '%' . $request->search . '%')
-                      ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ['%' . $request->search . '%']);
-                });
-            }
+        if ($request->filled('search')) {
+            $query->where(function($q) use ($request) {
+                $q->where('tusername', 'like', '%' . $request->search . '%')
+                  ->orWhere('first_name', 'like', '%' . $request->search . '%')
+                  ->orWhere('last_name', 'like', '%' . $request->search . '%')
+                  ->orWhere('email', 'like', '%' . $request->search . '%')
+                  ->orWhere('phone_number', 'like', '%' . $request->search . '%')
+                  ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ['%' . $request->search . '%']);
+            });
+        }
+        
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        
+        // Apply day filter (optional)
+        if ($request->filled('day')) {
+            $dayName = $this->normalizeDayName($request->day);
+            $dayNameLower = strtolower($dayName);
             
-            if ($request->filled('status')) {
-                $query->where('status', $request->status);
-            }
             
-            if ($request->filled('time_slot')) {
-                $timeSlot = str_replace(' - ', '-', $request->time_slot);
-                $query->whereHas('accounts', function($q) use ($timeSlot) {
+            $query->whereHas('accounts', function($q) use ($dayName, $dayNameLower) {
                 $q->where('account_name', 'GLS')->where('status', 'active')
+                  ->where(function($subQuery) use ($dayName, $dayNameLower) {
+                      $subQuery->where('available_times', 'like', '%' . $dayName . '%')
+                               ->orWhere('available_times', 'like', '%' . $dayNameLower . '%');
+                  });
+            });
+        }
+        
+        // Apply time slot filter (optional)
+        if ($request->filled('time_slot')) {
+            $timeSlot = $request->time_slot;
+            // Normalize time format - convert "09:00 - 10:00" to "09:00-10:00"
+            $timeSlot = str_replace([' - ', ' '], '-', $timeSlot);
+            
+            // Parse the requested time range
+            if (strpos($timeSlot, '-') !== false) {
+                list($requestedStart, $requestedEnd) = explode('-', $timeSlot);
+                
+                // Convert to minutes for comparison
+                $requestedStartMinutes = $this->timeToMinutes($requestedStart);
+                $requestedEndMinutes = $this->timeToMinutes($requestedEnd);
+                
+                // Use a simpler approach: get all tutors and filter in PHP
+                $allTutorIds = $query->pluck('tutorID')->toArray();
+                
+                if (!empty($allTutorIds)) {
+                    $filteredTutorIds = [];
+                    
+                    // Get tutors with their accounts
+                    $tutorsWithAccounts = Tutor::with(['accounts' => function($query) {
+                        $query->where('account_name', 'GLS')->where('status', 'active');
+                    }])->whereIn('tutorID', $allTutorIds)->get();
+                    
+                    foreach ($tutorsWithAccounts as $tutor) {
+                        $glsAccount = $tutor->accounts->firstWhere('account_name', 'GLS');
+                        if ($glsAccount && $this->isTimeRangeAvailable($glsAccount->available_times, $requestedStart, $requestedEnd)) {
+                            $filteredTutorIds[] = $tutor->tutorID;
+                        }
+                    }
+                    
+                    // Apply the filtered tutor IDs
+                    if (!empty($filteredTutorIds)) {
+                        $query->whereIn('tutorID', $filteredTutorIds);
+                    } else {
+                        // No tutors match the time range, return empty result
+                        $query->where('tutorID', '=', 'impossible_id_that_does_not_exist');
+                    }
+                }
+            } else {
+                // Fallback to simple string matching for single time values
+                $query->whereHas('accounts', function($q) use ($timeSlot) {
+                    $q->where('account_name', 'GLS')->where('status', 'active')
                       ->where('available_times', 'like', '%' . $timeSlot . '%');
                 });
             }
-            
-            if ($request->filled('day')) {
-            $dayName = $this->normalizeDayName($request->day);
-                $query->whereHas('accounts', function($q) use ($dayName) {
-                $q->where('account_name', 'GLS')->where('status', 'active')
-                      ->where('available_times', 'like', '%' . $dayName . '%');
-                });
+        }
+        
+        $tutors = $query->orderBy('first_name')->orderBy('last_name')->paginate(5)->withQueryString();
+        $availableTimeSlots = $this->getAvailableTimeSlots();
+        $availableDays = $this->getAvailableDaysFromTutorAccounts();
+        
+        return view('schedules.index', compact('tutors', 'availableTimeSlots', 'availableDays'));
+    }
+
+    /**
+     * Check if a requested time range falls within any of the tutor's available time ranges
+     */
+    private function isTimeRangeAvailable($availableTimes, $requestedStart, $requestedEnd)
+    {
+        if (empty($availableTimes)) {
+            return false;
+        }
+
+
+        // Convert requested times to minutes for easier comparison
+        $requestedStartMinutes = $this->timeToMinutes($requestedStart);
+        $requestedEndMinutes = $this->timeToMinutes($requestedEnd);
+
+        // Handle array format of available_times
+        if (is_array($availableTimes)) {
+            // If available_times is an array, iterate through each day
+            foreach ($availableTimes as $day => $times) {
+                if (!is_array($times)) {
+                    $times = [$times];
+                }
+                
+                foreach ($times as $timeRange) {
+                    if (strpos($timeRange, '-') !== false) {
+                        list($startTime, $endTime) = explode('-', $timeRange);
+                        
+                        $startMinutes = $this->timeToMinutes($startTime);
+                        $endMinutes = $this->timeToMinutes($endTime);
+                        
+                        // Check if the requested time range is completely within this available time range
+                        // The requested range must be fully contained: requestedStart >= availableStart AND requestedEnd <= availableEnd
+                        if ($requestedStartMinutes >= $startMinutes && $requestedEndMinutes <= $endMinutes) {
+                            return true;
+                        }
+                    }
+                }
             }
+        } else {
+            // Handle string format of available_times
+            $availableTimes = (string)$availableTimes;
             
-            $tutors = $query->orderBy('first_name')->orderBy('last_name')->paginate(5)->withQueryString();
-            $availableTimeSlots = $this->getAvailableTimeSlots();
-            $availableDays = $this->getAvailableDaysFromTutorAccounts();
+            // Parse the available_times string to extract time ranges
+            // Format is typically: "mon: 09:00-11:00, tue: 14:00-16:00, wed: 10:00-12:00"
+            $entries = explode(',', $availableTimes);
             
-            return view('schedules.index', compact('tutors', 'availableTimeSlots', 'availableDays'));
+            foreach ($entries as $entry) {
+                $entry = trim($entry);
+                
+                // Look for time patterns like "09:00-11:00" or "14:00 - 16:00"
+                if (preg_match('/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/', $entry, $matches)) {
+                    $startTime = $matches[1];
+                    $endTime = $matches[2];
+                    
+                    $startMinutes = $this->timeToMinutes($startTime);
+                    $endMinutes = $this->timeToMinutes($endTime);
+                    
+                    // Check if the requested time range is completely within this available time range
+                    // The requested range must be fully contained: requestedStart >= availableStart AND requestedEnd <= availableEnd
+                    if ($requestedStartMinutes >= $startMinutes && $requestedEndMinutes <= $endMinutes) {
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Convert time string (HH:MM) to minutes since midnight
+     */
+    private function timeToMinutes($timeString)
+    {
+        $time = explode(':', trim($timeString));
+        $hours = (int) $time[0];
+        $minutes = (int) $time[1];
+        return $hours * 60 + $minutes;
     }
 
     /**
@@ -280,7 +411,11 @@ class ScheduleController extends Controller
         if ($request->filled('day')) {
             $day = $this->validateDayName($request->day);
             if ($day) {
-                $query->whereRaw('DAYNAME(date) = ?', [$day]);
+                // Use DAYOFWEEK instead of DAYNAME for more reliable filtering
+                $dayOfWeek = $this->getDayOfWeek($day);
+                if ($dayOfWeek) {
+                    $query->whereRaw('DAYOFWEEK(date) = ?', [$dayOfWeek]);
+                }
             }
         }
 
@@ -302,16 +437,8 @@ class ScheduleController extends Controller
             ->orderBy('date', 'desc')
             ->pluck('date');
 
-        $availableDays = DailyData::where('schedule_status', 'finalized')
-            ->selectRaw('DAYNAME(date) as day')
-            ->distinct()
-            ->pluck('day');
-            
-        // Sort days in chronological order
-        $dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        $availableDays = $availableDays->sortBy(function($day) use ($dayOrder) {
-            return array_search($day, $dayOrder);
-        })->values();
+        // Show all weekdays for filtering (not based on actual data)
+        $availableDays = collect(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
 
         return view('schedules.index', compact('scheduleHistory', 'availableDates', 'availableDays'));
     }
@@ -353,7 +480,11 @@ class ScheduleController extends Controller
             } elseif ($dayFilter && trim($dayFilter) !== '') {
                 $day = $this->validateDayName($dayFilter);
                 if ($day) {
-                    $query->whereRaw('DAYNAME(date) = ?', [$day]);
+                    // Use DAYOFWEEK instead of DAYNAME for more reliable filtering
+                    $dayOfWeek = $this->getDayOfWeek($day);
+                    if ($dayOfWeek) {
+                        $query->whereRaw('DAYOFWEEK(date) = ?', [$dayOfWeek]);
+                    }
                 }
             }
             
@@ -573,16 +704,19 @@ class ScheduleController extends Controller
             $newStatus = $request->status;
             $tutor->update(['status' => $newStatus]);
 
+            $tutorName = $tutor->full_name ?? 'Tutor';
+            $actionText = $newStatus === 'active' ? 'activated and is now available for class assignments' : 'deactivated and will no longer receive class assignments';
+            
             return response()->json([
                 'success' => true,
-                'message' => "Tutor status updated to {$newStatus}",
+                'message' => "{$tutorName} has been {$actionText}",
                 'new_status' => $newStatus
             ]);
             
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid status provided',
+                'message' => 'Invalid status provided. Please select either "active" or "inactive".',
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
@@ -590,7 +724,7 @@ class ScheduleController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update tutor status: ' . $e->getMessage()
+                'message' => 'Unable to update tutor status. Please try again or contact support if the issue persists.'
             ], 500);
         }
     }
@@ -909,6 +1043,25 @@ class ScheduleController extends Controller
         
         // Return null for invalid day names
         return null;
+    }
+
+    /**
+     * Get day of week number for MySQL DAYOFWEEK function
+     * DAYOFWEEK returns 1=Sunday, 2=Monday, 3=Tuesday, 4=Wednesday, 5=Thursday, 6=Friday, 7=Saturday
+     */
+    private function getDayOfWeek($day)
+    {
+        $dayMap = [
+            'Sunday' => 1,
+            'Monday' => 2,
+            'Tuesday' => 3,
+            'Wednesday' => 4,
+            'Thursday' => 5,
+            'Friday' => 6,
+            'Saturday' => 7
+        ];
+        
+        return $dayMap[$day] ?? null;
     }
 
     /**

@@ -837,6 +837,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function performSave(originalText) {
+        // Close confirmation modal immediately when save starts
+        hideConfirmationModal();
 
         // Convert tutor objects to usernames for the API
         const tutorUsernames = tutors.map(tutor => {
@@ -882,8 +884,10 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 showNotification('Tutor assignments saved successfully!', 'success');
-                closeModal();
-                location.reload();
+                // Reload after delay to let users see the success message
+                setTimeout(() => {
+                    location.reload();
+                }, 2500);
             } else {
                 showNotification('Error saving assignments: ' + (data.message || 'Unknown error'), 'error');
             }
@@ -1019,10 +1023,12 @@ function performSaveScheduleAs(status, date) {
                 // Redirect to schedule history after finalizing
                 setTimeout(() => {
                     window.location.href = '/scheduling?tab=history';
-                }, 1200);
+                }, 2500);
             } else {
                 // Just reload the current page for partial save
-                window.location.reload();
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2500);
             }
         } else {
             showNotification('Error saving schedule: ' + data.message, 'error');

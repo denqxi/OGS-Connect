@@ -44,6 +44,8 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
         return view('schedules.class-scheduling');
     })->name('class-scheduling');
     Route::get('/employees', [\App\Http\Controllers\EmployeeManagementController::class, 'index'])->name('employees.index');
+    Route::get('/employees/tutor/{tutor}', [\App\Http\Controllers\EmployeeManagementController::class, 'viewTutor'])->name('employees.tutor.view');
+    Route::get('/employees/supervisor/{supervisor}', [\App\Http\Controllers\EmployeeManagementController::class, 'viewSupervisor'])->name('employees.supervisor.view');
     Route::post('/import/upload', [ImportController::class, 'upload'])->name('import.upload');
     Route::get('/supervisor/profile', [SupervisorProfileController::class, 'index'])->name('supervisor.profile');
     Route::post('/supervisor/profile/security-questions', [SupervisorProfileController::class, 'updateSecurityQuestions'])->name('supervisor.security-questions.update');
@@ -73,6 +75,18 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
         Route::post('/update-multiple', [\App\Http\Controllers\TutorAvailabilityController::class, 'updateMultipleAccounts'])->name('update.multiple');
         Route::get('/time-slots', [\App\Http\Controllers\TutorAvailabilityController::class, 'getTimeSlots'])->name('time.slots');
     });
+    
+            // Tutor payment setup route
+            Route::post('/tutor/setup-payment', [\App\Http\Controllers\TutorAvailabilityController::class, 'setupPayment'])->name('tutor.setup-payment');
+            
+            // Tutor payment method management routes
+            Route::put('/tutor/payment-method/{paymentId}', [\App\Http\Controllers\TutorAvailabilityController::class, 'updatePaymentMethod'])->name('tutor.update-payment-method');
+            Route::delete('/tutor/payment-method/{paymentId}', [\App\Http\Controllers\TutorAvailabilityController::class, 'deletePaymentMethod'])->name('tutor.delete-payment-method');
+            
+            // Tutor personal information and security routes
+            Route::post('/tutor/update-personal-info', [\App\Http\Controllers\TutorAvailabilityController::class, 'updatePersonalInfo'])->name('tutor.update-personal-info');
+            Route::post('/tutor/change-password', [\App\Http\Controllers\TutorAvailabilityController::class, 'changePassword'])->name('tutor.change-password');
+            Route::post('/tutor/update-security-questions', [\App\Http\Controllers\TutorAvailabilityController::class, 'updateSecurityQuestions'])->name('tutor.update-security-questions');
 });
 
 // Custom logout route for supervisors (doesn't require auth middleware)

@@ -180,6 +180,15 @@ class Tutor extends Authenticatable
     }
 
     /**
+     * Get all payment information for this tutor
+     */
+    public function paymentMethods()
+    {
+        return $this->hasMany(EmployeePaymentInformation::class, 'employee_id', 'tutorID')
+                    ->where('employee_type', 'tutor');
+    }
+
+    /**
      * Get the tutor details for this tutor
      */
     public function tutorDetails()

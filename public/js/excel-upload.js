@@ -168,7 +168,7 @@ function handleSuccessResponse(responseText, elements) {
             setTimeout(() => {
                 modal.classList.add('hidden');
                 location.reload();
-            }, 2000);
+            }, 2500);
         } else {
             showUploadWarning(elements, response.message || 'Upload failed');
         }
@@ -180,7 +180,7 @@ function handleSuccessResponse(responseText, elements) {
             setTimeout(() => {
                 modal.classList.add('hidden');
                 location.reload();
-            }, 2000);
+            }, 2500);
         } else {
             showUploadError(elements, 'Server error - please try again');
         }

@@ -310,7 +310,7 @@ TUTORS (N) ──────────────── (N) DAILY_DATA (via 
 - **Business Rule**: A supervisor can be assigned to manage multiple class schedules
 - **Label**: "Manages" / "Managed By"
 - **Rule**: Only one supervisor per class, but supervisor can manage multiple classes
-
+    
 #### **DailyData → TutorAssignments**
 - **Business Rule**: A class can have multiple tutor assignments (including backups)
 - **Constraint**: `UNIQUE(daily_data_id, tutor_id)` - no duplicate assignments

@@ -96,16 +96,24 @@
 
         <!-- Personal Information -->
         <div class="bg-white shadow-md rounded-xl p-4 sm:p-6 space-y-4">
+            <div class="flex items-center justify-between">
             <h3 class="text-base sm:text-lg md:text-xl font-semibold text-[#0E335D] border-b-2 border-[#0E335D] pb-2">
                 Personal Information</h3>
+                <button id="editPersonalInfoBtn" type="button"
+                    class="px-4 py-2 bg-[#0E335D] text-white text-xs sm:text-sm rounded-full hover:bg-gray-800 transform transition duration-200 hover:scale-105">
+                    <span id="personalInfoToggleText">Edit Information</span>
+                </button>
+            </div>
 
-            <form method="POST" action="{{ route('supervisor.personal-info.update') }}" class="space-y-4">
+            <div id="personalInfoMessage" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
+
+            <form method="POST" action="{{ route('supervisor.personal-info.update') }}" id="personalInfoForm" class="space-y-4">
                 @csrf
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="text-xs sm:text-sm text-[#0E335D]">First Name *</label>
-                        <input type="text" name="sfname" required
-                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
+                        <input type="text" name="sfname" id="sfname" required readonly
+                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] bg-gray-50"
                             value="{{ old('sfname', $supervisor->sfname ?? 'John') }}">
                         @error('sfname')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -113,8 +121,8 @@
                     </div>
                     <div>
                         <label class="text-xs sm:text-sm text-[#0E335D]">Last Name *</label>
-                        <input type="text" name="slname" required
-                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
+                        <input type="text" name="slname" id="slname" required readonly
+                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] bg-gray-50"
                             value="{{ old('slname', $supervisor->slname ?? 'Doe') }}">
                         @error('slname')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -122,8 +130,8 @@
                     </div>
                     <div>
                         <label class="text-xs sm:text-sm text-[#0E335D]">Birth Date</label>
-                        <input type="date" name="birth_date"
-                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
+                        <input type="date" name="birth_date" id="birth_date" readonly
+                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] bg-gray-50"
                             value="{{ old('birth_date', $supervisor->birth_date ?? '') }}">
                         @error('birth_date')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -131,8 +139,8 @@
                     </div>
                     <div>
                         <label class="text-xs sm:text-sm text-[#0E335D]">Address</label>
-                        <input type="text" name="saddress"
-                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
+                        <input type="text" name="saddress" id="saddress" readonly
+                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] bg-gray-50"
                             value="{{ old('saddress', $supervisor->saddress ?? 'Manila, Philippines') }}">
                         @error('saddress')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -140,8 +148,8 @@
                     </div>
                     <div>
                         <label class="text-xs sm:text-sm text-[#0E335D]">Contact Number</label>
-                        <input type="text" name="sconNum"
-                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
+                        <input type="text" name="sconNum" id="sconNum" readonly
+                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] bg-gray-50"
                             value="{{ old('sconNum', $supervisor->sconNum ?? '+639123456789') }}">
                         @error('sconNum')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -149,8 +157,8 @@
                     </div>
                     <div>
                         <label class="text-xs sm:text-sm text-[#0E335D]">Email</label>
-                        <input type="text" name="semail"
-                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
+                        <input type="text" name="semail" id="semail" readonly
+                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] bg-gray-50"
                             value="{{ old('semail', $supervisor->semail ?? 'admin@ogsconnect.com') }}">
                         @error('semail')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -158,8 +166,8 @@
                     </div>
                     <div>
                         <label class="text-xs sm:text-sm text-[#0E335D]">MS Teams Account</label>
-                        <input type="email" name="steams"
-                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
+                        <input type="email" name="steams" id="steams" readonly
+                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] bg-gray-50"
                             value="{{ old('steams', $supervisor->steams ?? '') }}" placeholder="Enter your MS Teams email">
                         @error('steams')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -167,8 +175,8 @@
                     </div>
                     <div>
                         <label class="text-xs sm:text-sm text-[#0E335D]">Shift</label>
-                        <select name="sshift"
-                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]">
+                        <select name="sshift" id="sshift" readonly
+                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] bg-gray-50">
                             <option value="">Select Shift</option>
                             <option value="Day Shift"
                                 {{ old('sshift', $supervisor->sshift ?? '') == 'Day Shift' ? 'selected' : '' }}>Day Shift
@@ -199,11 +207,17 @@
                         </p>
                     </div>
                 </div>
-                <div class="flex justify-end">
-                    <button type="submit"
-                        class="mt-3 px-4 py-2 sm:px-6 sm:py-2 bg-[#0E335D] text-white text-xs sm:text-sm rounded-full hover:bg-gray-800 transform transition duration-200 hover:scale-105 w-full sm:w-auto">
-                        Update Personal Information
+                
+                <!-- Form Actions -->
+                <div class="px-4 py-3">
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" id="cancelPersonalInfoBtn" class="hidden px-4 py-2 bg-gray-500 text-white text-sm rounded-full hover:bg-gray-600 transform transition duration-200">
+                            Cancel
+                        </button>
+                        <button type="button" id="savePersonalInfoBtn" class="hidden px-6 py-3 bg-[#0E335D] text-white text-sm rounded-full hover:bg-gray-800 transform transition duration-200 hover:scale-105">
+                            Save Changes
                     </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -318,7 +332,7 @@
                     @csrf
 
                     <!-- Payment Method -->
-                    <div>
+                    <div class="pb-3">
                         <label class="block text-sm font-medium text-[#0E335D] mb-2">Payment Method *</label>
                         <select name="payment_method" id="payment_method" required
                             class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
@@ -397,7 +411,7 @@
                     <div id="gcash_details" class="space-y-4" style="display: none;">
                         <h4 class="text-sm font-medium text-[#0E335D]">GCash Details</h4>
 
-                        <div>
+                        <div class="pb-3">
                             <label class="block text-sm font-medium text-[#0E335D] mb-2">GCash Number</label>
                             <input type="text" name="gcash_number"
                                 value="{{ old('gcash_number', $paymentInfo->gcash_number ?? '') }}"
@@ -424,7 +438,7 @@
                     </div>
 
                     <!-- Notes -->
-                    <div>
+                    <div class="pb-3">
                         <label class="block text-sm font-medium text-[#0E335D] mb-2">Notes</label>
                         <textarea name="notes" rows="3"
                             class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent"
@@ -435,15 +449,17 @@
                     </div>
 
                     <!-- Form Actions -->
+                    <div class="px-4 py-3">
                     <div class="flex justify-end space-x-3">
                         <button type="button" id="cancel-payment-form"
                             class="px-4 py-2 bg-gray-500 text-white text-sm rounded-full hover:bg-gray-600 transform transition duration-200">
                             Cancel
                         </button>
-                        <button type="submit"
+                        <button type="button" id="update-payment-btn"
                             class="px-6 py-3 bg-[#0E335D] text-white text-sm rounded-full hover:bg-gray-800 transform transition duration-200 hover:scale-105">
                             Update Payment Information
                         </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -470,39 +486,61 @@
             <!-- Change Password -->
             <div class="space-y-3">
                 <h4 class="text-sm sm:text-base font-medium text-[#0E335D]">Change Password</h4>
-                <form method="POST" action="{{ route('supervisor.password.update') }}" class="space-y-4">
+                <form method="POST" action="{{ route('supervisor.password.update') }}" id="passwordForm" class="space-y-4">
                     @csrf
                     <div class="space-y-3">
                         <div>
                             <label class="block text-xs sm:text-sm text-[#0E335D] mb-2">Current Password *</label>
-                            <input type="password" name="current_password" required
-                                class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
+                            <div class="relative">
+                                <input type="password" name="current_password" id="currentPassword" required
+                                    class="w-full border border-gray-300 rounded-lg p-2 pr-10 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
                                 placeholder="Enter your current password">
+                                <button type="button" id="toggleCurrentPassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                                    <i class="fas fa-eye" id="currentPasswordIcon"></i>
+                                </button>
+                            </div>
                             @error('current_password')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
                         <div>
                             <label class="block text-xs sm:text-sm text-[#0E335D] mb-2">New Password *</label>
-                            <input type="password" name="new_password" required
-                                class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
+                            <div class="relative">
+                                <input type="password" name="new_password" id="newPassword" required
+                                    class="w-full border border-gray-300 rounded-lg p-2 pr-10 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
                                 placeholder="Enter your new password">
+                                <button type="button" id="toggleNewPassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                                    <i class="fas fa-eye" id="newPasswordIcon"></i>
+                                </button>
+                            </div>
                             @error('new_password')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
                         <div>
                             <label class="block text-xs sm:text-sm text-[#0E335D] mb-2">Confirm New Password *</label>
-                            <input type="password" name="new_password_confirmation" required
-                                class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
+                            <div class="relative">
+                                <input type="password" name="new_password_confirmation" id="confirmPassword" required
+                                    class="w-full border border-gray-300 rounded-lg p-2 pr-10 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
                                 placeholder="Confirm your new password">
+                                <button type="button" id="toggleConfirmPassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                                    <i class="fas fa-eye" id="confirmPasswordIcon"></i>
+                                </button>
+                            </div>
                             @error('new_password_confirmation')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                             @enderror
+                            <!-- Password Match Indicator -->
+                            <div id="passwordMatchIndicator" class="mt-2 text-sm hidden">
+                                <div class="flex items-center">
+                                    <i id="passwordMatchIcon" class="mr-2"></i>
+                                    <span id="passwordMatchText"></span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="flex justify-end">
-                        <button type="submit"
+                        <button type="button" id="updatePasswordBtn"
                             class="px-4 py-2 sm:px-6 sm:py-2 bg-[#0E335D] text-white text-xs sm:text-sm rounded-full hover:bg-gray-800 transform transition duration-200 hover:scale-105 w-full sm:w-auto">
                             Update Password
                         </button>
@@ -519,7 +557,7 @@
                     Please choose questions and answers that only you would know.
                 </p>
 
-                <form method="POST" action="{{ route('supervisor.security-questions.update') }}" class="space-y-4">
+                <form method="POST" action="{{ route('supervisor.security-questions.update') }}" id="securityQuestionsForm" class="space-y-4">
                     @csrf
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -615,7 +653,7 @@
                     </div>
 
                     <div class="flex justify-end">
-                        <button type="submit"
+                        <button type="button" id="updateSecurityQuestionsBtn"
                             class="px-4 py-2 sm:px-6 sm:py-2 bg-[#0E335D] text-white text-xs sm:text-sm rounded-full hover:bg-gray-800 transform transition duration-200 hover:scale-105 w-full sm:w-auto">
                             Update Security Questions
                         </button>
@@ -628,182 +666,5 @@
 
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Auto-hide success/error messages after 5 seconds
-            const alerts = document.querySelectorAll('.bg-green-50, .bg-red-50');
-            alerts.forEach(alert => {
-                setTimeout(() => {
-                    alert.style.transition = 'opacity 0.5s ease-out';
-                    alert.style.opacity = '0';
-                    setTimeout(() => {
-                        alert.remove();
-                    }, 500);
-                }, 5000);
-            });
-
-            // Payment Information Form Handling
-            const toggleButton = document.getElementById('toggle-payment-form');
-            const toggleText = document.getElementById('toggle-text');
-            const paymentDisplay = document.getElementById('payment-display');
-            const paymentForm = document.getElementById('payment-form');
-            const cancelButton = document.getElementById('cancel-payment-form');
-            const paymentFormElement = document.getElementById('payment-information-form');
-            const paymentMessages = document.getElementById('payment-messages');
-
-            // Toggle form visibility
-            toggleButton.addEventListener('click', function() {
-                if (paymentForm.style.display === 'none') {
-                    paymentForm.style.display = 'block';
-                    paymentDisplay.style.display = 'none';
-                    toggleText.textContent = 'View Payment Info';
-                    togglePaymentDetails(); // Show correct payment details
-                } else {
-                    paymentForm.style.display = 'none';
-                    paymentDisplay.style.display = 'block';
-                    toggleText.textContent = 'Edit Payment Info';
-                }
-            });
-
-            // Cancel form
-            cancelButton.addEventListener('click', function() {
-                paymentForm.style.display = 'none';
-                paymentDisplay.style.display = 'block';
-                toggleText.textContent = 'Edit Payment Info';
-                clearMessages();
-            });
-
-            // Handle form submission via AJAX
-            paymentFormElement.addEventListener('submit', function(e) {
-                e.preventDefault();
-
-                const formData = new FormData(this);
-                const submitButton = this.querySelector('button[type="submit"]');
-                const originalText = submitButton.textContent;
-
-                // Show loading state
-                submitButton.textContent = 'Updating...';
-                submitButton.disabled = true;
-
-                fetch(this.action, {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                .getAttribute('content')
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            showMessage('success', data.message);
-                            // Update the display with new data
-                            updatePaymentDisplay(data.payment_info);
-                            // Hide form and show display
-                            paymentForm.style.display = 'none';
-                            paymentDisplay.style.display = 'block';
-                            toggleText.textContent = 'Edit Payment Info';
-                        } else {
-                            showMessage('error', data.message ||
-                                'An error occurred while updating payment information.');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        showMessage('error', 'An error occurred while updating payment information.');
-                    })
-                    .finally(() => {
-                        // Reset button state
-                        submitButton.textContent = originalText;
-                        submitButton.disabled = false;
-                    });
-            });
-
-            // Payment method change handler
-            const paymentMethodSelect = document.getElementById('payment_method');
-            paymentMethodSelect.addEventListener('change', togglePaymentDetails);
-
-            function togglePaymentDetails() {
-                const bankDetails = document.getElementById('bank_details');
-                const paypalDetails = document.getElementById('paypal_details');
-                const gcashDetails = document.getElementById('gcash_details');
-                const paymayaDetails = document.getElementById('paymaya_details');
-
-                // Hide all details first
-                bankDetails.style.display = 'none';
-                paypalDetails.style.display = 'none';
-                gcashDetails.style.display = 'none';
-                paymayaDetails.style.display = 'none';
-
-                // Show relevant details based on selection
-                const selectedMethod = paymentMethodSelect.value;
-                switch (selectedMethod) {
-                    case 'bank_transfer':
-                        bankDetails.style.display = 'block';
-                        break;
-                    case 'paypal':
-                        paypalDetails.style.display = 'block';
-                        break;
-                    case 'gcash':
-                        gcashDetails.style.display = 'block';
-                        break;
-                    case 'paymaya':
-                        paymayaDetails.style.display = 'block';
-                        break;
-                }
-            }
-
-            function showMessage(type, message) {
-                clearMessages();
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `p-4 rounded-lg mb-4 ${
-                    type === 'success' 
-                        ? 'bg-green-50 border border-green-200 text-green-800' 
-                        : 'bg-red-50 border border-red-200 text-red-800'
-                }`;
-                messageDiv.innerHTML = `
-                    <div class="flex items-start">
-                        <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 ${type === 'success' ? 'text-green-400' : 'text-red-400'} mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${type === 'success' ? 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' : 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z'}"></path>
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <p class="text-sm font-medium">${message}</p>
-                        </div>
-                    </div>
-                `;
-                paymentMessages.appendChild(messageDiv);
-                paymentMessages.classList.remove('hidden');
-
-                // Auto-hide after 5 seconds
-                setTimeout(() => {
-                    messageDiv.style.transition = 'opacity 0.5s ease-out';
-                    messageDiv.style.opacity = '0';
-                    setTimeout(() => {
-                        messageDiv.remove();
-                        if (paymentMessages.children.length === 0) {
-                            paymentMessages.classList.add('hidden');
-                        }
-                    }, 500);
-                }, 5000);
-            }
-
-            function clearMessages() {
-                paymentMessages.innerHTML = '';
-                paymentMessages.classList.add('hidden');
-            }
-
-            function updatePaymentDisplay(paymentInfo) {
-                // This function would update the display with the new payment information
-                // For now, we'll just reload the page section or update the display manually
-                // In a real implementation, you might want to update the DOM elements directly
-                location.reload(); // Simple solution - reload the page to show updated data
-            }
-
-            // Initialize payment details display
-            togglePaymentDetails();
-        });
-    </script>
+    <script src="{{ asset('js/supervisor-profile.js') }}"></script>
 @endsection

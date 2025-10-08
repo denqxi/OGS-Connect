@@ -286,31 +286,105 @@
 function exportSingleSchedule(date) {
     console.log('Exporting schedule for date:', date);
     
-    // Create a form to export the single schedule
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '{{ route("schedules.export-selected") }}';
-    form.style.display = 'none';
+    // Show loading state
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = `
+        <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Exporting...
+    `;
     
-    // Add CSRF token
-    const csrfInput = document.createElement('input');
-    csrfInput.type = 'hidden';
-    csrfInput.name = '_token';
-    csrfInput.value = '{{ csrf_token() }}';
-    form.appendChild(csrfInput);
+    // Create form data with the date
+    const formData = new FormData();
+    formData.append('dates[]', date);
     
-    // Add the selected date - use 'dates[]' to match controller expectation
-    const dateInput = document.createElement('input');
-    dateInput.type = 'hidden';
-    dateInput.name = 'dates[]';
-    dateInput.value = date;
-    form.appendChild(dateInput);
+    // Export the schedule using fetch
+    fetch('{{ route("schedules.export-selected") }}', {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.blob();
+    })
+    .then(blob => {
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `finalized_schedule_${date}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        // Show success message
+        showNotification(`Excel file for ${date} exported successfully!`, 'success');
+    })
+    .catch(error => {
+        console.error('Export error:', error);
+        showNotification('Error exporting schedule. Please try again.', 'error');
+    })
+    .finally(() => {
+        // Restore button
+        button.disabled = false;
+        button.innerHTML = originalText;
+    });
+}
+
+// Enhanced toast notification function (consistent with other parts of the application)
+function showNotification(message, type) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `fixed bottom-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg text-white font-medium transition-all duration-300 transform translate-x-full opacity-0 ${
+        type === 'success' ? 'bg-green-500' : 'bg-red-500'
+    }`;
     
-    console.log('Form action:', form.action);
-    console.log('Form data:', new FormData(form));
+    // Add icon and message
+    notification.innerHTML = `
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                    ${type === 'success' 
+                        ? '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>'
+                        : '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>'
+                    }
+                </svg>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm font-medium">${message}</p>
+            </div>
+        </div>
+    `;
     
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Show notification with animation
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full', 'opacity-0');
+    }, 100);
+    
+    // Remove after appropriate duration (longer for success messages)
+    const duration = type === 'success' ? 3000 : 4000;
+    setTimeout(() => {
+        notification.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => {
+            if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+            }
+        }, 300);
+    }, duration);
 }
 </script>

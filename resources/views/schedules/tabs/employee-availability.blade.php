@@ -25,7 +25,7 @@
                            class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md text-sm 
                                   focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
                                   focus:ring-0 focus:shadow-xl">
-                    <button type="button" id="clearSearch" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 {{ request('search') ? '' : 'hidden' }}">
+                    <button type="button" id="clearSearch" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -39,23 +39,60 @@
 
             <!-- Right side -->
             <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2">
+                    <div class="flex items-center space-x-1">
                 <span class="text-sm text-gray-600">Available at:</span>
-                <select name="time_slot" id="filterTimeSlot" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="handleTutorFilterChange('time_slot')">
-                    <option value="">All Times</option>
-                    @if(isset($availableTimeSlots) && $availableTimeSlots->count() > 0)
-                        @foreach($availableTimeSlots as $timeSlot)
-                            <option value="{{ $timeSlot }}" {{ request('time_slot') == $timeSlot ? 'selected' : '' }}>
-                                {{ $timeSlot }}
-                            </option>
-                        @endforeach
-                    @else
-                        <!-- Fallback options if availableTimeSlots is not set or empty -->
-                        <option value="07:00 - 08:00" {{ request('time_slot') == '07:00 - 08:00' ? 'selected' : '' }}>07:00 - 08:00</option>
-                        <option value="08:00 - 09:00" {{ request('time_slot') == '08:00 - 09:00' ? 'selected' : '' }}>08:00 - 09:00</option>
-                        <option value="09:00 - 10:00" {{ request('time_slot') == '09:00 - 10:00' ? 'selected' : '' }}>09:00 - 10:00</option>
-                        <option value="10:00 - 11:00" {{ request('time_slot') == '10:00 - 11:00' ? 'selected' : '' }}>10:00 - 11:00</option>
-                    @endif
+                        <div class="relative group">
+                            <i class="fas fa-info-circle text-gray-400 text-xs cursor-help"></i>
+                            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                                Optional filters: Select day and/or time range using the dropdowns
+                                <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="flex items-center space-x-2">
+                            <div class="flex flex-col items-center">
+                                <label class="text-xs text-gray-500 mb-1">Start</label>
+                        <select id="startTime" 
+                                class="border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-600 bg-white w-20"
+                                onchange="updateTimeRange(); updateEndTimeOptions();">
+                            <option value="">--</option>
+                            @for($hour = 7; $hour <= 15; $hour++)
+                                @for($minute = 0; $minute < 60; $minute += 30)
+                                    @php
+                                        $time = sprintf('%02d:%02d', $hour, $minute);
+                                        // Skip times after 3:30 PM (15:30)
+                                        if ($hour == 15 && $minute > 30) break;
+                                    @endphp
+                                    <option value="{{ $time }}">{{ $time }}</option>
+                                @endfor
+                            @endfor
+                        </select>
+                            </div>
+                            <span class="text-gray-400 text-sm">-</span>
+                            <div class="flex flex-col items-center">
+                                <label class="text-xs text-gray-500 mb-1">End</label>
+                        <select id="endTime" 
+                                class="border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-600 bg-white w-20"
+                                onchange="updateTimeRange()">
+                            <option value="">--</option>
+                            @for($hour = 7; $hour <= 15; $hour++)
+                                @for($minute = 0; $minute < 60; $minute += 30)
+                                    @php
+                                        $time = sprintf('%02d:%02d', $hour, $minute);
+                                        // Skip times after 3:30 PM (15:30)
+                                        if ($hour == 15 && $minute > 30) break;
+                                    @endphp
+                                    <option value="{{ $time }}">{{ $time }}</option>
+                                @endfor
+                            @endfor
                 </select>
+                            </div>
+                            <input type="hidden" name="time_slot" id="filterTimeSlot" value="{{ request('time_slot') }}">
+                        </div>
+                        
+                        <span class="text-sm text-gray-400">+</span>
                 
                 <select name="day" id="filterDay" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="handleTutorFilterChange('day')">
                     <option value="">All Days</option>
@@ -97,12 +134,25 @@
                         <option value="fri" {{ request('day') == 'fri' ? 'selected' : '' }}>Friday</option>
                     @endif
                 </select>
+                    </div>
+                </div>
 
                 @if(request()->hasAny(['search', 'status', 'time_slot', 'day']))
+                    <div class="flex items-center space-x-2">
+                        @if(request('time_slot') && request('day'))
+                            @php
+                                $dayMap = [
+                                    'mon' => 'Monday', 'tue' => 'Tuesday', 'wed' => 'Wednesday',
+                                    'thur' => 'Thursday', 'fri' => 'Friday'
+                                ];
+                                $displayDay = $dayMap[request('day')] ?? ucfirst(request('day'));
+                            @endphp
+                        @endif
                     <a href="{{ route('schedules.index', ['tab' => 'employee']) }}" 
                        class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors">
                         Clear
                     </a>
+                    </div>
                 @endif
             </div>
         </div>
@@ -138,7 +188,189 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     @if($glsAccount)
                         <div class="flex flex-col">
-                            <span class="font-medium text-gray-700">{{ $glsAccount->formatted_available_time }}</span>
+                            @php
+                                $filteredTime = '';
+                                $filteredDay = '';
+                                
+                                // If both day and time filters are applied, show only the filtered combination
+                                if (request('day') && request('time_slot')) {
+                                    $dayName = request('day');
+                                    $timeSlot = request('time_slot');
+                                    
+                                    // Ensure dayName is a string
+                                    if (is_array($dayName)) {
+                                        $dayName = $dayName[0] ?? '';
+                                    }
+                                    
+                                    // Ensure timeSlot is a string
+                                    if (is_array($timeSlot)) {
+                                        $timeSlot = $timeSlot[0] ?? '';
+                                    }
+                                    
+                                    // Convert day to proper format for display
+                                    $dayMap = [
+                                        'mon' => 'Monday', 'tue' => 'Tuesday', 'wed' => 'Wednesday',
+                                        'thur' => 'Thursday', 'fri' => 'Friday'
+                                    ];
+                                    $displayDay = $dayMap[$dayName] ?? ucfirst($dayName);
+                                    
+                                    $filteredTime = $displayDay . ' - ' . $timeSlot;
+                                }
+                                // If only day filter is applied, show all times for that day
+                                elseif (request('day')) {
+                                    $dayName = request('day');
+                                    
+                                    // Ensure dayName is a string
+                                    if (is_array($dayName)) {
+                                        $dayName = $dayName[0] ?? '';
+                                    }
+                                    
+                                    $dayMap = [
+                                        'mon' => 'Monday', 'tue' => 'Tuesday', 'wed' => 'Wednesday',
+                                        'thur' => 'Thursday', 'fri' => 'Friday'
+                                    ];
+                                    $displayDay = $dayMap[$dayName] ?? ucfirst($dayName);
+                                    
+                                    // Extract times for this specific day from the available_times
+                                    $availableTimes = $glsAccount->available_times ?? '';
+                                    
+                                    $dayTimes = [];
+                                    
+                                    // Handle array format of available_times
+                                    if (is_array($availableTimes)) {
+                                        // If available_times is an array, look for the specific day
+                                        $dayKey = strtolower($dayName);
+                                        $dayTimes = $availableTimes[$dayKey] ?? $availableTimes[$dayName] ?? [];
+                                        
+                                        // Ensure dayTimes is an array of strings
+                                        if (!is_array($dayTimes)) {
+                                            $dayTimes = [$dayTimes];
+                                        }
+                                        
+                                        // Convert any array elements to strings
+                                        $dayTimes = array_map(function($time) {
+                                            return is_array($time) ? implode('-', $time) : (string)$time;
+                                        }, $dayTimes);
+                                    } else {
+                                        // Handle string format of available_times
+                                        $availableTimes = (string)$availableTimes;
+                                        
+                                        // Parse the available_times string to find times for this day
+                                        if (preg_match_all('/' . preg_quote($dayName, '/') . ':\s*([^,]+)/i', $availableTimes, $matches)) {
+                                            foreach ($matches[1] as $time) {
+                                                $dayTimes[] = trim($time);
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (!empty($dayTimes)) {
+                                        $filteredTime = $displayDay . ' - ' . implode(', ', $dayTimes);
+                                    } else {
+                                        $filteredTime = $displayDay . ' - No specific times';
+                                    }
+                                }
+                                // If only time filter is applied, show the actual available time ranges that contain the requested time
+                                elseif (request('time_slot')) {
+                                    $requestedTimeSlot = request('time_slot');
+                                    
+                                    // Ensure requestedTimeSlot is a string
+                                    if (is_array($requestedTimeSlot)) {
+                                        $requestedTimeSlot = $requestedTimeSlot[0] ?? '';
+                                    }
+                                    
+                                    $availableTimes = $glsAccount->available_times ?? '';
+                                    
+                                    $matchingRanges = [];
+                                    
+                                    // Handle array format of available_times
+                                    if (is_array($availableTimes)) {
+                                        // If available_times is an array, iterate through each day
+                                        foreach ($availableTimes as $day => $times) {
+                                            if (!is_array($times)) {
+                                                $times = [$times];
+                                            }
+                                            
+                                            foreach ($times as $timeRange) {
+                                                if (strpos($timeRange, '-') !== false) {
+                                                    list($startTime, $endTime) = explode('-', $timeRange);
+                                                    
+                                                    // Check if the requested time range is contained within this available range
+                                                    if (strpos($requestedTimeSlot, '-') !== false) {
+                                                        list($requestedStart, $requestedEnd) = explode('-', $requestedTimeSlot);
+                                                        
+                                                        // Convert times to minutes for comparison
+                                                        $requestedStartMinutes = (int)substr($requestedStart, 0, 2) * 60 + (int)substr($requestedStart, 3, 2);
+                                                        $requestedEndMinutes = (int)substr($requestedEnd, 0, 2) * 60 + (int)substr($requestedEnd, 3, 2);
+                                                        $startMinutes = (int)substr($startTime, 0, 2) * 60 + (int)substr($startTime, 3, 2);
+                                                        $endMinutes = (int)substr($endTime, 0, 2) * 60 + (int)substr($endTime, 3, 2);
+                                                        
+                                                        // Check if requested range is contained within available range
+                                                        if ($requestedStartMinutes >= $startMinutes && $requestedEndMinutes <= $endMinutes) {
+                                                            $dayMap = [
+                                                                'mon' => 'Monday', 'tue' => 'Tuesday', 'wed' => 'Wednesday',
+                                                                'thur' => 'Thursday', 'fri' => 'Friday'
+                                                            ];
+                                                            $dayName = $dayMap[$day] ?? ucfirst($day);
+                                                            $matchingRanges[] = $dayName . ': ' . $startTime . '-' . $endTime;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        // Handle string format of available_times
+                                        $availableTimes = (string)$availableTimes;
+                                        
+                                        // Parse the available_times string to find time ranges that contain the requested time
+                                        if (preg_match_all('/([a-z]+):\s*([0-9]{1,2}:[0-9]{2})\s*-\s*([0-9]{1,2}:[0-9]{2})/i', $availableTimes, $matches, PREG_SET_ORDER)) {
+                                        foreach ($matches as $match) {
+                                            $day = $match[1];
+                                            $startTime = $match[2];
+                                            $endTime = $match[3];
+                                            
+                                            // Check if the requested time range is contained within this available range
+                                            if (strpos($requestedTimeSlot, '-') !== false) {
+                                                list($requestedStart, $requestedEnd) = explode('-', $requestedTimeSlot);
+                                                
+                                                // Convert times to minutes for comparison
+                                                $requestedStartMinutes = (int)substr($requestedStart, 0, 2) * 60 + (int)substr($requestedStart, 3, 2);
+                                                $requestedEndMinutes = (int)substr($requestedEnd, 0, 2) * 60 + (int)substr($requestedEnd, 3, 2);
+                                                $startMinutes = (int)substr($startTime, 0, 2) * 60 + (int)substr($startTime, 3, 2);
+                                                $endMinutes = (int)substr($endTime, 0, 2) * 60 + (int)substr($endTime, 3, 2);
+                                                
+                                                // Check if requested range is contained within available range
+                                                if ($requestedStartMinutes >= $startMinutes && $requestedEndMinutes <= $endMinutes) {
+                                                    $dayMap = [
+                                                        'mon' => 'Monday', 'tue' => 'Tuesday', 'wed' => 'Wednesday',
+                                                        'thur' => 'Thursday', 'fri' => 'Friday'
+                                                    ];
+                                                    $dayName = $dayMap[$day] ?? ucfirst($day);
+                                                    $matchingRanges[] = $dayName . ': ' . $startTime . '-' . $endTime;
+                                                }
+                                            }
+                                        }
+                                        }
+                                    }
+                                    
+                                    if (!empty($matchingRanges)) {
+                                        $filteredTime = implode(', ', $matchingRanges);
+                                    } else {
+                                        $formattedTime = $glsAccount->formatted_available_time;
+                                        $filteredTime = is_array($formattedTime) ? implode(', ', $formattedTime) : $formattedTime;
+                                    }
+                                }
+                                // If no filters applied, show full availability
+                                else {
+                                    $formattedTime = $glsAccount->formatted_available_time;
+                                    $filteredTime = is_array($formattedTime) ? implode(', ', $formattedTime) : $formattedTime;
+                                }
+                            @endphp
+                            
+                            @php
+                                $displayTime = $filteredTime ?: $glsAccount->formatted_available_time;
+                                $displayTime = is_array($displayTime) ? implode(', ', $displayTime) : $displayTime;
+                            @endphp
+                            <span class="font-medium text-gray-700">{{ $displayTime }}</span>
                             <span class="text-xs text-green-600 font-medium">(GLS Account)</span>
                         </div>
                     @else
@@ -153,12 +385,12 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                     @if($tutor->status === 'active')
-                        <button class="px-3 py-1 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors text-xs font-medium"
+                        <button class="px-3 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors text-xs font-medium"
                                 onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'inactive')">
                             Deactivate
                         </button>
                     @else
-                        <button class="px-3 py-1 bg-green-100 text-green-600 rounded-md hover:bg-green-200 transition-colors text-xs font-medium"
+                        <button class="px-3 py-1 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors text-xs font-medium"
                                 onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'active')">
                             Activate
                         </button>
@@ -205,128 +437,4 @@
 </div>
 @endif
 
-<script>
-    window.tutorTotalResults = @json(isset($tutors) && method_exists($tutors, 'total') ? $tutors->total() : 0);
-    
-    function handleTutorFilterChange(changed) {
-        // Only one filter can be active at a time
-        if (changed === 'time_slot') {
-            document.getElementById('filterDay').value = '';
-            document.getElementById('filterStatus').value = '';
-        } else if (changed === 'day') {
-            document.getElementById('filterTimeSlot').value = '';
-            document.getElementById('filterStatus').value = '';
-        } else if (changed === 'status') {
-            document.getElementById('filterTimeSlot').value = '';
-            document.getElementById('filterDay').value = '';
-        }
-        
-        // Submit the form to apply filters
-        document.getElementById('tutorFilterForm').submit();
-    }
-
-    // Handle search input - submit form on Enter or when user stops typing
-    document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.getElementById('tutorSearch');
-        const clearSearchBtn = document.getElementById('clearSearch');
-        const form = document.getElementById('tutorFilterForm');
-        let searchTimeout;
-
-        if (searchInput) {
-            // Handle search input with debounce
-            searchInput.addEventListener('input', function() {
-                const query = this.value.trim();
-                
-                // Show/hide clear button
-                if (query.length > 0) {
-                    if (clearSearchBtn) clearSearchBtn.classList.remove('hidden');
-                } else {
-                    if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
-                }
-
-                // Clear previous timeout
-                clearTimeout(searchTimeout);
-                
-                // Debounce search - auto-submit form after user stops typing for 800ms
-                searchTimeout = setTimeout(() => {
-                    form.submit();
-                }, 800);
-            });
-
-            // Handle Enter key
-            searchInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    clearTimeout(searchTimeout);
-                    form.submit();
-                }
-            });
-
-            // Clear search
-            if (clearSearchBtn) {
-                clearSearchBtn.addEventListener('click', function() {
-                    searchInput.value = '';
-                    clearSearchBtn.classList.add('hidden');
-                    form.submit();
-                });
-            }
-        }
-    });
-
-    // Toggle tutor status (active/inactive)
-    function toggleTutorStatus(tutorId, newStatus) {
-        if (!tutorId) {
-            alert('Error: Tutor ID not found');
-            return;
-        }
-
-        // Show confirmation dialog
-        const action = newStatus === 'active' ? 'activate' : 'deactivate';
-        if (!confirm(`Are you sure you want to ${action} this tutor?`)) {
-            return;
-        }
-
-        // Show loading state
-        const button = event.target;
-        const originalText = button.textContent;
-        button.disabled = true;
-        button.textContent = 'Updating...';
-
-        // Make AJAX request
-        fetch(`/tutors/${tutorId}/toggle-status`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify({
-                status: newStatus
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Show success message
-                alert(data.message);
-                
-                // Reload the page to reflect changes
-                window.location.reload();
-            } else {
-                // Show error message
-                alert(data.message || 'Failed to update tutor status');
-                
-                // Restore button state
-                button.disabled = false;
-                button.textContent = originalText;
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while updating tutor status');
-            
-            // Restore button state
-            button.disabled = false;
-            button.textContent = originalText;
-        });
-    }
-</script>
+<script src="{{ asset('js/employee-availability.js') }}"></script>

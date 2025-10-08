@@ -35,49 +35,71 @@ class PaymentInformationController extends Controller
         $employeeType = $this->getEmployeeType($user);
         $employeeId = $this->getEmployeeId($user);
 
-        $request->validate([
-            'payment_method' => 'required|in:bank_transfer,paypal,gcash,paymaya,cash',
-            'bank_name' => 'required_if:payment_method,bank_transfer|nullable|string|max:255',
-            'account_number' => 'required_if:payment_method,bank_transfer|nullable|string|max:255',
-            'account_name' => 'required_if:payment_method,bank_transfer|nullable|string|max:255',
-            'paypal_email' => 'required_if:payment_method,paypal|nullable|email|max:255',
-            'gcash_number' => 'required_if:payment_method,gcash|nullable|string|max:20',
-            'paymaya_number' => 'required_if:payment_method,paymaya|nullable|string|max:20',
-            'notes' => 'nullable|string|max:1000',
-        ]);
-
-        $data = [
-            'employee_id' => $employeeId,
-            'employee_type' => $employeeType,
-            'payment_method' => $request->payment_method,
-            'bank_name' => $request->bank_name,
-            'account_number' => $request->account_number,
-            'account_name' => $request->account_name,
-            'paypal_email' => $request->paypal_email,
-            'gcash_number' => $request->gcash_number,
-            'paymaya_number' => $request->paymaya_number,
-            'notes' => $request->notes,
-            'is_active' => true,
-        ];
-
-        $paymentInfo = EmployeePaymentInformation::updateOrCreate(
-            [
-                'employee_id' => $employeeId,
-                'employee_type' => $employeeType,
-            ],
-            $data
-        );
-
-        // Check if request is AJAX
-        if ($request->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Payment information updated successfully!',
-                'payment_info' => $paymentInfo
+        try {
+            $request->validate([
+                'payment_method' => 'required|in:bank_transfer,paypal,gcash,paymaya,cash',
+                'bank_name' => 'required_if:payment_method,bank_transfer|nullable|string|max:255',
+                'account_number' => 'required_if:payment_method,bank_transfer|nullable|string|max:255',
+                'account_name' => 'required_if:payment_method,bank_transfer|nullable|string|max:255',
+                'paypal_email' => 'required_if:payment_method,paypal|nullable|email|max:255',
+                'gcash_number' => 'required_if:payment_method,gcash|nullable|string|max:20',
+                'paymaya_number' => 'required_if:payment_method,paymaya|nullable|string|max:20',
+                'notes' => 'nullable|string|max:1000',
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $e->errors()
+                ], 422);
+            }
+            throw $e;
         }
 
-        return redirect()->back()->with('success', 'Payment information updated successfully!');
+        try {
+            $data = [
+                'employee_id' => $employeeId,
+                'employee_type' => $employeeType,
+                'payment_method' => $request->payment_method,
+                'bank_name' => $request->bank_name,
+                'account_number' => $request->account_number,
+                'account_name' => $request->account_name,
+                'paypal_email' => $request->paypal_email,
+                'gcash_number' => $request->gcash_number,
+                'paymaya_number' => $request->paymaya_number,
+                'notes' => $request->notes,
+                'is_active' => true,
+            ];
+
+            $paymentInfo = EmployeePaymentInformation::updateOrCreate(
+                [
+                    'employee_id' => $employeeId,
+                    'employee_type' => $employeeType,
+                ],
+                $data
+            );
+
+            // Check if request is AJAX
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Payment information updated successfully!',
+                    'payment_info' => $paymentInfo
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Payment information updated successfully!');
+        } catch (\Exception $e) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update payment information. Please try again.'
+                ], 500);
+            }
+            
+            return redirect()->back()->with('error', 'Failed to update payment information. Please try again.');
+        }
     }
 
     /**

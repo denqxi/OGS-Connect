@@ -108,17 +108,24 @@
                     </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                    @if($supervisor->status === 'active')
-                        <button class="px-3 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors text-xs font-medium"
-                                onclick="toggleSupervisorStatus('{{ $supervisor->supID }}', 'inactive')" title="Deactivate">
-                            Deactivate
+                    <div class="flex space-x-2">
+                        <button onclick="openEmployeeModal('supervisor', '{{ $supervisor->supID }}')" 
+                                class="w-8 h-8 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 inline-flex items-center justify-center transition-colors"
+                                title="View Details">
+                            <i class="fas fa-search text-xs"></i>
                         </button>
-                    @else
-                        <button class="px-3 py-1 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors text-xs font-medium"
-                                onclick="toggleSupervisorStatus('{{ $supervisor->supID }}', 'active')" title="Activate">
-                            Activate
-                        </button>
-                    @endif
+                        @if($supervisor->status === 'active')
+                            <button class="px-3 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors text-xs font-medium"
+                                    onclick="toggleSupervisorStatus('{{ $supervisor->supID }}', 'inactive')" title="Deactivate">
+                                Deactivate
+                            </button>
+                        @else
+                            <button class="px-3 py-1 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors text-xs font-medium"
+                                    onclick="toggleSupervisorStatus('{{ $supervisor->supID }}', 'active')" title="Activate">
+                                Activate
+                            </button>
+                        @endif
+                    </div>
                 </td>
             </tr>
             @empty

@@ -343,33 +343,44 @@ function updateExportButton() {
 function showNotification(message, type) {
     // Create notification element
     const notification = document.createElement('div');
-    notification.className = `fixed bottom-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 translate-x-full opacity-0 ${
-        type === 'success' 
-            ? 'bg-green-500 text-white' 
-            : 'bg-red-500 text-white'
+    notification.className = `fixed bottom-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg text-white font-medium transition-all duration-300 transform translate-x-full opacity-0 ${
+        type === 'success' ? 'bg-green-500' : 'bg-red-500'
     }`;
     
+    // Add icon and message
     notification.innerHTML = `
         <div class="flex items-center">
-            <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} mr-2"></i>
-            <span>${message}</span>
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                    ${type === 'success' 
+                        ? '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>'
+                        : '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>'
+                    }
+                </svg>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm font-medium">${message}</p>
+            </div>
         </div>
     `;
     
     document.body.appendChild(notification);
     
-    // Show notification
+    // Show notification with animation
     setTimeout(() => {
         notification.classList.remove('translate-x-full', 'opacity-0');
     }, 100);
     
-    // Hide notification after 3 seconds
+    // Remove after appropriate duration (longer for success messages)
+    const duration = type === 'success' ? 3000 : 4000;
     setTimeout(() => {
         notification.classList.add('translate-x-full', 'opacity-0');
         setTimeout(() => {
-            document.body.removeChild(notification);
+            if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+            }
         }, 300);
-    }, 3000);
+    }, duration);
 }
 </script>
 @endpush

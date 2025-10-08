@@ -65,9 +65,23 @@ class SupervisorProfileController extends Controller
                 'answer_hash' => Hash::make(strtolower(trim($request->security_answer2))),
             ]);
 
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Security questions updated successfully!'
+                ]);
+            }
+            
             return redirect()->back()->with('success', 'Security questions updated successfully!');
 
         } catch (\Exception $e) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update security questions. Please try again.'
+                ], 500);
+            }
+            
             return redirect()->back()->with('error', 'Failed to update security questions. Please try again.');
         }
     }
@@ -118,9 +132,23 @@ class SupervisorProfileController extends Controller
                 'sshift' => $request->sshift,
             ]);
 
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Personal information updated successfully!'
+                ]);
+            }
+            
             return redirect()->back()->with('success', 'Personal information updated successfully!');
 
         } catch (\Exception $e) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update personal information. Please try again.'
+                ], 500);
+            }
+            
             return redirect()->back()->with('error', 'Failed to update personal information. Please try again.');
         }
     }
@@ -147,11 +175,23 @@ class SupervisorProfileController extends Controller
 
         // Verify current password
         if (!Hash::check($request->current_password, $supervisor->password)) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Current password is incorrect.'
+                ], 422);
+            }
             return redirect()->back()->withErrors(['current_password' => 'Current password is incorrect.'])->withInput();
         }
 
         // Check if new password is different from current password
         if (Hash::check($request->new_password, $supervisor->password)) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'New password must be different from current password.'
+                ], 422);
+            }
             return redirect()->back()->withErrors(['new_password' => 'New password must be different from current password.'])->withInput();
         }
 
@@ -160,9 +200,23 @@ class SupervisorProfileController extends Controller
                 'password' => Hash::make($request->new_password),
             ]);
 
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Password updated successfully!'
+                ]);
+            }
+            
             return redirect()->back()->with('success', 'Password updated successfully!');
 
         } catch (\Exception $e) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update password. Please try again.'
+                ], 500);
+            }
+            
             return redirect()->back()->with('error', 'Failed to update password. Please try again.');
         }
     }

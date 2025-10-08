@@ -88,4 +88,7 @@
             </div>
         </div>
     </div>
+
+    <!-- Employee Details Modal -->
+    @include('emp_management.partials.employee-modal')
 @endsection

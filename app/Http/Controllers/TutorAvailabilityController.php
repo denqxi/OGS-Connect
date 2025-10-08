@@ -7,6 +7,7 @@ use App\Models\TutorAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
@@ -91,7 +92,7 @@ class TutorAvailabilityController extends Controller
 
             // Get tutor details, payment information, and security questions for additional information
             $tutorDetails = $tutor->tutorDetails;
-            $paymentInfo = $tutor->paymentInformation;
+            $paymentMethods = $tutor->paymentMethods;
             $securityQuestions = $tutor->securityQuestions()->take(2)->get();
             
             return response()->json([
@@ -107,19 +108,25 @@ class TutorAvailabilityController extends Controller
                     'address' => $tutorDetails->address ?? null,
                     'contact_number' => $tutor->phone_number ?? null,
                     'ms_teams_id' => $tutorDetails->ms_teams_id ?? null,
-                    'payment_info' => $paymentInfo ? [
-                        'payment_method' => $paymentInfo->payment_method ?? null,
-                        'bank_name' => $paymentInfo->bank_name ?? null,
-                        'account_number' => $paymentInfo->account_number ?? null,
-                        'account_name' => $paymentInfo->account_name ?? null,
-                        'paypal_email' => $paymentInfo->paypal_email ?? null,
-                        'gcash_number' => $paymentInfo->gcash_number ?? null,
-                        'paymaya_number' => $paymentInfo->paymaya_number ?? null
-                    ] : null,
+                    'payment_info' => $paymentMethods->map(function($payment) {
+                        return [
+                            'id' => $payment->id,
+                            'payment_method' => $payment->payment_method ?? null,
+                            'payment_method_uppercase' => $payment->payment_method_uppercase ?? null,
+                            'bank_name' => $payment->bank_name ?? null,
+                            'account_number' => $payment->account_number ?? null,
+                            'account_name' => $payment->account_name ?? null,
+                            'paypal_email' => $payment->paypal_email ?? null,
+                            'gcash_number' => $payment->gcash_number ?? null,
+                            'paymaya_number' => $payment->paymaya_number ?? null,
+                            'created_at' => $payment->created_at,
+                            'updated_at' => $payment->updated_at
+                        ];
+                    })->toArray(),
                     'security_questions' => $securityQuestions->map(function($question) {
                         return [
                             'question' => $question->question ?? null,
-                            'answer' => $question->answer ?? null
+                            'answer' => '***' // Don't expose the actual answer for security
                         ];
                     })->toArray()
                 ]
@@ -485,6 +492,394 @@ class TutorAvailabilityController extends Controller
 
         return ['valid' => true];
     }
+
+    /**
+     * Setup payment information for the authenticated tutor
+     */
+    public function setupPayment(Request $request)
+    {
+        try {
+            $tutor = Auth::guard('tutor')->user();
+            
+            if (!$tutor) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tutor not authenticated'
+                ], 401);
+            }
+
+            // Validate the request
+            $validator = Validator::make($request->all(), [
+                'payment_method' => 'required|string|in:gcash,paypal,paymaya,bank_transfer,cash',
+                'account_name' => 'required|string|max:255',
+                'gcash_number' => 'nullable|string|max:20',
+                'paypal_email' => 'nullable|email|max:255',
+                'paymaya_number' => 'nullable|string|max:20',
+                'bank_name' => 'nullable|string|max:255',
+                'account_number' => 'nullable|string|max:50',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $paymentData = $request->only([
+                'payment_method',
+                'account_name',
+                'gcash_number',
+                'paypal_email',
+                'paymaya_number',
+                'bank_name',
+                'account_number'
+            ]);
+
+            // Add payment method uppercase for display
+            $paymentData['payment_method_uppercase'] = strtoupper(str_replace('_', ' ', $paymentData['payment_method']));
+            
+            // Add employee type and ID for the relationship
+            $paymentData['employee_id'] = $tutor->tutorID;
+            $paymentData['employee_type'] = 'tutor';
+
+            // Check if tutor already has payment information
+            $existingPayment = $tutor->paymentMethods()->first();
+            
+            if ($existingPayment) {
+                // Update existing payment information with new method
+                $existingPayment->update($paymentData);
+                $message = 'Payment information updated successfully';
+            } else {
+                // Create new payment information
+                $tutor->paymentMethods()->create($paymentData);
+                $message = 'Payment information added successfully';
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error setting up payment information: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while setting up payment information. Please try again.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Update a specific payment method
+     */
+    public function updatePaymentMethod(Request $request, $paymentId)
+    {
+        try {
+            $tutor = Auth::guard('tutor')->user();
+            
+            if (!$tutor) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tutor not authenticated'
+                ], 401);
+            }
+
+            // Find the payment method
+            $paymentMethod = $tutor->paymentMethods()->find($paymentId);
+            
+            if (!$paymentMethod) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Payment method not found'
+                ], 404);
+            }
+
+            // Validate the request
+            $validator = Validator::make($request->all(), [
+                'payment_method' => 'required|string|in:gcash,paypal,paymaya,bank_transfer,cash',
+                'account_name' => 'required|string|max:255',
+                'gcash_number' => 'nullable|string|max:20',
+                'paypal_email' => 'nullable|email|max:255',
+                'paymaya_number' => 'nullable|string|max:20',
+                'bank_name' => 'nullable|string|max:255',
+                'account_number' => 'nullable|string|max:50',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $paymentData = $request->only([
+                'payment_method',
+                'account_name',
+                'gcash_number',
+                'paypal_email',
+                'paymaya_number',
+                'bank_name',
+                'account_number'
+            ]);
+
+            // Add payment method uppercase for display
+            $paymentData['payment_method_uppercase'] = strtoupper(str_replace('_', ' ', $paymentData['payment_method']));
+
+            // Update the payment method
+            $paymentMethod->update($paymentData);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment method updated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error updating payment method: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while updating the payment method. Please try again.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a specific payment method
+     */
+    public function deletePaymentMethod($paymentId)
+    {
+        try {
+            $tutor = Auth::guard('tutor')->user();
+            
+            if (!$tutor) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tutor not authenticated'
+                ], 401);
+            }
+
+            // Find the payment method
+            $paymentMethod = $tutor->paymentMethods()->find($paymentId);
+            
+            if (!$paymentMethod) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Payment method not found'
+                ], 404);
+            }
+
+            // Delete the payment method
+            $paymentMethod->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment method deleted successfully'
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error deleting payment method: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'An error occurred while deleting the payment method. Please try again.'
+        ], 500);
+    }
+}
+
+/**
+ * Update tutor's personal information
+ */
+public function updatePersonalInfo(Request $request)
+{
+    try {
+        $tutor = Auth::guard('tutor')->user();
+        
+        if (!$tutor) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tutor not authenticated'
+            ], 401);
+        }
+
+        // Validate the request
+        $validator = Validator::make($request->all(), [
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'date_of_birth' => 'required|date',
+            'address' => 'required|string|max:500',
+            'email' => 'required|email|max:255',
+            'phone_number' => 'required|string|max:20',
+            'ms_teams_id' => 'required|string|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Update tutor information
+        $tutor->update([
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
+            'date_of_birth' => $request->date_of_birth,
+            'email' => $request->email,
+            'phone_number' => $request->phone_number,
+        ]);
+
+        // Update or create tutor details
+        $tutorDetails = $tutor->tutorDetails;
+        if ($tutorDetails) {
+            $tutorDetails->update([
+                'address' => $request->address,
+                'ms_teams_id' => $request->ms_teams_id,
+            ]);
+        } else {
+            $tutor->tutorDetails()->create([
+                'address' => $request->address,
+                'ms_teams_id' => $request->ms_teams_id,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Personal information updated successfully'
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error updating personal information: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'An error occurred while updating your personal information. Please try again.'
+        ], 500);
+    }
+}
+
+/**
+ * Change tutor's password
+ */
+public function changePassword(Request $request)
+{
+    try {
+        $tutor = Auth::guard('tutor')->user();
+        
+        if (!$tutor) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tutor not authenticated'
+            ], 401);
+        }
+
+        // Validate the request
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:6',
+            'confirm_password' => 'required|string|same:new_password',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Verify current password
+        if (!Hash::check($request->current_password, $tutor->tpassword)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Current password is incorrect'
+            ], 400);
+        }
+
+        // Update password
+        $tutor->update([
+            'tpassword' => Hash::make($request->new_password)
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password updated successfully'
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error changing password: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'An error occurred while changing your password. Please try again.'
+        ], 500);
+    }
+}
+
+/**
+ * Update tutor's security questions
+ */
+public function updateSecurityQuestions(Request $request)
+{
+    try {
+        $tutor = Auth::guard('tutor')->user();
+        
+        if (!$tutor) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tutor not authenticated'
+            ], 401);
+        }
+
+        // Validate the request
+        $validator = Validator::make($request->all(), [
+            'questions' => 'required|array|min:1',
+            'questions.*' => 'required|string|max:500',
+            'answers' => 'required|array|min:1',
+            'answers.*' => 'required|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Delete existing security questions
+        $tutor->securityQuestions()->delete();
+
+        // Create new security questions
+        foreach ($request->questions as $index => $question) {
+            if (isset($request->answers[$index])) {
+                $tutor->securityQuestions()->create([
+                    'user_type' => 'tutor',
+                    'user_id' => $tutor->tutorID,
+                    'question' => $question,
+                    'answer_hash' => Hash::make(strtolower(trim($request->answers[$index]))),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Security questions updated successfully'
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error updating security questions: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'An error occurred while updating your security questions. Please try again.'
+        ], 500);
+    }
+}
 
     /**
      * Convert time string to minutes
