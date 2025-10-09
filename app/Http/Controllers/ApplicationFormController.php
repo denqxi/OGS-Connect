@@ -35,6 +35,7 @@ class ApplicationFormController extends Controller
             'days' => 'required|array|min:1',
             'platforms' => 'required|array|min:1',
             'can_teach' => 'required|array|min:1',
+            'terms_agreement' => 'required|accepted',
         ];
 
         // Conditional validation for referral

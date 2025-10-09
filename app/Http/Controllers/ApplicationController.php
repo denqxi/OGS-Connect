@@ -6,7 +6,7 @@ use App\Models\Application;
 use App\Models\Demo;
 use App\Models\Tutor;
 use App\Models\TutorAccount;
-use App\Models\TutorDetail;
+use App\Models\TutorDetails;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -51,13 +51,13 @@ class ApplicationController extends Controller
 
                 // Use database transaction to ensure data integrity
                 $tutor = DB::transaction(function () use ($demo, $request, $id) {
-                    // Generate system ID (tutorID) using the Tutor model method
+                    // Generate system ID (tutorID) using the Tutor model method - OGS-T0001 format
                     $systemId = Tutor::generateFormattedId();
                     $username = Tutor::generateUsername($demo->first_name, $demo->last_name);
                     
                     // Get tutor data from demo
                     $tutorEmail = $demo->email;
-                    $defaultPassword = 'OGSConnect2025';
+                    $defaultPassword = $request->password; // Use password from form
 
                     $tutor = Tutor::create([
                         'tutorID' => $systemId,
@@ -106,7 +106,7 @@ class ApplicationController extends Controller
                     \Log::info('TutorAccount created:', ['tutorAccount' => $tutorAccount->toArray()]);
 
                     // Create tutor details record with comprehensive data from demos table
-                    $tutorDetail = TutorDetail::create([
+                    $tutorDetail = TutorDetails::create([
                         'tutor_id' => $tutor->tutorID, // Use tutorID as foreign key
                         'address' => $demo->address,
                         'esl_experience' => $demo->esl_experience,

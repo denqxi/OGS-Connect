@@ -47,15 +47,15 @@ class Tutor extends Authenticatable
 
         static::creating(function ($tutor) {
             if (empty($tutor->tutorID)) {
-                $tutor->tutorID = $tutor->generateFormattedId();
+                $tutor->tutorID = self::generateFormattedId();
             }
         });
     }
 
     /**
-     * Generate formatted ID for new tutors
+     * Generate formatted ID for new tutors - OGS-T0001 format
      */
-    public function generateFormattedId(): string
+    public static function generateFormattedId(): string
     {
         // Get the last tutor by extracting the number from tutorID
         $lastTutor = self::orderByRaw('CAST(SUBSTRING(tutorID, 6) AS UNSIGNED) DESC')->first();
@@ -68,7 +68,7 @@ class Tutor extends Authenticatable
     }
 
     /**
-     * Generate username for tutor
+     * Generate username for tutor - firstnamelastname format
      */
     public static function generateUsername($firstName, $lastName): string
     {
@@ -87,7 +87,6 @@ class Tutor extends Authenticatable
         
         return $username;
     }
-
 
     // Relationship to tutor accounts (new multi-account system)
     public function accounts()

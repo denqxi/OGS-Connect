@@ -38,7 +38,7 @@
 
             <!-- Desktop Buttons -->
             <div class="hidden sm:flex items-center space-x-4">
-                <a>
+                <a href="{{ route('landing') }}">
                     <button id="homeBtn"
                         class="px-6 text-xs py-2 border border-ogs-navy text-ogs-navy rounded-full hover:bg-ogs-navy hover:text-white transition-colors">
                         HOME
@@ -489,160 +489,102 @@
                                     <label><input type="checkbox" name="can_teach[]" value="adults" class="form-checkbox text-ogs-green" {{ in_array('adults', old('can_teach', [])) ? 'checked' : '' }}> Adults</label>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
 
-                            <!-- Buttons -->
-                            <div class="flex flex-col mt-6 space-y-3">
-                                <button type="button" id="cancelBtn"
-                                    class="w-full px-6 py-2 rounded-full border border-ogs-navy text-ogs-navy hover:bg-ogs-navy hover:text-white transition-colors">
-                                    CANCEL
-                                </button>
-                                <button type="button" id="submitBtn"
-                                    class="w-full shadow-lg px-6 py-2 rounded-full bg-ogs-green text-white hover:bg-ogs-dark-green transition-colors shadow-md">
-                                    SUBMIT
-                                </button>
-                            </div>
-                            <!-- Cancel Confirmation Modal -->
-                            <div id="cancelModal"
-                                class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center hidden z-50 p-4">
-                                <div class="bg-white rounded-2xl p-6 w-full max-w-sm sm:max-w-md text-left shadow-lg">
+                <!-- Terms and Conditions Section -->
+                <div class="mt-8">
+                    <div class="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg border" id="termsContainer">
+                        <input type="checkbox" id="termsAgreement" name="terms_agreement" required
+                            class="mt-1 form-checkbox text-ogs-green focus:ring-ogs-green focus:ring-2">
+                        <label for="termsAgreement" class="text-sm text-gray-700 leading-relaxed">
+                            <span class="text-red-600 font-bold">*</span> I agree to the 
+                            <button type="button" onclick="showTermsModal()" class="text-ogs-navy underline hover:text-ogs-dark-navy font-medium">
+                                Terms and Conditions
+                            </button> 
+                            and consent to the collection, processing, and storage of my personal information in accordance with the 
+                            <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong>. 
+                            I understand that my information will be used for employment purposes and will be kept confidential.
+                        </label>
+                    </div>
+                    
+                    <!-- Terms Agreement Status Indicator -->
+                    <div id="termsStatusIndicator" class="hidden flex items-center space-x-2 p-3 bg-red-50 border border-red-200 rounded-lg animate-pulse mt-3">
+                        <i class="fas fa-exclamation-triangle text-red-500"></i>
+                        <span class="text-sm text-red-700 font-medium">
+                            You must agree to the Terms and Conditions before submitting your application.
+                        </span>
+                    </div>
+                </div>
 
-                                    <!-- Row 1: Header -->
-                                    <h3
-                                        class="text-base sm:text-lg font-bold text-gray-900 mb-2 text-center sm:text-left">
-                                        Do you want to cancel your application?
-                                    </h3>
+                <!-- Action Button Section -->
+                <div class="mt-8 flex justify-center">
+                    <button type="button" id="submitBtn"
+                        class="w-full max-w-md shadow-lg px-6 py-3 rounded-full bg-ogs-green text-white hover:bg-ogs-dark-green transition-colors font-medium">
+                        SUBMIT APPLICATION
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
 
-                                    <!-- Row 2: Subheading -->
-                                    <p class="text-sm sm:text-base text-gray-700 mb-6 text-center sm:text-left">
-                                        Your entered information will not be saved if you cancel. Do you want to
-                                        continue?
-                                    </p>
+    <!-- All Modals -->
 
-                                    <!-- Row 3: Buttons -->
-                                    <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4">
-                                        <button id="goBackBtn"
-                                            class="w-full sm:w-auto px-6 py-2 rounded-full bg-[#9CA3AF] text-white font-semibold text-sm hover:bg-[#7B8790] hover:scale-105 transition-transform duration-200">
-                                            GO BACK
-                                        </button>
-                                        <button id="confirmCancelBtn"
-                                            class="w-full sm:w-auto px-6 py-2 rounded-full bg-[#EF4444] text-white font-semibold text-sm hover:bg-[#B91C1C] hover:scale-105 transition-transform duration-200">
-                                            CANCEL
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Fullscreen Dim Overlay for Cancel -->
-                            <div id="cancelOverlay"
-                                class="fixed inset-0 bg-black bg-opacity-60 flex flex-col items-center justify-center hidden z-50">
-                                <p class="text-white font-semibold text-lg mb-4">Cancelling...</p>
-                                <div class="w-3/4 max-w-sm bg-gray-200 rounded-full h-3 overflow-hidden">
-                                    <div id="cancelProgressBar"
-                                        class="bg-red-500 h-3 w-0 transition-all duration-100 ease-linear"></div>
-                                </div>
-                            </div>
+    <!-- Modal: Please fill all the required fields -->
+    <div id="requiredFieldsModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden p-4">
+        <div class="bg-white rounded-lg shadow-lg p-8 w-full max-w-sm sm:max-w-md text-center">
+            <div class="mb-4">
+                <i class="fas fa-exclamation-circle text-[#F65353] text-4xl"></i>
+            </div>
+            <h2 class="text-lg font-semibold text-[#0E335D] mb-4">Please fill all the required fields.
+            </h2>
+            <button onclick="closeRequiredFieldsModal()"
+                class="mt-4 px-6 py-2 bg-[#F65353] text-white rounded-full font-medium">
+                Okay
+            </button>
+        </div>
+    </div>
 
-                            <script>
-                                // --- CANCEL FLOW ---
-                                const homeBtn = document.getElementById('homeBtn');
-                                const cancelBtn = document.getElementById('cancelBtn');
-                                const cancelModal = document.getElementById('cancelModal');
-                                const goBackBtn = document.getElementById('goBackBtn');
-                                const confirmCancelBtn = document.getElementById('confirmCancelBtn');
-                                const cancelOverlay = document.getElementById('cancelOverlay');
-                                const cancelProgressBar = document.getElementById('cancelProgressBar');
+    <!-- Submit Confirmation Modal -->
+    <div id="submitModal"
+        class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm sm:max-w-md text-left shadow-lg">
+            <!-- Row 1: Header -->
+            <h3
+                class="text-base sm:text-lg font-bold text-gray-900 mb-2 text-center sm:text-left">
+                Submit Application?
+            </h3>
 
-                                // ✅ Go back to home page
-                                homeBtn.addEventListener('click', (e) => {
-                                    e.preventDefault();
-                                    window.location.href = "{{ route('landing') }}";
-                                });
+            <!-- Row 2: Subheading -->
+            <p class="text-sm sm:text-base text-gray-700 mb-6 text-center sm:text-left">
+                Once submitted, you cannot edit your information. Do you want to continue?
+            </p>
 
-                                // ✅ Show cancel modal
-                                cancelBtn.addEventListener('click', (e) => {
-                                    e.preventDefault();
-                                    cancelModal.classList.remove('hidden');
-                                });
+            <!-- Row 3: Buttons -->
+            <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4">
+                <button id="goBackSubmitBtn"
+                    class="w-full sm:w-auto px-6 py-2 rounded-full bg-[#9CA3AF] text-white font-semibold text-sm hover:bg-[#7B8790] hover:scale-105 transition-transform duration-200">
+                    GO BACK
+                </button>
+                <button id="confirmSubmitBtn" 
+                    class="w-full sm:w-auto px-6 py-2 rounded-full bg-[#65DB7F] text-white font-semibold text-sm hover:bg-[#3CB45C] hover:scale-105 transition-transform duration-200">
+                    SUBMIT
+                </button>
+            </div>
+        </div>
+    </div>
 
-                                // ✅ Close cancel modal (stay in form)
-                                goBackBtn.addEventListener('click', (e) => {
-                                    e.preventDefault();
-                                    cancelModal.classList.add('hidden');
-                                });
-
-                                // ✅ Confirm cancel → redirect
-                                confirmCancelBtn.addEventListener('click', (e) => {
-                                    e.preventDefault();
-                                    cancelModal.classList.add('hidden');
-                                    cancelOverlay.classList.remove('hidden');
-
-                                    let progress = 0;
-                                    const interval = setInterval(() => {
-                                        progress += 5;
-                                        cancelProgressBar.style.width = progress + "%";
-                                        if (progress >= 100) {
-                                            clearInterval(interval);
-                                            window.location.href = "{{ route('application.form.cancel') }}";
-                                        }
-                                    }, 100);
-                                });
-                            </script>
-
-                            <!-- Modal: Please fill all the required fields -->
-                            <div id="requiredFieldsModal"
-                                class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden p-4">
-                                <div class="bg-white rounded-lg shadow-lg p-8 w-full max-w-sm sm:max-w-md text-center">
-                                    <div class="mb-4">
-                                        <i class="fas fa-exclamation-circle text-[#F65353] text-4xl"></i>
-                                    </div>
-                                    <h2 class="text-lg font-semibold text-[#0E335D] mb-4">Please fill all the required fields.
-                                    </h2>
-                                    <button onclick="closeRequiredFieldsModal()"
-                                        class="mt-4 px-6 py-2 bg-[#F65353] text-white rounded-full font-medium">
-                                        Okay
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Submit Confirmation Modal -->
-                            <div id="submitModal"
-                                class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center hidden z-50 p-4">
-                                <div class="bg-white rounded-2xl p-6 w-full max-w-sm sm:max-w-md text-left shadow-lg">
-
-                                    <!-- Row 1: Header -->
-                                    <h3
-                                        class="text-base sm:text-lg font-bold text-gray-900 mb-2 text-center sm:text-left">
-                                        Submit Application?
-                                    </h3>
-
-                                    <!-- Row 2: Subheading -->
-                                    <p class="text-sm sm:text-base text-gray-700 mb-6 text-center sm:text-left">
-                                        Once submitted, you cannot edit your information. Do you want to continue?
-                                    </p>
-
-                                    <!-- Row 3: Buttons -->
-                                    <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4">
-                                        <button id="goBackSubmitBtn"
-                                            class="w-full sm:w-auto px-6 py-2 rounded-full bg-[#9CA3AF] text-white font-semibold text-sm hover:bg-[#7B8790] hover:scale-105 transition-transform duration-200">
-                                            GO BACK
-                                        </button>
-                                        <button id="confirmSubmitBtn" 
-                                            class="w-full sm:w-auto px-6 py-2 rounded-full bg-[#65DB7F] text-white font-semibold text-sm hover:bg-[#3CB45C] hover:scale-105 transition-transform duration-200">
-                                            SUBMIT
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Loading Overlay -->
-                            <div id="loadingOverlay"
-                                class="fixed inset-0 bg-black bg-opacity-60 flex flex-col items-center justify-center hidden z-50">
-                                <p class="text-white font-semibold text-lg mb-4">Submitting Application...</p>
-                                <div class="w-3/4 max-w-sm bg-gray-200 rounded-full h-3 overflow-hidden">
-                                    <div id="progressBar"
-                                        class="bg-green-500 h-3 w-0 transition-all duration-100 ease-linear"></div>
-                                </div>
-                            </div>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay"
+        class="fixed inset-0 bg-black bg-opacity-60 flex flex-col items-center justify-center hidden z-50">
+        <p class="text-white font-semibold text-lg mb-4">Submitting Application...</p>
+        <div class="w-3/4 max-w-sm bg-gray-200 rounded-full h-3 overflow-hidden">
+            <div id="progressBar"
+                class="bg-green-500 h-3 w-0 transition-all duration-100 ease-linear"></div>
+        </div>
+    </div>
 
                             <script>
                                 // --- SUBMIT FLOW ---
@@ -674,7 +616,8 @@
                                     'end_time': 'End Time',
                                     'source': 'How Did You Hear About Us',
                                     'referrer_name': 'Referrer Name',
-                                    'interview_time': 'Interview Time'
+                                    'interview_time': 'Interview Time',
+                                    'terms_agreement': 'Terms and Conditions Agreement'
                                 };
 
                                 // --- Form Validation ---
@@ -682,7 +625,7 @@
                                     const requiredFields = [
                                         'first_name', 'last_name', 'birth_date', 'address', 'contact_number', 'email',
                                         'education', 'esl_experience', 'resume_link', 'intro_video', 'work_type',
-                                        'start_time', 'end_time', 'source', 'interview_time'
+                                        'start_time', 'end_time', 'source', 'interview_time', 'terms_agreement'
                                     ];
 
                                     const missingFields = [];
@@ -744,6 +687,12 @@
                                         missingFields.push('At least one teaching option');
                                     }
 
+                                    // Terms agreement check
+                                    const termsAgreement = document.getElementById('termsAgreement');
+                                    if (!termsAgreement || !termsAgreement.checked) {
+                                        missingFields.push('Terms and Conditions Agreement');
+                                    }
+
                                     return missingFields;
                                 }
 
@@ -773,7 +722,8 @@
                                         'Main Device Specs': 'input[name="main_device"]',
                                         'Backup Device Specs': 'input[name="backup_device"]',
                                         'Interview Time': 'input[name="interview_time"]',
-                                        'Interview time must not be before the current date and time': 'input[name="interview_time"]'
+                                        'Interview time must not be before the current date and time': 'input[name="interview_time"]',
+                                        'Terms and Conditions Agreement': 'input[name="terms_agreement"]'
                                     };
 
                                     missingFields.forEach(field => {
@@ -817,17 +767,50 @@
                                     }
                                 }
 
-                                // --- Modal Controls ---
-                                function showRequiredFieldsModal() {
-                                    requiredFieldsModal.classList.remove('hidden');
+                                // --- Terms Modal Functions ---
+                                function showTermsModal() {
+                                    document.getElementById('termsModal').classList.remove('hidden');
                                 }
-                                function closeRequiredFieldsModal() {
-                                    requiredFieldsModal.classList.add('hidden');
-                                    // Remove red highlighting when modal is closed
-                                    document.querySelectorAll('.border-red-500').forEach(el => {
-                                        el.classList.remove('border-red-500', 'border-2', 'rounded-lg');
-                                    });
+                                
+                                function hideTermsModal() {
+                                    document.getElementById('termsModal').classList.add('hidden');
                                 }
+                                
+                                // --- Terms Agreement Status Management ---
+                                function updateTermsStatus() {
+                                    const termsCheckbox = document.getElementById('termsAgreement');
+                                    const statusIndicator = document.getElementById('termsStatusIndicator');
+                                    const termsContainer = document.getElementById('termsContainer');
+                                    const submitBtn = document.getElementById('submitBtn');
+                                    
+                                    if (termsCheckbox.checked) {
+                                        // Hide indicator and remove red styling
+                                        statusIndicator.classList.add('hidden');
+                                        termsContainer.classList.remove('border-red-500', 'bg-red-50');
+                                        termsContainer.classList.add('border-gray-300', 'bg-gray-50');
+                                        // Enable submit button
+                                        submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                                        submitBtn.classList.add('hover:bg-ogs-dark-green');
+                                    } else {
+                                        // Show indicator and add red styling
+                                        statusIndicator.classList.remove('hidden');
+                                        termsContainer.classList.remove('border-gray-300', 'bg-gray-50');
+                                        termsContainer.classList.add('border-red-500', 'bg-red-50');
+                                        // Disable submit button visually
+                                        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                                        submitBtn.classList.remove('hover:bg-ogs-dark-green');
+                                    }
+                                }
+                                
+                                // Add event listener to terms checkbox
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    const termsCheckbox = document.getElementById('termsAgreement');
+                                    if (termsCheckbox) {
+                                        termsCheckbox.addEventListener('change', updateTermsStatus);
+                                        // Initial check
+                                        updateTermsStatus();
+                                    }
+                                });
 
                                 // --- Submit Flow ---
                                 submitBtn.addEventListener('click', (e) => {
@@ -836,6 +819,10 @@
                                     highlightMissingFields(missingFields);
 
                                     if (missingFields.length > 0) {
+                                        // Show terms indicator if terms agreement is missing
+                                        if (missingFields.includes('Terms and Conditions Agreement')) {
+                                            updateTermsStatus();
+                                        }
                                         showRequiredFieldsModal();
                                     } else {
                                         submitModal.classList.remove('hidden');
@@ -937,6 +924,101 @@
             </form>
         </div>
     </main>
+
+    <!-- Terms and Conditions Modal -->
+    <div id="termsModal"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto shadow-lg">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-ogs-dark-navy">Terms and Conditions</h3>
+                <button onclick="hideTermsModal()" class="text-gray-500 hover:text-gray-700 text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Content -->
+            <div class="space-y-4 text-sm text-gray-700 leading-relaxed">
+                <div>
+                    <h4 class="font-semibold text-ogs-dark-navy mb-2">1. Data Collection and Processing</h4>
+                    <p>By submitting this application, you consent to the collection, processing, and storage of your personal information by OGS Global Solutions for employment purposes. We collect information including but not limited to:</p>
+                    <ul class="list-disc list-inside ml-4 mt-2">
+                        <li>Personal identification details (name, birth date, address)</li>
+                        <li>Contact information (phone number, email address)</li>
+                        <li>Educational background and work experience</li>
+                        <li>Resume and introductory video</li>
+                        <li>Work preferences and availability</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold text-ogs-dark-navy mb-2">2. Data Privacy Act Compliance</h4>
+                    <p>Our data processing practices comply with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong> of the Philippines. We ensure that:</p>
+                    <ul class="list-disc list-inside ml-4 mt-2">
+                        <li>Personal data is collected for legitimate purposes only</li>
+                        <li>Data is processed fairly and lawfully</li>
+                        <li>Data is accurate and up-to-date</li>
+                        <li>Data is protected against unauthorized access</li>
+                        <li>Data is retained only as long as necessary</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold text-ogs-dark-navy mb-2">3. Use of Information</h4>
+                    <p>Your personal information will be used for:</p>
+                    <ul class="list-disc list-inside ml-4 mt-2">
+                        <li>Employment application processing</li>
+                        <li>Background verification and screening</li>
+                        <li>Interview scheduling and communication</li>
+                        <li>Employment decision-making</li>
+                        <li>Legal compliance and reporting requirements</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold text-ogs-dark-navy mb-2">4. Data Security</h4>
+                    <p>We implement appropriate technical and organizational measures to protect your personal data against unauthorized access, alteration, disclosure, or destruction.</p>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold text-ogs-dark-navy mb-2">5. Your Rights</h4>
+                    <p>Under the Data Privacy Act, you have the right to:</p>
+                    <ul class="list-disc list-inside ml-4 mt-2">
+                        <li>Be informed about the processing of your personal data</li>
+                        <li>Object to the processing of your personal data</li>
+                        <li>Access and correct your personal data</li>
+                        <li>Request the erasure or blocking of your personal data</li>
+                        <li>Data portability</li>
+                        <li>File a complaint with the National Privacy Commission</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold text-ogs-dark-navy mb-2">6. Contact Information</h4>
+                    <p>For any questions or concerns regarding your personal data, you may contact our Data Protection Officer at:</p>
+                    <ul class="list-disc list-inside ml-4 mt-2">
+                        <li>Email: privacy@ogsglobalsolutions.com</li>
+                        <li>Phone: +63 (XXX) XXX-XXXX</li>
+                        <li>Address: [Company Address]</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6">
+                    <p class="text-sm text-yellow-800">
+                        <strong>Important:</strong> By checking the agreement checkbox and submitting this application, you acknowledge that you have read, understood, and agree to these Terms and Conditions and consent to the processing of your personal data as described above.
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="flex justify-end mt-6">
+                <button onclick="hideTermsModal()" 
+                    class="px-6 py-2 bg-ogs-navy text-white rounded-full font-medium hover:bg-ogs-dark-navy transition-colors">
+                    I Understand
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

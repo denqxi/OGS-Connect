@@ -954,7 +954,7 @@
                         <p class="text-xs text-gray-500 mt-1">Auto-generated system ID (tutors table primary key)</p>
                     </div>
 
-                    <!-- Username (Auto-generated) -->
+                    <!-- Username (Auto-generated - Disabled) -->
                     <div class="mb-3 sm:mb-4">
                         <label class="block text-gray-700 text-sm font-medium mb-1 sm:mb-2">Username:</label>
                         <input type="text" id="pass_username" name="pass_username" required readonly
@@ -971,6 +971,7 @@
                         <p class="text-xs text-gray-500 mt-1">Default password for all new tutors</p>
                     </div>
 
+
                     <!-- Notes Field -->
                     <div class="mb-4 sm:mb-6">
                         <label class="block text-gray-700 text-sm font-medium mb-1 sm:mb-2">Notes:</label>
@@ -983,7 +984,6 @@
         </form>
 
         <div class="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4 p-3 sm:p-4 md:p-6 pt-0">
-            <button onclick="generateLocalCredentials();" class="bg-blue-500 text-white px-4 sm:px-6 py-2 rounded-full font-semibold hover:opacity-90 transition text-sm sm:text-base">Generate Credentials</button>
             <button onclick="submitOnboardingPassForm();" class="bg-[#2A5382] text-white px-4 sm:px-6 py-2 rounded-full font-semibold hover:opacity-90 transition text-sm sm:text-base">Register Tutor</button>
         </div>
     </div>
@@ -2382,6 +2382,18 @@ function showOnboardingFailModal() {
         form.reset();
     }
     
+    // Set interviewer field to logged-in supervisor's name for fail modal
+    const failInterviewerField = document.getElementById('onboarding_fail_interviewer');
+    if (failInterviewerField) {
+        @if(Auth::guard('supervisor')->check())
+            failInterviewerField.value = '{{ Auth::guard("supervisor")->user()->full_name }}';
+        @elseif(Auth::guard('web')->check())
+            failInterviewerField.value = '{{ Auth::guard("web")->user()->full_name ?? Auth::guard("web")->user()->first_name . " " . Auth::guard("web")->user()->last_name }}';
+        @else
+            failInterviewerField.value = '';
+        @endif
+    }
+    
     // Hide conditional sections
     document.getElementById('onboarding_new_demo_time_section').style.display = 'none';
     
@@ -2435,8 +2447,14 @@ function showOnboardingPassModal() {
     const passwordField = document.getElementById('pass_password');
     
     if (interviewerField) {
-        // Don't clear, let it keep the default value from the server-side template
-        // interviewerField.value = '{{ Auth::guard("supervisor")->check() ? Auth::guard("supervisor")->user()->full_name : "" }}';
+        // Get the logged-in user's full name
+        @if(Auth::guard('supervisor')->check())
+            interviewerField.value = '{{ Auth::guard("supervisor")->user()->full_name }}';
+        @elseif(Auth::guard('web')->check())
+            interviewerField.value = '{{ Auth::guard("web")->user()->full_name ?? Auth::guard("web")->user()->first_name . " " . Auth::guard("web")->user()->last_name }}';
+        @else
+            interviewerField.value = '';
+        @endif
     }
     if (notesField) {
         notesField.value = '';
@@ -2623,8 +2641,6 @@ function generateLocalCredentials() {
     if (passwordField) {
         passwordField.value = 'OGSConnect2025';
         console.log('Password set to default:', passwordField.value);
-    } else {
-        console.error('Password field not found!');
     }
     
     // Force a small delay to ensure DOM is ready
@@ -2709,9 +2725,24 @@ async function submitOnboardingPassForm() {
             return;
         }
         
+        if (!password || !password.trim()) {
+            console.error('Password field is empty or invalid');
+            showModalError('Please enter a password.');
+            // Focus on the password field
+            if (passwordField) {
+                passwordField.focus();
+            }
+            // Re-enable button
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Register Tutor';
+            }
+            return;
+        }
+        
         const data = {
             interviewer: interviewer.trim(),
-            password: password,
+            password: password.trim(),
             notes: notes.trim()
         };
         
@@ -2719,11 +2750,16 @@ async function submitOnboardingPassForm() {
 
         console.log('Sending request to:', `/demos/${currentOnboardingId}/register-tutor`);
         
+        // Add CSRF token debugging
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        console.log('CSRF Token from meta tag:', csrfToken);
+        console.log('CSRF Token from function:', getCsrfToken());
+        
         const response = await fetch(`/demos/${currentOnboardingId}/register-tutor`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': getCsrfToken(),
+                'X-CSRF-TOKEN': csrfToken || getCsrfToken(),
                 'Accept': 'application/json'
             },
             body: JSON.stringify(data)

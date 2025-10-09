@@ -47,6 +47,7 @@ class Application extends Model
         'attempt_count',
         'interviewer',
         'notes',
+        'terms_agreement',
     ];
 
     protected $casts = [
@@ -55,5 +56,6 @@ class Application extends Model
         'can_teach' => 'array',
         'birth_date' => 'date',
         'interview_time' => 'datetime',
+        'terms_agreement' => 'boolean',
     ];
 }

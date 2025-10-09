@@ -7,6 +7,9 @@ use App\Models\TutorAssignment;
 use App\Models\Tutor;
 use App\Models\Supervisor;
 use App\Models\ScheduleHistory;
+use App\Models\Application;
+use App\Models\Demo;
+use App\Models\ArchivedApplication;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -66,46 +69,41 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get applicants this month (placeholder - would need application data)
+     * Get applicants this month (from applications table)
      */
     private function getApplicantsThisMonth($month)
     {
-        // This would typically come from an applications table
-        // For now, return a calculated estimate based on tutor accounts
-        $newTutorsThisMonth = Tutor::whereHas('accounts', function($query) {
-            $query->where('account_name', 'GLS')->where('status', 'active');
-        })
-        ->where('created_at', '>=', Carbon::parse($month . '-01'))
-        ->count();
-        
-        return $newTutorsThisMonth * 3; // Estimate multiplier
+        return Application::whereYear('created_at', Carbon::parse($month . '-01')->year)
+            ->whereMonth('created_at', Carbon::parse($month . '-01')->month)
+            ->count();
     }
 
     /**
-     * Get demo applicants (placeholder)
+     * Get demo applicants (from Demo model - same data as for-demo.blade.php)
      */
     private function getDemoApplicants($month)
     {
-        // This would come from application status data
-        return 45; // Placeholder
+        // Same logic as viewDemo method - exclude onboarding and hired applicants
+        return Demo::whereNotIn('status', ['onboarding', 'hired'])->count();
     }
 
     /**
-     * Get onboarding applicants (placeholder)
+     * Get onboarding applicants (from Demo model - same data as onboarding.blade.php)
      */
     private function getOnboardingApplicants($month)
     {
-        // This would come from application status data
-        return 32; // Placeholder
+        // Same logic as viewOnboarding method - only show onboarding applicants
+        return Demo::where('status', 'onboarding')->count();
     }
 
     /**
-     * Get existing employees count
+     * Get existing employees count (from Tutor model - same data as employee management)
      */
     private function getExistingEmployees()
     {
+        // Count all tutors that have active accounts (same logic as employee management)
         return Tutor::whereHas('accounts', function($query) {
-            $query->where('account_name', 'GLS')->where('status', 'active');
+            $query->where('status', 'active');
         })->count();
     }
 
@@ -214,15 +212,19 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get hiring statistics (placeholder)
+     * Get hiring statistics from archived applications (same data as archive.blade.php)
      */
     private function getHiringStats($month)
     {
-        // This would come from application status data
+        // Get hiring stats from ArchivedApplication model - same data as archive.blade.php
+        $notRecommended = ArchivedApplication::where('final_status', 'not_recommended')->count();
+        $noAnswer = ArchivedApplication::where('final_status', 'no_answer_3_attempts')->count();
+        $declined = ArchivedApplication::where('final_status', 'declined')->count();
+        
         return [
-            'not_recommended' => 15,
-            'no_answer' => 10,
-            'declined' => 7
+            'not_recommended' => $notRecommended,
+            'no_answer' => $noAnswer,
+            'declined' => $declined
         ];
     }
 
