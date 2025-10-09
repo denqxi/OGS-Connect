@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OGS - Application Form</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script>
         tailwind.config = {
             theme: {
@@ -37,8 +38,8 @@
 
             <!-- Desktop Buttons -->
             <div class="hidden sm:flex items-center space-x-4">
-                <a href="{{ url('/') }}">
-                    <button
+                <a>
+                    <button id="homeBtn"
                         class="px-6 text-xs py-2 border border-ogs-navy text-ogs-navy rounded-full hover:bg-ogs-navy hover:text-white transition-colors">
                         HOME
                     </button>
@@ -64,7 +65,7 @@
     <!-- Mobile Overlay Menu -->
     <div id="mobile-menu"
         class="hidden sm:hidden fixed top-16 left-0 w-full bg-white shadow-md px-4 py-4 space-y-2 z-50">
-        <a href="{{ url('/') }}">
+        <a href="{{ route('landing') }}">
             <button
                 class="w-full px-6 text-xs py-2 border border-ogs-navy text-ogs-navy rounded-full hover:bg-ogs-navy hover:text-white transition-colors">
                 HOME
@@ -94,8 +95,20 @@
         <!-- Form Container -->
         <div class="bg-white rounded-xl shadow-md p-6 sm:p-10">
 
+            <!-- Display Validation Errors -->
+            @if ($errors->any())
+                <div class="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                    <h4 class="font-bold mb-2">Please fix the following errors:</h4>
+                    <ul class="list-disc list-inside">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
-            <form action="#" method="POST" class="space-y-6">
+        <form id="applicationForm" action="{{ route('application.form.submit') }}" method="POST" class="space-y-6">
+                @csrf
                 <!-- Personal Information -->
                 <div>
                     <h3 class="font-semibold text-ogs-dark-navy text-lg mb-3">Personal Information</h3>
@@ -104,46 +117,46 @@
                         <div class="flex flex-col">
                             <label class="text-sm font-normal text-gray-500">First Name <span
                                     class="text-red-600">*</span></label>
-                            <input type="text" placeholder="First name"
-                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg">
+                            <input type="text" name="first_name" placeholder="First name" value="{{ old('first_name') }}"
+                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg" required>
                         </div>
                         <div class="flex flex-col">
                             <label class="text-sm font-normal text-gray-500">Last Name <span
                                     class="text-red-600">*</span></label>
-                            <input type="text" placeholder="Last name"
-                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg">
+                            <input type="text" name="last_name" placeholder="Last name" value="{{ old('last_name') }}"
+                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg" required>
                         </div>
                         <div class="flex flex-col">
                             <label class="text-sm font-normal text-gray-500">Birth Date <span
                                     class="text-red-600">*</span></label>
-                            <input type="date"
-                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg">
+                            <input type="date" name="birth_date" value="{{ old('birth_date') }}"
+                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg" required>
                         </div>
 
                         <!-- Row 2 -->
                         <div class="flex flex-col">
                             <label class="text-sm font-normal text-gray-500">Address <span
                                     class="text-red-600">*</span></label>
-                            <input type="text" placeholder="Address"
-                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg">
+                            <input type="text" name="address" placeholder="Address" value="{{ old('address') }}"
+                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg" required>
                         </div>
                         <div class="flex flex-col">
                             <label class="text-sm font-normal text-gray-500">Contact Number <span
                                     class="text-red-600">*</span></label>
-                            <input type="text" placeholder="Contact Number"
-                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg">
+                            <input type="tel" name="contact_number" pattern="^09\d{9}$" placeholder="Ex. 09123456789" value="{{ old('contact_number') }}"
+                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg" required>
                         </div>
                         <div class="flex flex-col">
                             <label class="text-sm font-normal text-gray-500">Email <span
                                     class="text-red-600">*</span></label>
-                            <input type="email" placeholder="Email"
-                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg">
+                            <input type="email" name="email" placeholder="Email" value="{{ old('email') }}"
+                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg" required>
                         </div>
 
                         <!-- Row 3 -->
                         <div class="flex flex-col md:col-span-3">
                             <label class="text-sm font-normal text-gray-500">MS Teams (e.g., live:.cid...)</label>
-                            <input type="text" placeholder="MS Teams"
+                            <input type="text" name="ms_teams" placeholder="MS Teams" value="{{ old('ms_teams') }}"
                                 class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg">
                         </div>
                     </div>
@@ -159,14 +172,14 @@
                         <div class="flex flex-col">
                             <label class="text-sm font-normal text-gray-500">Highest Educational Attainment <span
                                     class="text-red-600">*</span></label>
-                            <select
-                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg">
-                                <option value="" disabled selected>Select your education</option>
-                                <option value="shs">SHS Graduate</option>
-                                <option value="college_undergrad">College Undergraduate</option>
-                                <option value="bachelor">College Graduate / Bachelor's Degree</option>
-                                <option value="master">Master's Degree</option>
-                                <option value="doctorate">Doctorate / PhD</option>
+                            <select name="education"
+                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg" required>
+                                <option value="" disabled {{ old('education') ? '' : 'selected' }}>Select your education</option>
+                                <option value="shs" {{ old('education') == 'shs' ? 'selected' : '' }}>SHS Graduate</option>
+                                <option value="college_undergrad" {{ old('education') == 'college_undergrad' ? 'selected' : '' }}>College Undergraduate</option>
+                                <option value="bachelor" {{ old('education') == 'bachelor' ? 'selected' : '' }}>College Graduate / Bachelor's Degree</option>
+                                <option value="master" {{ old('education') == 'master' ? 'selected' : '' }}>Master's Degree</option>
+                                <option value="doctorate" {{ old('education') == 'doctorate' ? 'selected' : '' }}>Doctorate / PhD</option>
                             </select>
 
                         </div>
@@ -175,13 +188,13 @@
                         <div class="flex flex-col">
                             <label class="text-sm font-normal text-gray-500">ESL Teaching Experience <span
                                     class="text-red-600">*</span></label>
-                            <select
-                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg">
-                                <option value="" disabled selected>Select experience</option>
-                                <option value="na">N/A</option>
-                                <option value="1-2">1–2 years</option>
-                                <option value="3-4">3–4 years</option>
-                                <option value="5plus">5 years and above</option>
+                            <select name="esl_experience"
+                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg" required>
+                                <option value="" disabled {{ old('esl_experience') ? '' : 'selected' }}>Select experience</option>
+                                <option value="na" {{ old('esl_experience') == 'na' ? 'selected' : '' }}>N/A</option>
+                                <option value="1-2" {{ old('esl_experience') == '1-2' ? 'selected' : '' }}>1–2 years</option>
+                                <option value="3-4" {{ old('esl_experience') == '3-4' ? 'selected' : '' }}>3–4 years</option>
+                                <option value="5plus" {{ old('esl_experience') == '5plus' ? 'selected' : '' }}>5 years and above</option>
                             </select>
                         </div>
                     </div>
@@ -199,14 +212,14 @@
                         <div class="flex flex-col">
                             <label class="text-sm font-normal text-gray-500">Resume Link (GDrive / GDocs) <span
                                     class="text-red-600">*</span></label>
-                            <input type="text" placeholder="Resume Link"
-                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg">
+                            <input type="url" name="resume_link" placeholder="Resume Link" value="{{ old('resume_link') }}"
+                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg" required>
                         </div>
                         <div class="flex flex-col">
                             <label class="text-sm font-normal text-gray-500">Intro Video (GDrive Link) <span
                                     class="text-red-600">*</span></label>
-                            <input type="text" placeholder="Intro Video"
-                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg">
+                            <input type="url" name="intro_video" placeholder="Intro Video" value="{{ old('intro_video') }}"
+                                class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg" required>
                         </div>
 
                         <!-- Row 2: Work Setup header -->
@@ -217,13 +230,13 @@
                         <!-- Row 3: Radio Buttons -->
                         <div class="flex space-x-6 md:col-span-2">
                             <label class="inline-flex items-center">
-                                <input type="radio" name="workType" id="workFromHome"
-                                    class="form-radio text-ogs-green">
+                                <input type="radio" name="work_type" id="workFromHome" value="work_from_home"
+                                    class="form-radio text-ogs-green" {{ old('work_type') == 'work_from_home' ? 'checked' : '' }} required>
                                 <span class="ml-2">Work from Home</span>
                             </label>
                             <label class="inline-flex items-center">
-                                <input type="radio" name="workType" id="workAtSite"
-                                    class="form-radio text-ogs-green">
+                                <input type="radio" name="work_type" id="workAtSite" value="work_at_site"
+                                    class="form-radio text-ogs-green" {{ old('work_type') == 'work_at_site' ? 'checked' : '' }} required>
                                 <span class="ml-2">Work at Site</span>
                             </label>
                         </div>
@@ -233,7 +246,7 @@
                         <div class="grid md:grid-cols-3 gap-4 mt-4 md:col-span-2">
                             <div class="flex flex-col">
                                 <label class="text-sm font-normal text-gray-500">Ookla Speedtest (GDrive Link)</label>
-                                <input type="text" id="speedtest"
+                                <input type="url" id="speedtest" name="speedtest" value="{{ old('speedtest') }}"
                                     placeholder="Speedtest (screenshot in GDrive link)"
                                     class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg"
                                     disabled>
@@ -241,7 +254,7 @@
                             <div class="flex flex-col">
                                 <label class="text-sm font-normal text-gray-500">Main Device Specs (dxdiag
                                     Screenshot)</label>
-                                <input type="text" id="mainDevice"
+                                <input type="url" id="mainDevice" name="main_device" value="{{ old('main_device') }}"
                                     placeholder="Main Device Specs (screenshot in GDrive link)"
                                     class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg"
                                     disabled>
@@ -249,7 +262,7 @@
                             <div class="flex flex-col">
                                 <label class="text-sm font-normal text-gray-500">Backup Device Specs (dxdiag
                                     Screenshot)</label>
-                                <input type="text" id="backupDevice"
+                                <input type="url" id="backupDevice" name="backup_device" value="{{ old('backup_device') }}"
                                     placeholder="Backup Device Specs (screenshot in GDrive link)"
                                     class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg"
                                     disabled>
@@ -289,12 +302,12 @@
                         <div class="flex space-x-6 mb-4 md:mb-0">
                             <label class="inline-flex items-center">
                                 <input type="radio" name="source" value="fb_boosting"
-                                    class="form-radio text-ogs-green">
+                                    class="form-radio text-ogs-green" {{ old('source') == 'fb_boosting' ? 'checked' : '' }} required>
                                 <span class="ml-2">FB Boosting</span>
                             </label>
                             <label class="inline-flex items-center">
                                 <input type="radio" name="source" value="referral"
-                                    class="form-radio text-ogs-green" id="referralRadio">
+                                    class="form-radio text-ogs-green" id="referralRadio" {{ old('source') == 'referral' ? 'checked' : '' }} required>
                                 <span class="ml-2">Referral</span>
                             </label>
                         </div>
@@ -303,7 +316,7 @@
                         <div class="flex flex-col">
                             <label class="text-sm font-normal text-gray-500">Referrer Name <span
                                     class="text-red-600">*</span></label>
-                            <input type="text" id="referrerName" placeholder="ex., JORDAN CLARKSON"
+                            <input type="text" id="referrerName" name="referrer_name" placeholder="ex., JORDAN CLARKSON" value="{{ old('referrer_name') }}"
                                 class="p-2 border rounded-md w-64 focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg"
                                 disabled>
                         </div>
@@ -349,67 +362,67 @@
                                 <div class="grid grid-cols-2 gap-4">
                                     <!-- Start Time -->
                                     <div class="flex flex-col">
-                                        <select
+                                        <select name="start_time"
                                             class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg"
                                             required>
-                                            <option value="" disabled selected>Select Start</option>
-                                            <option value="12:00 AM">12:00 AM</option>
-                                            <option value="1:00 AM">1:00 AM</option>
-                                            <option value="2:00 AM">2:00 AM</option>
-                                            <option value="3:00 AM">3:00 AM</option>
-                                            <option value="4:00 AM">4:00 AM</option>
-                                            <option value="5:00 AM">5:00 AM</option>
-                                            <option value="6:00 AM">6:00 AM</option>
-                                            <option value="7:00 AM">7:00 AM</option>
-                                            <option value="8:00 AM">8:00 AM</option>
-                                            <option value="9:00 AM">9:00 AM</option>
-                                            <option value="10:00 AM">10:00 AM</option>
-                                            <option value="11:00 AM">11:00 AM</option>
-                                            <option value="12:00 PM">12:00 PM</option>
-                                            <option value="1:00 PM">1:00 PM</option>
-                                            <option value="2:00 PM">2:00 PM</option>
-                                            <option value="3:00 PM">3:00 PM</option>
-                                            <option value="4:00 PM">4:00 PM</option>
-                                            <option value="5:00 PM">5:00 PM</option>
-                                            <option value="6:00 PM">6:00 PM</option>
-                                            <option value="7:00 PM">7:00 PM</option>
-                                            <option value="8:00 PM">8:00 PM</option>
-                                            <option value="9:00 PM">9:00 PM</option>
-                                            <option value="10:00 PM">10:00 PM</option>
-                                            <option value="11:00 PM">11:00 PM</option>
+                                            <option value="" disabled {{ old('start_time') ? '' : 'selected' }}>Select Start</option>
+                                            <option value="12:00 AM" {{ old('start_time') == '12:00 AM' ? 'selected' : '' }}>12:00 AM</option>
+                                            <option value="1:00 AM" {{ old('start_time') == '1:00 AM' ? 'selected' : '' }}>1:00 AM</option>
+                                            <option value="2:00 AM" {{ old('start_time') == '2:00 AM' ? 'selected' : '' }}>2:00 AM</option>
+                                            <option value="3:00 AM" {{ old('start_time') == '3:00 AM' ? 'selected' : '' }}>3:00 AM</option>
+                                            <option value="4:00 AM" {{ old('start_time') == '4:00 AM' ? 'selected' : '' }}>4:00 AM</option>
+                                            <option value="5:00 AM" {{ old('start_time') == '5:00 AM' ? 'selected' : '' }}>5:00 AM</option>
+                                            <option value="6:00 AM" {{ old('start_time') == '6:00 AM' ? 'selected' : '' }}>6:00 AM</option>
+                                            <option value="7:00 AM" {{ old('start_time') == '7:00 AM' ? 'selected' : '' }}>7:00 AM</option>
+                                            <option value="8:00 AM" {{ old('start_time') == '8:00 AM' ? 'selected' : '' }}>8:00 AM</option>
+                                            <option value="9:00 AM" {{ old('start_time') == '9:00 AM' ? 'selected' : '' }}>9:00 AM</option>
+                                            <option value="10:00 AM" {{ old('start_time') == '10:00 AM' ? 'selected' : '' }}>10:00 AM</option>
+                                            <option value="11:00 AM" {{ old('start_time') == '11:00 AM' ? 'selected' : '' }}>11:00 AM</option>
+                                            <option value="12:00 PM" {{ old('start_time') == '12:00 PM' ? 'selected' : '' }}>12:00 PM</option>
+                                            <option value="1:00 PM" {{ old('start_time') == '1:00 PM' ? 'selected' : '' }}>1:00 PM</option>
+                                            <option value="2:00 PM" {{ old('start_time') == '2:00 PM' ? 'selected' : '' }}>2:00 PM</option>
+                                            <option value="3:00 PM" {{ old('start_time') == '3:00 PM' ? 'selected' : '' }}>3:00 PM</option>
+                                            <option value="4:00 PM" {{ old('start_time') == '4:00 PM' ? 'selected' : '' }}>4:00 PM</option>
+                                            <option value="5:00 PM" {{ old('start_time') == '5:00 PM' ? 'selected' : '' }}>5:00 PM</option>
+                                            <option value="6:00 PM" {{ old('start_time') == '6:00 PM' ? 'selected' : '' }}>6:00 PM</option>
+                                            <option value="7:00 PM" {{ old('start_time') == '7:00 PM' ? 'selected' : '' }}>7:00 PM</option>
+                                            <option value="8:00 PM" {{ old('start_time') == '8:00 PM' ? 'selected' : '' }}>8:00 PM</option>
+                                            <option value="9:00 PM" {{ old('start_time') == '9:00 PM' ? 'selected' : '' }}>9:00 PM</option>
+                                            <option value="10:00 PM" {{ old('start_time') == '10:00 PM' ? 'selected' : '' }}>10:00 PM</option>
+                                            <option value="11:00 PM" {{ old('start_time') == '11:00 PM' ? 'selected' : '' }}>11:00 PM</option>
                                         </select>
                                     </div>
 
                                     <!-- End Time -->
                                     <div class="flex flex-col">
-                                        <select
+                                        <select name="end_time"
                                             class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg"
                                             required>
-                                            <option value="" disabled selected>Select End</option>
-                                            <option value="12:00 AM">12:00 AM</option>
-                                            <option value="1:00 AM">1:00 AM</option>
-                                            <option value="2:00 AM">2:00 AM</option>
-                                            <option value="3:00 AM">3:00 AM</option>
-                                            <option value="4:00 AM">4:00 AM</option>
-                                            <option value="5:00 AM">5:00 AM</option>
-                                            <option value="6:00 AM">6:00 AM</option>
-                                            <option value="7:00 AM">7:00 AM</option>
-                                            <option value="8:00 AM">8:00 AM</option>
-                                            <option value="9:00 AM">9:00 AM</option>
-                                            <option value="10:00 AM">10:00 AM</option>
-                                            <option value="11:00 AM">11:00 AM</option>
-                                            <option value="12:00 PM">12:00 PM</option>
-                                            <option value="1:00 PM">1:00 PM</option>
-                                            <option value="2:00 PM">2:00 PM</option>
-                                            <option value="3:00 PM">3:00 PM</option>
-                                            <option value="4:00 PM">4:00 PM</option>
-                                            <option value="5:00 PM">5:00 PM</option>
-                                            <option value="6:00 PM">6:00 PM</option>
-                                            <option value="7:00 PM">7:00 PM</option>
-                                            <option value="8:00 PM">8:00 PM</option>
-                                            <option value="9:00 PM">9:00 PM</option>
-                                            <option value="10:00 PM">10:00 PM</option>
-                                            <option value="11:00 PM">11:00 PM</option>
+                                            <option value="" disabled {{ old('end_time') ? '' : 'selected' }}>Select End</option>
+                                            <option value="12:00 AM" {{ old('end_time') == '12:00 AM' ? 'selected' : '' }}>12:00 AM</option>
+                                            <option value="1:00 AM" {{ old('end_time') == '1:00 AM' ? 'selected' : '' }}>1:00 AM</option>
+                                            <option value="2:00 AM" {{ old('end_time') == '2:00 AM' ? 'selected' : '' }}>2:00 AM</option>
+                                            <option value="3:00 AM" {{ old('end_time') == '3:00 AM' ? 'selected' : '' }}>3:00 AM</option>
+                                            <option value="4:00 AM" {{ old('end_time') == '4:00 AM' ? 'selected' : '' }}>4:00 AM</option>
+                                            <option value="5:00 AM" {{ old('end_time') == '5:00 AM' ? 'selected' : '' }}>5:00 AM</option>
+                                            <option value="6:00 AM" {{ old('end_time') == '6:00 AM' ? 'selected' : '' }}>6:00 AM</option>
+                                            <option value="7:00 AM" {{ old('end_time') == '7:00 AM' ? 'selected' : '' }}>7:00 AM</option>
+                                            <option value="8:00 AM" {{ old('end_time') == '8:00 AM' ? 'selected' : '' }}>8:00 AM</option>
+                                            <option value="9:00 AM" {{ old('end_time') == '9:00 AM' ? 'selected' : '' }}>9:00 AM</option>
+                                            <option value="10:00 AM" {{ old('end_time') == '10:00 AM' ? 'selected' : '' }}>10:00 AM</option>
+                                            <option value="11:00 AM" {{ old('end_time') == '11:00 AM' ? 'selected' : '' }}>11:00 AM</option>
+                                            <option value="12:00 PM" {{ old('end_time') == '12:00 PM' ? 'selected' : '' }}>12:00 PM</option>
+                                            <option value="1:00 PM" {{ old('end_time') == '1:00 PM' ? 'selected' : '' }}>1:00 PM</option>
+                                            <option value="2:00 PM" {{ old('end_time') == '2:00 PM' ? 'selected' : '' }}>2:00 PM</option>
+                                            <option value="3:00 PM" {{ old('end_time') == '3:00 PM' ? 'selected' : '' }}>3:00 PM</option>
+                                            <option value="4:00 PM" {{ old('end_time') == '4:00 PM' ? 'selected' : '' }}>4:00 PM</option>
+                                            <option value="5:00 PM" {{ old('end_time') == '5:00 PM' ? 'selected' : '' }}>5:00 PM</option>
+                                            <option value="6:00 PM" {{ old('end_time') == '6:00 PM' ? 'selected' : '' }}>6:00 PM</option>
+                                            <option value="7:00 PM" {{ old('end_time') == '7:00 PM' ? 'selected' : '' }}>7:00 PM</option>
+                                            <option value="8:00 PM" {{ old('end_time') == '8:00 PM' ? 'selected' : '' }}>8:00 PM</option>
+                                            <option value="9:00 PM" {{ old('end_time') == '9:00 PM' ? 'selected' : '' }}>9:00 PM</option>
+                                            <option value="10:00 PM" {{ old('end_time') == '10:00 PM' ? 'selected' : '' }}>10:00 PM</option>
+                                            <option value="11:00 PM" {{ old('end_time') == '11:00 PM' ? 'selected' : '' }}>11:00 PM</option>
                                         </select>
                                     </div>
                                 </div>
@@ -419,17 +432,17 @@
 
                                 <!-- Row 4: Checkboxes Mon-Thu -->
                                 <div class="grid grid-cols-4 gap-2">
-                                    <label><input type="checkbox" class="form-checkbox text-ogs-green"> Mon</label>
-                                    <label><input type="checkbox" class="form-checkbox text-ogs-green"> Tue</label>
-                                    <label><input type="checkbox" class="form-checkbox text-ogs-green"> Wed</label>
-                                    <label><input type="checkbox" class="form-checkbox text-ogs-green"> Thu</label>
+                                    <label><input type="checkbox" name="days[]" value="monday" class="form-checkbox text-ogs-green" {{ in_array('monday', old('days', [])) ? 'checked' : '' }}> Mon</label>
+                                    <label><input type="checkbox" name="days[]" value="tuesday" class="form-checkbox text-ogs-green" {{ in_array('tuesday', old('days', [])) ? 'checked' : '' }}> Tue</label>
+                                    <label><input type="checkbox" name="days[]" value="wednesday" class="form-checkbox text-ogs-green" {{ in_array('wednesday', old('days', [])) ? 'checked' : '' }}> Wed</label>
+                                    <label><input type="checkbox" name="days[]" value="thursday" class="form-checkbox text-ogs-green" {{ in_array('thursday', old('days', [])) ? 'checked' : '' }}> Thu</label>
                                 </div>
 
                                 <!-- Row 5: Checkboxes Fri-Sun -->
                                 <div class="grid grid-cols-3 gap-2">
-                                    <label><input type="checkbox" class="form-checkbox text-ogs-green"> Fri</label>
-                                    <label><input type="checkbox" class="form-checkbox text-ogs-green"> Sat</label>
-                                    <label><input type="checkbox" class="form-checkbox text-ogs-green"> Sun</label>
+                                    <label><input type="checkbox" name="days[]" value="friday" class="form-checkbox text-ogs-green" {{ in_array('friday', old('days', [])) ? 'checked' : '' }}> Fri</label>
+                                    <label><input type="checkbox" name="days[]" value="saturday" class="form-checkbox text-ogs-green" {{ in_array('saturday', old('days', [])) ? 'checked' : '' }}> Sat</label>
+                                    <label><input type="checkbox" name="days[]" value="sunday" class="form-checkbox text-ogs-green" {{ in_array('sunday', old('days', [])) ? 'checked' : '' }}> Sun</label>
                                 </div>
                             </div>
                         </div>
@@ -440,26 +453,25 @@
                             <div class="p-4 border rounded-lg shadow-lg space-y-4">
                                 <!-- Row 1: Checkboxes ClassIn, Zoom, Voov -->
                                 <div class="grid grid-cols-3 gap-2">
-                                    <label><input type="checkbox" class="form-checkbox text-ogs-green">
+                                    <label><input type="checkbox" name="platforms[]" value="classin" class="form-checkbox text-ogs-green" {{ in_array('classin', old('platforms', [])) ? 'checked' : '' }}>
                                         ClassIn</label>
-                                    <label><input type="checkbox" class="form-checkbox text-ogs-green"> Zoom</label>
-                                    <label><input type="checkbox" class="form-checkbox text-ogs-green"> Voov</label>
+                                    <label><input type="checkbox" name="platforms[]" value="zoom" class="form-checkbox text-ogs-green" {{ in_array('zoom', old('platforms', [])) ? 'checked' : '' }}> Zoom</label>
+                                    <label><input type="checkbox" name="platforms[]" value="voov" class="form-checkbox text-ogs-green" {{ in_array('voov', old('platforms', [])) ? 'checked' : '' }}> Voov</label>
                                 </div>
                                 <!-- Row 2: Checkboxes MS Teams, Others -->
                                 <div class="grid grid-cols-2 gap-2">
-                                    <label><input type="checkbox" class="form-checkbox text-ogs-green"> MS
+                                    <label><input type="checkbox" name="platforms[]" value="ms_teams" class="form-checkbox text-ogs-green" {{ in_array('ms_teams', old('platforms', [])) ? 'checked' : '' }}> MS
                                         Teams</label>
-                                    <label><input type="checkbox" class="form-checkbox text-ogs-green"> Others</label>
+                                    <label><input type="checkbox" name="platforms[]" value="others" class="form-checkbox text-ogs-green" {{ in_array('others', old('platforms', [])) ? 'checked' : '' }}> Others</label>
                                 </div>
                             </div>
 
                             <!-- Preferred Time for Interview Call -->
                             <label class="text-sm font-normal text-gray-500 mt-4 mb-2">Preferred Time for Interview
-                                Call</label>
-                            <div class="p-4 border rounded-lg shadow-lg">
-                                <input type="datetime-local"
-                                    class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg">
-                            </div>
+                                Call <span class="text-red-600">*</span></label>
+                            <input type="datetime-local" name="interview_time" value="{{ old('interview_time') }}"
+                             min="{{ \Carbon\Carbon::now()->format('Y-m-d\TH:i') }}"
+                            class="p-2 border rounded-md w-full focus:outline-none focus:border-blue-500 focus:border-[0.5px] focus:shadow-lg" required>
                         </div>
 
                         <!-- Column 3: Can Teach -->
@@ -468,13 +480,13 @@
                             <div class="p-4 border rounded-lg shadow-lg space-y-4">
                                 <!-- Row 1: Kids, Teenager -->
                                 <div class="grid grid-cols-2 gap-2">
-                                    <label><input type="checkbox" class="form-checkbox text-ogs-green"> Kids</label>
-                                    <label><input type="checkbox" class="form-checkbox text-ogs-green">
+                                    <label><input type="checkbox" name="can_teach[]" value="kids" class="form-checkbox text-ogs-green" {{ in_array('kids', old('can_teach', [])) ? 'checked' : '' }}> Kids</label>
+                                    <label><input type="checkbox" name="can_teach[]" value="teenager" class="form-checkbox text-ogs-green" {{ in_array('teenager', old('can_teach', [])) ? 'checked' : '' }}>
                                         Teenager</label>
                                 </div>
                                 <!-- Row 2: Adults -->
                                 <div>
-                                    <label><input type="checkbox" class="form-checkbox text-ogs-green"> Adults</label>
+                                    <label><input type="checkbox" name="can_teach[]" value="adults" class="form-checkbox text-ogs-green" {{ in_array('adults', old('can_teach', [])) ? 'checked' : '' }}> Adults</label>
                                 </div>
                             </div>
 
@@ -484,7 +496,7 @@
                                     class="w-full px-6 py-2 rounded-full border border-ogs-navy text-ogs-navy hover:bg-ogs-navy hover:text-white transition-colors">
                                     CANCEL
                                 </button>
-                                <button type="submit" id="submitBtn"
+                                <button type="button" id="submitBtn"
                                     class="w-full shadow-lg px-6 py-2 rounded-full bg-ogs-green text-white hover:bg-ogs-dark-green transition-colors shadow-md">
                                     SUBMIT
                                 </button>
@@ -531,6 +543,8 @@
                             </div>
 
                             <script>
+                                // --- CANCEL FLOW ---
+                                const homeBtn = document.getElementById('homeBtn');
                                 const cancelBtn = document.getElementById('cancelBtn');
                                 const cancelModal = document.getElementById('cancelModal');
                                 const goBackBtn = document.getElementById('goBackBtn');
@@ -538,37 +552,57 @@
                                 const cancelOverlay = document.getElementById('cancelOverlay');
                                 const cancelProgressBar = document.getElementById('cancelProgressBar');
 
-                                // Show modal on cancel button click
-                                cancelBtn.addEventListener('click', () => {
+                                // ✅ Go back to home page
+                                homeBtn.addEventListener('click', (e) => {
+                                    e.preventDefault();
+                                    window.location.href = "{{ route('landing') }}";
+                                });
+
+                                // ✅ Show cancel modal
+                                cancelBtn.addEventListener('click', (e) => {
+                                    e.preventDefault();
                                     cancelModal.classList.remove('hidden');
                                 });
 
-                                // Close modal when Go Back is clicked
-                                goBackBtn.addEventListener('click', () => {
+                                // ✅ Close cancel modal (stay in form)
+                                goBackBtn.addEventListener('click', (e) => {
+                                    e.preventDefault();
                                     cancelModal.classList.add('hidden');
                                 });
 
-                                // Cancel modal redirect with progress bar
-                                confirmCancelBtn.addEventListener('click', () => {
-                                    // Hide modal
+                                // ✅ Confirm cancel → redirect
+                                confirmCancelBtn.addEventListener('click', (e) => {
+                                    e.preventDefault();
                                     cancelModal.classList.add('hidden');
-
-                                    // Show overlay
                                     cancelOverlay.classList.remove('hidden');
 
-                                    // Animate progress bar
                                     let progress = 0;
                                     const interval = setInterval(() => {
                                         progress += 5;
                                         cancelProgressBar.style.width = progress + "%";
-
                                         if (progress >= 100) {
                                             clearInterval(interval);
                                             window.location.href = "{{ route('application.form.cancel') }}";
                                         }
-                                    }, 100); // ~2 seconds
+                                    }, 100);
                                 });
                             </script>
+
+                            <!-- Modal: Please fill all the required fields -->
+                            <div id="requiredFieldsModal"
+                                class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden p-4">
+                                <div class="bg-white rounded-lg shadow-lg p-8 w-full max-w-sm sm:max-w-md text-center">
+                                    <div class="mb-4">
+                                        <i class="fas fa-exclamation-circle text-[#F65353] text-4xl"></i>
+                                    </div>
+                                    <h2 class="text-lg font-semibold text-[#0E335D] mb-4">Please fill all the required fields.
+                                    </h2>
+                                    <button onclick="closeRequiredFieldsModal()"
+                                        class="mt-4 px-6 py-2 bg-[#F65353] text-white rounded-full font-medium">
+                                        Okay
+                                    </button>
+                                </div>
+                            </div>
 
                             <!-- Submit Confirmation Modal -->
                             <div id="submitModal"
@@ -592,7 +626,7 @@
                                             class="w-full sm:w-auto px-6 py-2 rounded-full bg-[#9CA3AF] text-white font-semibold text-sm hover:bg-[#7B8790] hover:scale-105 transition-transform duration-200">
                                             GO BACK
                                         </button>
-                                        <button id="confirmSubmitBtn"
+                                        <button id="confirmSubmitBtn" 
                                             class="w-full sm:w-auto px-6 py-2 rounded-full bg-[#65DB7F] text-white font-semibold text-sm hover:bg-[#3CB45C] hover:scale-105 transition-transform duration-200">
                                             SUBMIT
                                         </button>
@@ -600,44 +634,229 @@
                                 </div>
                             </div>
 
-
-                            <!-- Loading Overlay with Progress Bar -->
+                            <!-- Loading Overlay -->
                             <div id="loadingOverlay"
-                                class="hidden fixed inset-0 bg-black/60 flex flex-col items-center justify-center z-50 text-white">
-                                <p class="mb-4 text-lg font-medium">Submitting your application...</p>
-                                <div class="w-64 bg-gray-300 rounded-full h-3 overflow-hidden">
-                                    <div id="progressBar" class="bg-[#65DB7F] h-3 w-0"></div>
+                                class="fixed inset-0 bg-black bg-opacity-60 flex flex-col items-center justify-center hidden z-50">
+                                <p class="text-white font-semibold text-lg mb-4">Submitting Application...</p>
+                                <div class="w-3/4 max-w-sm bg-gray-200 rounded-full h-3 overflow-hidden">
+                                    <div id="progressBar"
+                                        class="bg-green-500 h-3 w-0 transition-all duration-100 ease-linear"></div>
                                 </div>
                             </div>
 
                             <script>
+                                // --- SUBMIT FLOW ---
+                                const form = document.getElementById('applicationForm');
                                 const submitBtn = document.getElementById('submitBtn');
                                 const submitModal = document.getElementById('submitModal');
                                 const goBackSubmitBtn = document.getElementById('goBackSubmitBtn');
                                 const confirmSubmitBtn = document.getElementById('confirmSubmitBtn');
                                 const loadingOverlay = document.getElementById('loadingOverlay');
                                 const progressBar = document.getElementById('progressBar');
+                                const requiredFieldsModal = document.getElementById('requiredFieldsModal');
 
-                                // Show modal on submit button click
+                                let shouldSubmitForm = false;
+
+                                // --- Field Mapping ---
+                                const fieldNames = {
+                                    'first_name': 'First Name',
+                                    'last_name': 'Last Name',
+                                    'birth_date': 'Birth Date',
+                                    'address': 'Address',
+                                    'contact_number': 'Contact Number',
+                                    'email': 'Email',
+                                    'education': 'Highest Educational Attainment',
+                                    'esl_experience': 'ESL Teaching Experience',
+                                    'resume_link': 'Resume Link',
+                                    'intro_video': 'Intro Video',
+                                    'work_type': 'Work Setup',
+                                    'start_time': 'Start Time',
+                                    'end_time': 'End Time',
+                                    'source': 'How Did You Hear About Us',
+                                    'referrer_name': 'Referrer Name',
+                                    'interview_time': 'Interview Time'
+                                };
+
+                                // --- Form Validation ---
+                                function validateForm() {
+                                    const requiredFields = [
+                                        'first_name', 'last_name', 'birth_date', 'address', 'contact_number', 'email',
+                                        'education', 'esl_experience', 'resume_link', 'intro_video', 'work_type',
+                                        'start_time', 'end_time', 'source', 'interview_time'
+                                    ];
+
+                                    const missingFields = [];
+                                    const formData = new FormData(form);
+
+                                    // Interview time check
+                                    const interviewTime = formData.get('interview_time');
+                                    if (interviewTime) {
+                                        const now = new Date();
+                                        const interviewDate = new Date(interviewTime);
+                                        if (interviewDate < now) {
+                                            missingFields.push('Interview time must not be before the current date and time');
+                                        }
+                                    }
+
+                                    // Basic required fields
+                                    requiredFields.forEach(fieldName => {
+                                        const value = formData.get(fieldName);
+                                        if (!value || value.trim() === '') {
+                                            missingFields.push(fieldNames[fieldName] || fieldName);
+                                        }
+                                    });
+
+                                    // Referral check
+                                    const referralRadio = document.getElementById('referralRadio');
+                                    if (referralRadio && referralRadio.checked) {
+                                        const referrerName = formData.get('referrer_name');
+                                        if (!referrerName || referrerName.trim() === '') {
+                                            missingFields.push('Referrer Name');
+                                        }
+                                    }
+
+                                    // Work from home device specs
+                                    const workFromHome = document.getElementById('workFromHome');
+                                    if (workFromHome && workFromHome.checked) {
+                                        const speedtest = formData.get('speedtest');
+                                        const mainDevice = formData.get('main_device');
+                                        const backupDevice = formData.get('backup_device');
+                                        
+                                        if (!speedtest || speedtest.trim() === '') {
+                                            missingFields.push('Speedtest Link');
+                                        }
+                                        if (!mainDevice || mainDevice.trim() === '') {
+                                            missingFields.push('Main Device Specs');
+                                        }
+                                        if (!backupDevice || backupDevice.trim() === '') {
+                                            missingFields.push('Backup Device Specs');
+                                        }
+                                    }
+
+                                    // At least one checkbox from groups
+                                    if (document.querySelectorAll('input[name="days[]"]:checked').length === 0) {
+                                        missingFields.push('At least one day of availability');
+                                    }
+                                    if (document.querySelectorAll('input[name="platforms[]"]:checked').length === 0) {
+                                        missingFields.push('At least one platform familiarity');
+                                    }
+                                    if (document.querySelectorAll('input[name="can_teach[]"]:checked').length === 0) {
+                                        missingFields.push('At least one teaching option');
+                                    }
+
+                                    return missingFields;
+                                }
+
+                                // --- Highlight Missing Fields ---
+                                function highlightMissingFields(missingFields) {
+                                    document.querySelectorAll('.border-red-500').forEach(el => {
+                                        el.classList.remove('border-red-500');
+                                    });
+
+                                    const fieldSelectors = {
+                                        'First Name': 'input[name="first_name"]',
+                                        'Last Name': 'input[name="last_name"]',
+                                        'Birth Date': 'input[name="birth_date"]',
+                                        'Address': 'input[name="address"]',
+                                        'Contact Number': 'input[name="contact_number"]',
+                                        'Email': 'input[name="email"]',
+                                        'Highest Educational Attainment': 'select[name="education"]',
+                                        'ESL Teaching Experience': 'select[name="esl_experience"]',
+                                        'Resume Link': 'input[name="resume_link"]',
+                                        'Intro Video': 'input[name="intro_video"]',
+                                        'Work Setup': 'input[name="work_type"]',
+                                        'Start Time': 'select[name="start_time"]',
+                                        'End Time': 'select[name="end_time"]',
+                                        'How Did You Hear About Us': 'input[name="source"], select[name="source"]',
+                                        'Referrer Name': 'input[name="referrer_name"]',
+                                        'Speedtest Link': 'input[name="speedtest"]',
+                                        'Main Device Specs': 'input[name="main_device"]',
+                                        'Backup Device Specs': 'input[name="backup_device"]',
+                                        'Interview Time': 'input[name="interview_time"]',
+                                        'Interview time must not be before the current date and time': 'input[name="interview_time"]'
+                                    };
+
+                                    missingFields.forEach(field => {
+                                        const selector = fieldSelectors[field];
+                                        if (selector) {
+                                            document.querySelectorAll(selector).forEach(el => {
+                                                el.classList.add('border-red-500');
+                                            });
+                                        }
+                                    });
+
+                                    if (missingFields.includes('At least one day of availability')) {
+                                        document.querySelectorAll('input[name="days[]"]').forEach(el => {
+                                            el.classList.add('border-red-500');
+                                        });
+                                        // Also highlight the container without changing size
+                                        const daysContainer = document.querySelector('input[name="days[]"]').closest('.grid');
+                                        if (daysContainer) {
+                                            daysContainer.classList.add('border-red-500', 'border-2', 'rounded-lg');
+                                        }
+                                    }
+                                    if (missingFields.includes('At least one platform familiarity')) {
+                                        document.querySelectorAll('input[name="platforms[]"]').forEach(el => {
+                                            el.classList.add('border-red-500');
+                                        });
+                                        // Also highlight the container without changing size
+                                        const platformsContainer = document.querySelector('input[name="platforms[]"]').closest('.space-y-4');
+                                        if (platformsContainer) {
+                                            platformsContainer.classList.add('border-red-500', 'border-2', 'rounded-lg');
+                                        }
+                                    }
+                                    if (missingFields.includes('At least one teaching option')) {
+                                        document.querySelectorAll('input[name="can_teach[]"]').forEach(el => {
+                                            el.classList.add('border-red-500');
+                                        });
+                                        // Also highlight the container without changing size
+                                        const canTeachContainer = document.querySelector('input[name="can_teach[]"]').closest('.space-y-4');
+                                        if (canTeachContainer) {
+                                            canTeachContainer.classList.add('border-red-500', 'border-2', 'rounded-lg');
+                                        }
+                                    }
+                                }
+
+                                // --- Modal Controls ---
+                                function showRequiredFieldsModal() {
+                                    requiredFieldsModal.classList.remove('hidden');
+                                }
+                                function closeRequiredFieldsModal() {
+                                    requiredFieldsModal.classList.add('hidden');
+                                    // Remove red highlighting when modal is closed
+                                    document.querySelectorAll('.border-red-500').forEach(el => {
+                                        el.classList.remove('border-red-500', 'border-2', 'rounded-lg');
+                                    });
+                                }
+
+                                // --- Submit Flow ---
                                 submitBtn.addEventListener('click', (e) => {
-                                    e.preventDefault(); // Prevent form submission until confirmed
-                                    submitModal.classList.remove('hidden');
+                                    e.preventDefault();
+                                    const missingFields = validateForm();
+                                    highlightMissingFields(missingFields);
+
+                                    if (missingFields.length > 0) {
+                                        showRequiredFieldsModal();
+                                    } else {
+                                        submitModal.classList.remove('hidden');
+                                    }
                                 });
 
-                                // Close modal when Go Back is clicked
-                                goBackSubmitBtn.addEventListener('click', () => {
-                                    submitModal.classList.add('hidden');
+                                // Go back from submit modal
+                                goBackSubmitBtn.addEventListener('click', (e) => {
+                                    e.preventDefault();
+                                    shouldSubmitForm = false;
+                                    submitModal.classList.add('hidden'); // stays on form with data intact
                                 });
 
-                                // Submit modal redirect with progress bar
-                                confirmSubmitBtn.addEventListener('click', () => {
-                                    // Hide modal
-                                    submitModal.classList.add('hidden');
+                                // Confirm submit
+                                confirmSubmitBtn.addEventListener('click', (e) => {
+                                    e.preventDefault();
+                                    shouldSubmitForm = true;
 
-                                    // Show overlay
+                                    submitModal.classList.add('hidden');
                                     loadingOverlay.classList.remove('hidden');
 
-                                    // Animate progress bar
                                     let progress = 0;
                                     const interval = setInterval(() => {
                                         progress += 5;
@@ -645,9 +864,70 @@
 
                                         if (progress >= 100) {
                                             clearInterval(interval);
-                                            window.location.href = "{{ route('application.form.submit') }}";
+                                            if (shouldSubmitForm) {
+                                                console.log('Submitting form...');
+                                                form.submit(); // finally send to DB
+                                            }
                                         }
-                                    }, 100); // progress fills in ~2 seconds
+                                    }, 50); // Faster progress
+                                });
+
+                                // Prevent accidental submit unless confirmed
+                                form.addEventListener('submit', function(e) {
+                                    console.log('Form submit event triggered, shouldSubmitForm:', shouldSubmitForm);
+                                    if (!shouldSubmitForm) {
+                                        console.log('Preventing form submission');
+                                        e.preventDefault();
+                                    } else {
+                                        console.log('Allowing form submission');
+                                    }
+                                });
+
+                                // --- Extra: Instant red highlight on blur/input ---
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    const requiredFields = document.querySelectorAll(
+                                        '#applicationForm input[required], #applicationForm select[required]'
+                                    );
+
+                                    requiredFields.forEach(field => {
+                                        field.addEventListener('blur', function() {
+                                            if (!field.value.trim()) {
+                                                field.classList.add('border-red-500');
+                                            } else {
+                                                field.classList.remove('border-red-500');
+                                            }
+                                        });
+                                        field.addEventListener('input', function() {
+                                            if (field.value.trim()) {
+                                                field.classList.remove('border-red-500');
+                                            }
+                                        });
+                                    });
+                                    
+                                    // Add checkbox event listeners to clear red highlighting
+                                    const checkboxGroups = [
+                                        { name: 'days[]', container: 'input[name="days[]"]' },
+                                        { name: 'platforms[]', container: 'input[name="platforms[]"]' },
+                                        { name: 'can_teach[]', container: 'input[name="can_teach[]"]' }
+                                    ];
+                                    
+                                    checkboxGroups.forEach(group => {
+                                        const checkboxes = document.querySelectorAll(`input[name="${group.name}"]`);
+                                        checkboxes.forEach(checkbox => {
+                                            checkbox.addEventListener('change', function() {
+                                                // Clear red highlighting from all checkboxes in this group
+                                                checkboxes.forEach(cb => {
+                                                    cb.classList.remove('border-red-500');
+                                                });
+                                                
+                                                // Clear red highlighting from container
+                                                const container = document.querySelector(group.container).closest('.grid, .space-y-4');
+                                                if (container) {
+                                                    container.classList.remove('border-red-500', 'border-2', 'rounded-lg');
+                                                }
+                                            });
+                                        });
+                                    });
                                 });
                             </script>
 
@@ -657,7 +937,7 @@
             </form>
         </div>
     </main>
-
 </body>
 
 </html>
+

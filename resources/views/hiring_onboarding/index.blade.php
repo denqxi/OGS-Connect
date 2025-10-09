@@ -66,5 +66,7 @@
         </div>
     </div>
 
+    <!-- Include the edit modal globally for all tabs -->
+    @include('hiring_onboarding.tabs.partials.modals.edit_mdl')
 
 @endsection

@@ -67,6 +67,27 @@ class Tutor extends Authenticatable
         return 'OGS-T' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * Generate username for tutor
+     */
+    public static function generateUsername($firstName, $lastName): string
+    {
+        // Create base username from first and last name
+        $baseUsername = strtolower($firstName . $lastName);
+        $baseUsername = preg_replace('/[^a-z0-9]/', '', $baseUsername);
+        
+        // Check if username already exists and add number if needed
+        $username = $baseUsername;
+        $counter = 1;
+        
+        while (self::where('tusername', $username)->exists()) {
+            $username = $baseUsername . $counter;
+            $counter++;
+        }
+        
+        return $username;
+    }
+
 
     // Relationship to tutor accounts (new multi-account system)
     public function accounts()

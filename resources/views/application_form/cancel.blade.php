@@ -30,7 +30,7 @@
         </p>
 
         <!-- Button -->
-        <a href="{{ url('/') }}"
+        <a href="{{ route('landing') }}"
             class="w-full sm:w-64 py-2 text-center rounded-full bg-[#9CA3AF] text-white font-semibold text-sm sm:text-base hover:bg-[#7B8790] hover:scale-105 transition-transform duration-200 inline-block">
             Back Home
         </a>

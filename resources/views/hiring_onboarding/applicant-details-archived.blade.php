@@ -1,0 +1,16 @@
+@extends('layouts.app')
+
+@section('title', 'OGS Connect - Archived Applicant Details')
+
+@section('content')
+    <!-- Header -->
+    @include('layouts.header', ['pageTitle' => 'Hiring & Onboarding'])
+
+    <!-- Main Content -->
+    <div class="max-w-full mx-auto">
+        <div class="bg-white rounded-lg shadow-sm p-4 md:p-6">
+            @include('hiring_onboarding.tabs.partials.applicant-details-archived')
+        </div>
+    </div>
+
+@endsection

@@ -8,21 +8,28 @@
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
     </div>
-    <div class="flex justify-between items-center space-x-4">
+    <form method="GET" action="{{ route('hiring_onboarding.index') }}" id="searchForm" class="flex justify-between items-center space-x-4">
+        <input type="hidden" name="tab" value="archive">
         <!-- Left side -->
         <div class="flex items-center space-x-4 flex-1 max-w-lg">
             <div class="relative flex-1">
-                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                <input type="text" placeholder="search name..."
+                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" id="searchIcon"></i>
+                <i class="fas fa-spinner fa-spin absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hidden" id="loadingIcon"></i>
+                <input type="text" name="search" id="searchInput" placeholder="search name..." value="{{ request('search') }}"
                     class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm 
               focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
               focus:ring-0 focus:shadow-xl">
             </div>
-            <select class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
-                <option>Select Status</option>
+            <select name="status" id="statusSelect" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+                <option value="">Select Status</option>
+                @if(isset($statuses))
+                    @foreach($statuses as $status)
+                        <option value="{{ $status }}" {{ request('status') == $status ? 'selected' : '' }}>{{ ucwords(str_replace('_', ' ', $status)) }}</option>
+                    @endforeach
+                @endif
             </select>
         </div>
-    </div>
+    </form>
 </div>
 
 <!-- Archive Table -->
@@ -30,69 +37,163 @@
     <table class="w-full">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Archived At</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Final Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interview Time</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
             </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-            <!-- Record 1 -->
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-09-27 09:15</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Michael Reyes</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09181234567</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">michael.reyes@gmail.com</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Did not meet requirements</td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#AA1B1B] text-white">
-                        Not Recommended
-                    </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                    <button class="w-8 h-8 bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors">
-                        <i class="fas fa-eye text-xs"></i>
-                    </button>
-                </td>
-            </tr>
-
-            <!-- Record 2 -->
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-09-27 10:45</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Angela Cruz</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09981239876</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">angela.cruz@gmail.com</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Declined offer</td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#E02F2F] text-white">
-                        Declined
-                    </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                    <button class="w-8 h-8 bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors">
-                        <i class="fas fa-eye text-xs"></i>
-                    </button>
-                </td>
-            </tr>
+            @forelse($archivedApplicants ?? [] as $applicant)
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {{ $applicant->archived_at ? $applicant->archived_at->format('Y-m-d H:i') : 'N/A' }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {{ $applicant->first_name }} {{ $applicant->last_name }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $applicant->contact_number }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $applicant->email }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {{ Str::limit($applicant->notes ?? 'No notes', 50) }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        @php
+                            $statusColors = [
+                                'declined' => 'bg-red-500',
+                                'not_recommended' => 'bg-orange-500',
+                                'no_answer_3_attempts' => 'bg-gray-500',
+                                're_schedule' => 'bg-blue-500'
+                            ];
+                            $statusColor = $statusColors[$applicant->final_status] ?? 'bg-gray-500';
+                        @endphp
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColor }} text-white">
+                            {{ ucwords(str_replace('_', ' ', $applicant->final_status)) }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        @if($applicant->interview_time)
+                            {{ $applicant->interview_time->format('Y-m-d H:i') }}
+                        @else
+                            N/A
+                        @endif
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <a href="{{ route('hiring_onboarding.archived.show', $applicant->id) }}"
+                           class="w-8 h-8 flex items-center justify-center bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors"
+                           title="View Details">
+                            <i class="fas fa-eye text-xs"></i>
+                        </a>
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="8" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                        No Archived Applicants Found!
+                    </td>
+                </tr>
+            @endforelse
         </tbody>
     </table>
 </div>
 
 <!-- Pagination -->
-<div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-    <div class="text-sm text-gray-500">
-        Showing 1 to 2 of 2 results
+@if(isset($archivedApplicants))
+    <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+        <div class="text-sm text-gray-500">
+            Showing {{ $archivedApplicants->firstItem() ?? 0 }} to {{ $archivedApplicants->lastItem() ?? 0 }} of {{ $archivedApplicants->total() }} results
+        </div>
+        @if($archivedApplicants->hasPages())
+        <div class="flex items-center space-x-2">
+            {{-- Previous Page Link --}}
+            @if ($archivedApplicants->onFirstPage())
+                <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+            @else
+                <a href="{{ $archivedApplicants->previousPageUrl() }}&tab=archive" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            @endif
+
+            {{-- Pagination Elements --}}
+            @foreach ($archivedApplicants->getUrlRange(1, $archivedApplicants->lastPage()) as $page => $url)
+                @if ($page == $archivedApplicants->currentPage())
+                    <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">{{ $page }}</button>
+                @else
+                    <a href="{{ $url }}&tab=archive" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">{{ $page }}</a>
+                @endif
+            @endforeach
+
+            {{-- Next Page Link --}}
+            @if ($archivedApplicants->hasMorePages())
+                <a href="{{ $archivedApplicants->nextPageUrl() }}&tab=archive" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            @else
+                <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            @endif
+        </div>
+        @endif
     </div>
-    <div class="flex items-center space-x-2">
-        <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
-            <i class="fas fa-chevron-left"></i>
-        </button>
-        <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">1</button>
-        <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
-            <i class="fas fa-chevron-right"></i>
-        </button>
-    </div>
-</div>
+@endif
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+        const statusSelect = document.getElementById('statusSelect');
+
+        const searchForm = document.getElementById('searchForm');
+        const searchIcon = document.getElementById('searchIcon');
+        const loadingIcon = document.getElementById('loadingIcon');
+        
+        // Show loading indicator
+        function showLoading() {
+            searchIcon.classList.add('hidden');
+            loadingIcon.classList.remove('hidden');
+        }
+        
+        // Hide loading indicator
+        function hideLoading() {
+            searchIcon.classList.remove('hidden');
+            loadingIcon.classList.add('hidden');
+        }
+        
+        // Search function (manual trigger only)
+        function performSearch() {
+            showLoading();
+            searchForm.submit();
+        }
+        
+        // Search on Enter key press or search icon click
+        if (searchInput) {
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    performSearch();
+                }
+            });
+        }
+        
+        // Search on search icon click
+        if (searchIcon) {
+            searchIcon.addEventListener('click', function() {
+                performSearch();
+            });
+        }
+        
+        // Auto-submit form when status changes
+        if (statusSelect) {
+            statusSelect.addEventListener('change', function() {
+                showLoading();
+                searchForm.submit();
+            });
+        }
+    });
+</script>

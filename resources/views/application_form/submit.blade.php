@@ -26,9 +26,13 @@
 
         <!-- Subtext -->
         <p class="text-sm sm:text-base text-[#374151] leading-relaxed px-2">
-            Your application has been submitted successfully. 
-            We’ll review your details and contact you soon for the next step. 
-            Thank you for applying to OGS!
+            @if(session('success'))
+                {{ session('success') }}
+            @else
+                Your application has been submitted successfully. 
+                We'll review your details and contact you soon for the next step. 
+                Thank you for applying to OGS!
+            @endif
         </p>
 
         <!-- Button -->
