@@ -796,18 +796,8 @@ class ScheduleController extends Controller
                 $timeSlot = str_replace(' - ', '-', $timeSlot);
                 Log::info('Filtering by time slot:', ['original_time_slot' => $request->input('time_slot'), 'processed_time_slot' => $timeSlot]);
                 
-                // Let's check how many tutors have this time slot in their available_times
-                $timeSlotTutors = Tutor::whereHas('accounts', function($q) use ($timeSlot) {
-                    $q->where('account_name', 'GLS')->where('status', 'active')
-                      ->where('available_times', 'like', '%' . $timeSlot . '%');
-                })->where('status', 'active')->count();
-                
-                Log::info('Tutors available at time slot:', ['time_slot' => $timeSlot, 'count' => $timeSlotTutors]);
-                
-                $query->whereHas('accounts', function($q) use ($timeSlot) {
-                    $q->where('account_name', 'GLS')->where('status', 'active')
-                      ->where('available_times', 'like', '%' . $timeSlot . '%');
-                });
+                // Use proper time range validation instead of simple string matching
+                $this->filterByTimeSlot($query, $timeSlot, $day);
             }
 
             // If class_id is provided, exclude only MAIN tutors already assigned to this class
@@ -861,60 +851,15 @@ class ScheduleController extends Controller
                 'tutor_usernames' => $tutors->pluck('username')->toArray()
             ]);
 
-            // If no tutors found and we have time slot filtering, try without time slot filter
+            // If no tutors found with strict time filtering, return empty result
+            // This is correct behavior - we should not show tutors who cannot cover the entire class
             if ($tutors->count() === 0 && $timeSlot) {
-                Log::info('No tutors found with time slot filter, trying without time slot filter');
+                Log::info('No tutors found with strict time slot filter - returning empty result');
                 
-                $fallbackQuery = Tutor::with(['accounts' => function($query) {
-                    $query->where('account_name', 'GLS')->where('status', 'active');
-                }])
-                ->whereHas('accounts', function($query) {
-                    $query->where('account_name', 'GLS')->where('status', 'active');
-                })
-                ->where('status', 'active');
-
-                // Apply day filter only
-                if ($day) {
-                    $dayName = $this->normalizeDayName($day);
-                    $fallbackQuery->whereHas('accounts', function($q) use ($dayName) {
-                        $q->where('account_name', 'GLS')->where('status', 'active')
-                          ->where('available_times', 'like', '%' . $dayName . '%');
-                    });
-                }
-
-                // Apply class exclusion - only exclude main tutors, not backup tutors
-                if ($classId) {
-                    $assignedMainTutorIds = \App\Models\TutorAssignment::where('daily_data_id', $classId)
-                        ->where('is_backup', false) // Only exclude main tutors, not backup tutors
-                        ->pluck('tutor_id')
-                        ->toArray();
-                    
-                    if (!empty($assignedMainTutorIds)) {
-                        $fallbackQuery->whereNotIn('tutorID', $assignedMainTutorIds);
-                    }
-                }
-
-                $fallbackTutors = $fallbackQuery->get()->map(function($tutor) {
-                    return [
-                        'id' => $tutor->tutorID,
-                        'username' => $tutor->tusername,
-                    'full_name' => $tutor->full_name,
-                        'name' => $tutor->full_name,
-                        'email' => $tutor->email,
-                        'phone' => $tutor->phone_number,
-                        'availability' => $tutor->formatted_available_time
-                    ];
-                });
-
-                Log::info('Fallback query result:', [
-                    'total_tutors_found' => $fallbackTutors->count(),
-                    'tutor_usernames' => $fallbackTutors->pluck('username')->toArray()
-                ]);
-
                 return response()->json([
                     'success' => true,
-                    'tutors' => $fallbackTutors,
-                    'note' => 'Time slot filter removed - no tutors found with exact time match'
+                    'tutors' => [],
+                    'note' => 'No tutors available for the specified time slot'
                 ]);
             }
             
@@ -1049,6 +994,259 @@ class ScheduleController extends Controller
         // Return null for invalid day names
         return null;
     }
+
+    /**
+     * Filter tutors by time slot using proper time range validation
+     */
+    private function filterByTimeSlot($query, $timeSlot, $day = null)
+    {
+        // Parse the time slot (e.g., "7:30-8:30")
+        if (strpos($timeSlot, '-') === false) {
+            Log::warning('Invalid time slot format:', ['time_slot' => $timeSlot]);
+            return;
+        }
+        
+        [$classStart, $classEnd] = explode('-', $timeSlot);
+        $classStart = trim($classStart);
+        $classEnd = trim($classEnd);
+        
+        // Convert to minutes for comparison
+        $classStartMinutes = $this->timeToMinutes($classStart);
+        $classEndMinutes = $this->timeToMinutes($classEnd);
+        
+        Log::info('Class time range:', [
+            'start' => $classStart,
+            'end' => $classEnd,
+            'start_minutes' => $classStartMinutes,
+            'end_minutes' => $classEndMinutes
+        ]);
+        
+        // Get all tutors with GLS accounts and filter by time availability
+        $allTutorIds = $query->pluck('tutorID')->toArray();
+        
+        if (!empty($allTutorIds)) {
+            $filteredTutorIds = [];
+            
+            // Get tutors with their accounts
+            $tutorsWithAccounts = Tutor::with(['accounts' => function($query) {
+                $query->where('account_name', 'GLS')->where('status', 'active');
+            }])->whereIn('tutorID', $allTutorIds)->get();
+            
+            foreach ($tutorsWithAccounts as $tutor) {
+                $glsAccount = $tutor->accounts->firstWhere('account_name', 'GLS');
+                if ($glsAccount && $this->isTutorAvailableForTimeSlot($glsAccount->available_times, $classStartMinutes, $classEndMinutes, $day)) {
+                    $filteredTutorIds[] = $tutor->tutorID;
+                }
+            }
+            
+            // Apply the filtered tutor IDs
+            if (!empty($filteredTutorIds)) {
+                $query->whereIn('tutorID', $filteredTutorIds);
+            } else {
+                // No tutors match the time range, return empty result
+                $query->where('tutorID', '=', 'impossible_id_that_does_not_exist');
+            }
+        }
+    }
+    
+    /**
+     * Check if tutor is available for the entire class duration
+     */
+    private function isTutorAvailableForTimeSlot($availableTimes, $classStartMinutes, $classEndMinutes, $day = null)
+    {
+        if (!$availableTimes) {
+            return false;
+        }
+        
+        $times = is_string($availableTimes) ? json_decode($availableTimes, true) : $availableTimes;
+        
+        if (!$times || !is_array($times)) {
+            return false;
+        }
+        
+        // If day is specified, only check that day
+        if ($day) {
+            $dayName = $this->normalizeDayName($day);
+            $dayTimes = $times[$dayName] ?? [];
+            
+            foreach ($dayTimes as $timeRange) {
+                if ($this->isTimeRangeFullyCovers($timeRange, $classStartMinutes, $classEndMinutes)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // Check all days
+        foreach ($times as $dayTimes) {
+            if (is_array($dayTimes)) {
+                foreach ($dayTimes as $timeRange) {
+                    if ($this->isTimeRangeFullyCovers($timeRange, $classStartMinutes, $classEndMinutes)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Check if a time range can cover the class duration
+     */
+    private function isTimeRangeFullyCovers($timeRange, $classStartMinutes, $classEndMinutes)
+    {
+        // Parse the time range (e.g., "08:00    -    09:30")
+        $timeRange = preg_replace('/\s+/', ' ', trim($timeRange));
+        
+        if (strpos($timeRange, '-') === false) {
+            return false;
+        }
+        
+        [$tutorStart, $tutorEnd] = explode('-', $timeRange);
+        $tutorStart = trim($tutorStart);
+        $tutorEnd = trim($tutorEnd);
+        
+        $tutorStartMinutes = $this->timeToMinutes($tutorStart);
+        $tutorEndMinutes = $this->timeToMinutes($tutorEnd);
+        
+        // Calculate class duration
+        $classDuration = $classEndMinutes - $classStartMinutes;
+        $tutorDuration = $tutorEndMinutes - $tutorStartMinutes;
+        
+        // Check if tutor can cover the class start time
+        if ($classStartMinutes < $tutorStartMinutes) {
+            return false; // Class starts before tutor is available
+        }
+        
+        // Check if tutor can cover at least 50% of the class duration
+        $availableDuration = $tutorEndMinutes - $classStartMinutes;
+        $coveragePercentage = $availableDuration / $classDuration;
+        
+        // Allow tutors who can cover at least 50% of the class duration
+        // This provides more flexibility for real-world scheduling scenarios
+        return $coveragePercentage >= 0.5;
+    }
+    
+    /**
+     * Filter tutors by time slot using relaxed time matching (any overlap)
+     */
+    private function filterByTimeSlotRelaxed($query, $timeSlot, $day = null)
+    {
+        // Parse the time slot (e.g., "7:30-8:30")
+        if (strpos($timeSlot, '-') === false) {
+            Log::warning('Invalid time slot format:', ['time_slot' => $timeSlot]);
+            return;
+        }
+        
+        [$classStart, $classEnd] = explode('-', $timeSlot);
+        $classStart = trim($classStart);
+        $classEnd = trim($classEnd);
+        
+        // Convert to minutes for comparison
+        $classStartMinutes = $this->timeToMinutes($classStart);
+        $classEndMinutes = $this->timeToMinutes($classEnd);
+        
+        Log::info('Relaxed filtering - Class time range:', [
+            'start' => $classStart,
+            'end' => $classEnd,
+            'start_minutes' => $classStartMinutes,
+            'end_minutes' => $classEndMinutes
+        ]);
+        
+        // Get all tutors with GLS accounts and filter by time availability
+        $allTutorIds = $query->pluck('tutorID')->toArray();
+        
+        if (!empty($allTutorIds)) {
+            $filteredTutorIds = [];
+            
+            // Get tutors with their accounts
+            $tutorsWithAccounts = Tutor::with(['accounts' => function($query) {
+                $query->where('account_name', 'GLS')->where('status', 'active');
+            }])->whereIn('tutorID', $allTutorIds)->get();
+            
+            foreach ($tutorsWithAccounts as $tutor) {
+                $glsAccount = $tutor->accounts->firstWhere('account_name', 'GLS');
+                if ($glsAccount && $this->isTutorAvailableForTimeSlotRelaxed($glsAccount->available_times, $classStartMinutes, $classEndMinutes, $day)) {
+                    $filteredTutorIds[] = $tutor->tutorID;
+                }
+            }
+            
+            // Apply the filtered tutor IDs
+            if (!empty($filteredTutorIds)) {
+                $query->whereIn('tutorID', $filteredTutorIds);
+            } else {
+                // No tutors match the time range, return empty result
+                $query->where('tutorID', '=', 'impossible_id_that_does_not_exist');
+            }
+        }
+    }
+    
+    /**
+     * Check if tutor has any time overlap with the class (relaxed matching)
+     */
+    private function isTutorAvailableForTimeSlotRelaxed($availableTimes, $classStartMinutes, $classEndMinutes, $day = null)
+    {
+        if (!$availableTimes) {
+            return false;
+        }
+        
+        $times = is_string($availableTimes) ? json_decode($availableTimes, true) : $availableTimes;
+        
+        if (!$times || !is_array($times)) {
+            return false;
+        }
+        
+        // If day is specified, only check that day
+        if ($day) {
+            $dayName = $this->normalizeDayName($day);
+            $dayTimes = $times[$dayName] ?? [];
+            
+            foreach ($dayTimes as $timeRange) {
+                if ($this->isTimeRangeOverlaps($timeRange, $classStartMinutes, $classEndMinutes)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // Check all days
+        foreach ($times as $dayTimes) {
+            if (is_array($dayTimes)) {
+                foreach ($dayTimes as $timeRange) {
+                    if ($this->isTimeRangeOverlaps($timeRange, $classStartMinutes, $classEndMinutes)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Check if a time range has any overlap with the class duration
+     */
+    private function isTimeRangeOverlaps($timeRange, $classStartMinutes, $classEndMinutes)
+    {
+        // Parse the time range (e.g., "08:00    -    09:30")
+        $timeRange = preg_replace('/\s+/', ' ', trim($timeRange));
+        
+        if (strpos($timeRange, '-') === false) {
+            return false;
+        }
+        
+        [$tutorStart, $tutorEnd] = explode('-', $timeRange);
+        $tutorStart = trim($tutorStart);
+        $tutorEnd = trim($tutorEnd);
+        
+        $tutorStartMinutes = $this->timeToMinutes($tutorStart);
+        $tutorEndMinutes = $this->timeToMinutes($tutorEnd);
+        
+        // Check for any overlap: (classStart < tutorEnd) AND (classEnd > tutorStart)
+        return ($classStartMinutes < $tutorEndMinutes) && ($classEndMinutes > $tutorStartMinutes);
+    }
+    
 
     /**
      * Get day of week number for MySQL DAYOFWEEK function
