@@ -194,7 +194,8 @@ class ScheduleController extends Controller
                     
                     foreach ($tutorsWithAccounts as $tutor) {
                         $glsAccount = $tutor->accounts->firstWhere('account_name', 'GLS');
-                        if ($glsAccount && $this->isTimeRangeAvailable($glsAccount->available_times, $requestedStart, $requestedEnd)) {
+                        $requestedDay = $request->filled('day') ? $this->normalizeDayName($request->day) : null;
+                        if ($glsAccount && $this->isTimeRangeAvailable($glsAccount->available_times, $requestedStart, $requestedEnd, $requestedDay)) {
                             $filteredTutorIds[] = $tutor->tutorID;
                         }
                     }
@@ -226,12 +227,11 @@ class ScheduleController extends Controller
     /**
      * Check if a requested time range falls within any of the tutor's available time ranges
      */
-    private function isTimeRangeAvailable($availableTimes, $requestedStart, $requestedEnd)
+    private function isTimeRangeAvailable($availableTimes, $requestedStart, $requestedEnd, $requestedDay = null)
     {
         if (empty($availableTimes)) {
             return false;
         }
-
 
         // Convert requested times to minutes for easier comparison
         $requestedStartMinutes = $this->timeToMinutes($requestedStart);
@@ -241,6 +241,11 @@ class ScheduleController extends Controller
         if (is_array($availableTimes)) {
             // If available_times is an array, iterate through each day
             foreach ($availableTimes as $day => $times) {
+                // If a specific day is requested, only check that day
+                if ($requestedDay && strtolower($day) !== strtolower($requestedDay)) {
+                    continue;
+                }
+                
                 if (!is_array($times)) {
                     $times = [$times];
                 }

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>OGS Connect - Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -90,7 +91,7 @@
           @csrf
           
           <!-- Error Messages -->
-          @if ($errors->any())
+          @if (isset($errors) && $errors->any())
             <div id="loginErrorAlert" class="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
               <div class="flex items-start">
                 <div class="flex-shrink-0">
@@ -121,7 +122,7 @@
               </svg>
             </div>
             <input type="text" name="login_id" id="login_id" placeholder="Supervisor/Tutor ID or Email" required
-                    class="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-4 lg:py-5 bg-white border border-stone-300 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all duration-200 text-sm sm:text-base @error('login_id') border-red-500 @enderror"
+                    class="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-4 lg:py-5 bg-white border border-stone-300 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all duration-200 text-sm sm:text-base @if(isset($errors) && $errors->has('login_id')) border-red-500 @endif"
                     value="{{ old('login_id') }}"
                     pattern="^(OGS-[ST]\d{4}|[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})$"
                     title="Please enter a valid ID or email address.">
@@ -139,7 +140,7 @@
               </svg>
             </div>
             <input type="password" name="password" id="password" placeholder="Password" required
-                    class="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 lg:py-5 bg-white border border-stone-300 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all duration-200 text-sm sm:text-base @error('password') border-red-500 @enderror">
+                    class="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 lg:py-5 bg-white border border-stone-300 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all duration-200 text-sm sm:text-base @if(isset($errors) && $errors->has('password')) border-red-500 @endif">
             <div class="absolute inset-y-0 right-0 pr-3 sm:pr-4 flex items-center">
               <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" onclick="togglePasswordField(this)">
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -162,6 +163,8 @@
 
           <!-- Reset Mode Fields (Hidden by default) -->
           <div id="resetFields" class="hidden space-y-4">
+            <!-- CSRF Token -->
+            <input type="hidden" name="_token" value="{{ csrf_token() }}">
             <div>
               <label for="reset_username" class="block text-sm font-medium text-gray-700 mb-2">
                 Email or ID <span class="text-red-500">*</span>
@@ -171,15 +174,15 @@
                      id="reset_username" 
                      name="username" 
                      value="{{ old('username') }}"
-                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @error('username') border-red-500 @enderror"
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @if(isset($errors) && $errors->has('username')) border-red-500 @endif"
                      placeholder="Enter your email or ID">
                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
                   <i class="fas fa-user text-gray-400"></i>
                 </div>
               </div>
-              @error('username')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-              @enderror
+              @if(isset($errors) && $errors->has('username'))
+                <p class="mt-1 text-sm text-red-600">{{ $errors->first('username') }}</p>
+              @endif
             </div>
 
             <div>
@@ -200,9 +203,9 @@
                 <span class="text-sm">Please enter your username and account type first</span>
               </div>
               <input type="hidden" id="security_question" name="security_question" value="">
-              @error('security_question')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-              @enderror
+              @if(isset($errors) && $errors->has('security_question'))
+                <p class="mt-1 text-sm text-red-600">{{ $errors->first('security_question') }}</p>
+              @endif
             </div>
 
             <div>
@@ -214,7 +217,7 @@
                        id="security_answer1" 
                        name="security_answer1" 
                        value="{{ old('security_answer1') }}"
-                       class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @error('security_answer1') border-red-500 @enderror"
+                       class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @if(isset($errors) && $errors->has('security_answer1')) border-red-500 @endif"
                        placeholder="Enter your answer">
                 <button type="button" onclick="togglePasswordField(this)" class="absolute inset-y-0 right-0 pr-3 flex items-center">
                   <svg class="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -223,9 +226,9 @@
                   </svg>
                 </button>
               </div>
-              @error('security_answer1')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-              @enderror
+              @if(isset($errors) && $errors->has('security_answer1'))
+                <p class="mt-1 text-sm text-red-600">{{ $errors->first('security_answer1') }}</p>
+              @endif
             </div>
 
             <div>
@@ -247,7 +250,7 @@
                        id="security_answer2" 
                        name="security_answer2" 
                        value="{{ old('security_answer2') }}"
-                       class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @error('security_answer2') border-red-500 @enderror"
+                       class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @if(isset($errors) && $errors->has('security_answer2')) border-red-500 @endif"
                        placeholder="Enter your answer">
                 <button type="button" onclick="togglePasswordField(this)" class="absolute inset-y-0 right-0 pr-3 flex items-center">
                   <svg class="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -256,9 +259,9 @@
                   </svg>
                 </button>
               </div>
-              @error('security_answer2')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-              @enderror
+              @if(isset($errors) && $errors->has('security_answer2'))
+                <p class="mt-1 text-sm text-red-600">{{ $errors->first('security_answer2') }}</p>
+              @endif
             </div>
 
             <div class="text-right">
@@ -511,7 +514,8 @@
         debugLog('Reset username field not found');
       }
       
-      // Fetch security question
+      // Clear any existing form data and fetch security question
+      clearAllFormFields();
       debugLog('Fetching security question...');
       fetchSecurityQuestion();
     }
@@ -629,6 +633,9 @@
       
       // Clear stored password reset data
       window.passwordResetUser = null;
+      
+      // Clear all form fields
+      clearAllFormFields();
     }
 
     function updatePassword() {
@@ -869,20 +876,170 @@
         return;
       }
 
-      debugLog('Validation passed, switching to password reset mode');
+      debugLog('Validation passed, submitting form for server-side verification');
 
-      // Store user info for password reset
-      window.passwordResetUser = {
-        username: username,
-        userType: userType,
-        securityQuestion: securityQuestion,
-        securityAnswer: securityAnswer,
-        securityQuestion2: securityQuestion2,
-        securityAnswer2: securityAnswer2
-      };
+      // Submit via AJAX to handle validation errors properly
+      const formData = new FormData();
+      formData.append('username', username);
+      formData.append('user_type', userType);
+      formData.append('security_question', securityQuestion);
+      formData.append('security_answer1', securityAnswer);
+      formData.append('security_question2', securityQuestion2);
+      formData.append('security_answer2', securityAnswer2);
+      
+      // Add CSRF token
+      const tokenInput = document.querySelector('input[name="_token"]');
+      if (tokenInput) {
+        formData.append('_token', tokenInput.value);
+        debugLog('CSRF token found:', tokenInput.value);
+      } else {
+        debugLog('CSRF token not found - this will cause a CSRF error');
+      }
+      
+      // Clear any existing error messages
+      clearErrorMessages();
+      
+      // Submit the form via AJAX
+      fetch('{{ route("password.reset.request") }}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        }
+      })
+      .then(response => {
+        if (response.ok) {
+          // Success - store user info and switch to password reset form on the same page
+          debugLog('Security questions verified successfully, switching to password reset form');
+          
+          // Store user information for the password reset form
+          window.passwordResetUser = {
+            username: username,
+            userType: userType,
+            securityQuestion: securityQuestion,
+            securityAnswer: securityAnswer,
+            securityQuestion2: securityQuestion2,
+            securityAnswer2: securityAnswer2
+          };
+          
+          switchToPasswordResetMode();
+        } else {
+          return response.json().then(data => {
+            throw new Error(data.message || 'Validation failed');
+          });
+        }
+      })
+      .catch(error => {
+        debugLog('Validation error:', error.message);
+        showErrorMessage(error.message);
+      });
+    }
 
-      // Switch to password reset fields
-      switchToPasswordResetMode();
+    function clearErrorMessages() {
+      // Clear any existing error messages
+      const errorElements = document.querySelectorAll('.error-message');
+      errorElements.forEach(el => el.remove());
+      
+      // Remove error styling from input fields
+      const inputFields = document.querySelectorAll('#security_answer1, #security_answer2');
+      inputFields.forEach(field => {
+        field.classList.remove('border-red-500');
+        field.classList.add('border-gray-300');
+      });
+    }
+
+    function showErrorMessage(message) {
+      // Create error message element
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'error-message mt-2 p-3 bg-red-50 border border-red-200 rounded-md';
+      errorDiv.innerHTML = `
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+          <div class="ml-3">
+            <p class="text-sm text-red-800">${message}</p>
+          </div>
+        </div>
+      `;
+      
+      // Insert error message after the form
+      const resetFields = document.getElementById('resetFields');
+      if (resetFields) {
+        resetFields.appendChild(errorDiv);
+      }
+      
+      // Add error styling to input fields
+      const inputFields = document.querySelectorAll('#security_answer1, #security_answer2');
+      inputFields.forEach(field => {
+        field.classList.remove('border-gray-300');
+        field.classList.add('border-red-500');
+      });
+    }
+
+    function clearAllFormFields() {
+      debugLog('Clearing all form fields');
+      
+      // Clear login fields
+      const loginIdField = document.getElementById('login_id');
+      const passwordField = document.getElementById('password');
+      if (loginIdField) {
+        loginIdField.value = '';
+        loginIdField.classList.remove('border-red-500', 'border-green-500');
+      }
+      if (passwordField) {
+        passwordField.value = '';
+      }
+      
+      // Clear reset fields
+      const resetUsernameField = document.getElementById('reset_username');
+      const userTypeField = document.getElementById('user_type');
+      const securityQuestionField = document.getElementById('security_question');
+      const securityAnswer1Field = document.getElementById('security_answer1');
+      const securityQuestion2Field = document.getElementById('security_question2');
+      const securityAnswer2Field = document.getElementById('security_answer2');
+      
+      if (resetUsernameField) resetUsernameField.value = '';
+      if (userTypeField) userTypeField.value = '';
+      if (securityQuestionField) securityQuestionField.value = '';
+      if (securityAnswer1Field) securityAnswer1Field.value = '';
+      if (securityQuestion2Field) securityQuestion2Field.value = '';
+      if (securityAnswer2Field) securityAnswer2Field.value = '';
+      
+      // Clear password reset fields
+      const newPasswordField = document.getElementById('new_password');
+      const confirmPasswordField = document.getElementById('confirm_password');
+      if (newPasswordField) newPasswordField.value = '';
+      if (confirmPasswordField) confirmPasswordField.value = '';
+      
+      // Reset display fields
+      const userTypeDisplay = document.getElementById('user_type_display');
+      const securityQuestionDisplay = document.getElementById('security_question_display');
+      const securityQuestionDisplay2 = document.getElementById('security_question_display2');
+      
+      if (userTypeDisplay) {
+        userTypeDisplay.innerHTML = '<span class="text-sm">Account type will be detected automatically</span>';
+      }
+      if (securityQuestionDisplay) {
+        securityQuestionDisplay.innerHTML = '<span class="text-sm">Please enter your username and account type first</span>';
+      }
+      if (securityQuestionDisplay2) {
+        securityQuestionDisplay2.innerHTML = '<span class="text-sm">Please enter your email/ID and account type first</span>';
+      }
+      
+      // Clear password strength indicators
+      const passwordStrengthDiv = document.getElementById('password-strength');
+      const passwordMatchDiv = document.getElementById('password-match');
+      if (passwordStrengthDiv) passwordStrengthDiv.innerHTML = '';
+      if (passwordMatchDiv) passwordMatchDiv.innerHTML = '';
+      
+      // Clear any error messages
+      clearErrorMessages();
+      
+      debugLog('All form fields cleared');
     }
   </script>
 

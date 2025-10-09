@@ -24,6 +24,8 @@ class EmployeeManagementController extends Controller
                 return $this->getTalk915Tutors($request, $tab);
             case 'supervisors':
                 return $this->getSupervisors($request, $tab);
+            case 'archive':
+                return $this->getArchivedEmployees($request, $tab);
             default:
                 return $this->getGlsTutors($request, $tab);
         }
@@ -252,6 +254,105 @@ class EmployeeManagementController extends Controller
         return view('emp_management.index', compact('supervisors', 'tab'));
     }
 
+    private function getArchivedEmployees(Request $request, $tab)
+    {
+        // Get archived tutors and supervisors
+        $archivedTutors = Tutor::where('status', 'inactive')
+            ->with(['accounts', 'tutorDetails', 'paymentInformation'])
+            ->orderBy('updated_at', 'desc');
+
+        $archivedSupervisors = Supervisor::where('status', 'inactive')
+            ->orderBy('updated_at', 'desc');
+
+        // Apply search filter to tutors
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $archivedTutors->where(function($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone_number', 'like', "%{$search}%");
+            });
+
+            $archivedSupervisors->where(function($q) use ($search) {
+                $q->where('sfname', 'like', "%{$search}%")
+                  ->orWhere('slname', 'like', "%{$search}%")
+                  ->orWhere('semail', 'like', "%{$search}%")
+                  ->orWhere('sconNum', 'like', "%{$search}%");
+            });
+        }
+
+        // Apply reason filter
+        if ($request->filled('reason')) {
+            $reason = $request->get('reason');
+            // You can add a reason field to the database if needed
+            // For now, we'll filter based on status or other criteria
+        }
+
+        $tutors = $archivedTutors->get();
+        $supervisors = $archivedSupervisors->get();
+
+        // Combine and format the data
+        $archivedEmployees = collect();
+
+        // Add tutors to the collection
+        foreach ($tutors as $tutor) {
+            $archivedEmployees->push([
+                'id' => $tutor->tutorID,
+                'type' => 'tutor',
+                'name' => $tutor->full_name,
+                'email' => $tutor->email,
+                'phone' => $tutor->phone_number,
+                'reason' => 'Inactive', // You can add a reason field to the database
+                'status' => 'Archived',
+                'archived_at' => $tutor->updated_at->format('M j, Y'),
+                'accounts' => $tutor->accounts->pluck('account_name')->toArray(),
+            ]);
+        }
+
+        // Add supervisors to the collection
+        foreach ($supervisors as $supervisor) {
+            $archivedEmployees->push([
+                'id' => $supervisor->supID,
+                'type' => 'supervisor',
+                'name' => $supervisor->full_name,
+                'email' => $supervisor->semail,
+                'phone' => $supervisor->sconNum,
+                'reason' => 'Inactive', // You can add a reason field to the database
+                'status' => 'Archived',
+                'archived_at' => $supervisor->updated_at->format('M j, Y'),
+                'accounts' => [$supervisor->assigned_account],
+            ]);
+        }
+
+        // Sort by archived date
+        $archivedEmployees = $archivedEmployees->sortByDesc('archived_at');
+
+        // Paginate the results
+        $perPage = 5;
+        $currentPage = $request->get('page', 1);
+        $offset = ($currentPage - 1) * $perPage;
+        $items = $archivedEmployees->slice($offset, $perPage)->values();
+        
+        $paginatedData = new LengthAwarePaginator(
+            $items,
+            $archivedEmployees->count(),
+            $perPage,
+            $currentPage,
+            [
+                'path' => $request->url(),
+                'pageName' => 'page',
+            ]
+        );
+
+        $paginatedData->withQueryString();
+
+        return view('emp_management.index', [
+            'archivedEmployees' => $paginatedData,
+            'tab' => $tab
+        ]);
+    }
+
     public function viewTutor(Tutor $tutor)
     {
         $tutor->load(['accounts', 'tutorDetails', 'paymentInformation']);
@@ -322,5 +423,68 @@ class EmployeeManagementController extends Controller
                 'ms_teams' => $supervisor->steams,
             ]
         ]);
+    }
+
+    public function restoreEmployee(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|string',
+            'type' => 'required|in:tutor,supervisor'
+        ]);
+
+        try {
+            if ($request->type === 'tutor') {
+                $tutor = Tutor::findOrFail($request->id);
+                $tutor->update(['status' => 'active']);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Tutor has been restored successfully!'
+                ]);
+            } else {
+                $supervisor = Supervisor::findOrFail($request->id);
+                $supervisor->update(['status' => 'active']);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Supervisor has been restored successfully!'
+                ]);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to restore employee: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function bulkRestore(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'type' => 'required|in:tutor,supervisor'
+        ]);
+
+        try {
+            $restoredCount = 0;
+            
+            if ($request->type === 'tutor') {
+                $restoredCount = Tutor::whereIn('tutorID', $request->ids)
+                    ->update(['status' => 'active']);
+            } else {
+                $restoredCount = Supervisor::whereIn('supID', $request->ids)
+                    ->update(['status' => 'active']);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Successfully restored {$restoredCount} employees!"
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to restore employees: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

@@ -78,12 +78,8 @@
     <table class="w-full">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Hired</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GLS Tutor ID</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available Time</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -95,18 +91,12 @@
                 $glsAccount = $tutor->accounts->firstWhere('account_name', 'GLS');
             @endphp
             <tr class="hover:bg-gray-50 gls-row" data-searchable="{{ strtolower(($tutor->full_name ?? '') . ' ' . ($tutor->email ?? '') . ' ' . ($tutor->phone_number ?? '')) }}">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ $tutor->created_at ? $tutor->created_at->format('M d, Y') : 'N/A' }}
-                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {{ $tutor->full_name ?? 'N/A' }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tutor->phone_number ?? 'N/A' }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">
                     <a href="mailto:{{ $tutor->email ?? '' }}">{{ $tutor->email ?? 'N/A' }}</a>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tutor->paymentInformation->payment_method_uppercase ?? 'N/A' }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $glsAccount->gls_id ?? 'N/A' }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     @if($glsAccount)
                         <div class="flex flex-col">
@@ -146,7 +136,7 @@
             </tr>
             @empty
             <tr id="noGlsResultsRow">
-                <td colspan="9" class="px-6 py-8 text-center text-gray-500">
+                <td colspan="5" class="px-6 py-8 text-center text-gray-500">
                     <i class="fas fa-users text-4xl mb-4 opacity-50"></i>
                     <p class="text-lg font-medium">No GLS tutors found</p>
                     <p class="text-sm">Try adjusting your search criteria</p>

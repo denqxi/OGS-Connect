@@ -366,7 +366,7 @@
                         @else
                             <!-- Edit Button -->
                             <button
-                                class="editBtn text-[#F6B40E] hover:text-[#C88F00] transform transition duration-200 hover:scale-110"
+                                class="editBtn bg-blue-100 text-blue-600 hover:bg-blue-200 hover:text-blue-700 p-2 rounded-lg transform transition duration-200 hover:scale-105 shadow-sm hover:shadow-md"
                                 data-class="{{ $class->class }}" 
                                 data-time="{{ $class->time_jst ? \Carbon\Carbon::parse($class->time_jst)->subHour()->format('g:i A') : 'N/A' }}" 
                                 data-date="{{ \Carbon\Carbon::parse($date)->format('F j, Y') }}"
@@ -379,14 +379,14 @@
                                 data-assigned-tutors="{{ implode(',', $mainTutors) }}"
                                 data-backup-tutor="{{ count($backupTutors) > 0 ? $backupTutors[0] : '' }}"
                                 title="Edit Schedule">
-                                <i class="fas fa-edit"></i>
+                                <i class="fas fa-edit text-sm"></i>
                             </button>
                             <!-- Cancel Class Button -->
                             <button
                                 onclick="cancelClass({{ $class->id }}, '{{ $class->class }}', '{{ $class->school }}')"
-                                class="text-red-600 hover:text-red-800 transform transition duration-200 hover:scale-110"
+                                class="bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700 p-2 rounded-lg transform transition duration-200 hover:scale-105 shadow-sm hover:shadow-md"
                                 title="Cancel Class">
-                                <i class="fas fa-times-circle"></i>
+                                <i class="fas fa-times-circle text-sm"></i>
                             </button>
                         @endif
                     </div>
@@ -565,8 +565,8 @@
         <!-- Footer -->
         <div class="flex justify-end items-center space-x-3 px-6 py-4 border-t">
             <button id="cancelConfirmation"
-                class="px-4 py-2 rounded-full border border-gray-300 text-gray-600 
-                   hover:bg-gray-200 transform transition duration-200 hover:scale-105">
+                class="px-4 py-2 rounded-full border border-gray-300 text-gray-600 bg-white
+                   hover:bg-gray-50 hover:border-gray-400 transform transition duration-200 hover:scale-105 shadow-sm">
                 Cancel
             </button>
 
@@ -665,8 +665,8 @@
         <!-- Footer -->
         <div class="flex justify-end items-center space-x-3 px-6 py-4 border-t">
             <button id="cancelModal"
-                class="px-4 py-2 rounded-full border border-gray-300 text-gray-600 
-                   hover:bg-gray-200 transform transition duration-200 hover:scale-105">
+                class="px-4 py-2 rounded-full border border-gray-300 text-gray-600 bg-white
+                   hover:bg-gray-50 hover:border-gray-400 transform transition duration-200 hover:scale-105 shadow-sm">
                 Cancel
             </button>
 

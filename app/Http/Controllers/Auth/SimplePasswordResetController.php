@@ -111,12 +111,26 @@ class SimplePasswordResetController extends Controller
 
         // Verify both answers
         if (!$question1Record->verifyAnswer($securityAnswer1)) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Incorrect answer to the first security question. Please try again.',
+                    'field' => 'security_answer1'
+                ], 422);
+            }
             return back()->withErrors([
                 'security_answer1' => 'Incorrect answer to the first security question. Please try again.',
             ])->withInput();
         }
 
         if (!$question2Record->verifyAnswer($securityAnswer2)) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Incorrect answer to the second security question. Please try again.',
+                    'field' => 'security_answer2'
+                ], 422);
+            }
             return back()->withErrors([
                 'security_answer2' => 'Incorrect answer to the second security question. Please try again.',
             ])->withInput();
@@ -130,7 +144,16 @@ class SimplePasswordResetController extends Controller
             'name' => $userType === 'tutor' ? $user->getFullNameAttribute() : $user->getFullNameAttribute(),
         ]);
 
-        // Redirect to password reset form
+        // Return appropriate response based on request type
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Security question verified! Please set your new password.',
+                'redirect' => false
+            ]);
+        }
+
+        // Redirect to password reset form for regular requests
         return redirect()->route('password.reset.form')
                         ->with('status', 'Security question verified! Please set your new password.');
     }

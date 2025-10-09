@@ -3,6 +3,11 @@
 <div class="p-6 border-b border-gray-200">
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
+        <div class="flex items-center space-x-2">
+            <button id="bulkRestoreBtn" class="px-3 py-1 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors text-xs font-medium" disabled>
+                Restore Selected
+            </button>
+        </div>
     </div>
     
     <div class="flex justify-between items-center space-x-4">
@@ -37,10 +42,14 @@
     <table class="w-full">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <input type="checkbox" id="selectAllCheckbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Archived</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
@@ -69,18 +78,12 @@
 </div>
 
 <script>
-    const tutors = [
-        { date: "Jan 12, 2024", name: "Alice Wong", phone: "09123456789", email: "alice@example.com", reason: "Resigned", status: "Archived" },
-        { date: "Feb 03, 2024", name: "Bob Smith", phone: "09234567890", email: "bob@example.com", reason: "Terminated", status: "Archived" },
-        { date: "Mar 20, 2024", name: "Cathy Johnson", phone: "09345678901", email: "cathy@example.com", reason: "Inactive", status: "Archived" },
-        { date: "Apr 02, 2024", name: "David Brown", phone: "09456789012", email: "david@example.com", reason: "Resigned", status: "Archived" },
-        { date: "May 09, 2024", name: "Ella Garcia", phone: "09567890123", email: "ella@example.com", reason: "Retired", status: "Archived" },
-        { date: "Jun 18, 2024", name: "Frank Lee", phone: "09678901234", email: "frank@example.com", reason: "Inactive", status: "Archived" },
-    ];
-
+    // Get data from Laravel
+    const archivedEmployees = @json($archivedEmployees ?? []);
     const rowsPerPage = 5;
     let currentPage = 1;
-    let filteredTutors = [...tutors];
+    let filteredEmployees = [...archivedEmployees.data];
+    let selectedEmployees = new Set();
 
     const tableBody = document.getElementById("tutorTableBody");
     const paginationInfo = document.getElementById("paginationInfo");
@@ -90,30 +93,49 @@
     const searchInput = document.getElementById("searchInput");
     const filterReason = document.getElementById("filterReason");
     const clearSearch = document.getElementById("clearSearch");
+    const selectAllCheckbox = document.getElementById("selectAllCheckbox");
+    const bulkRestoreBtn = document.getElementById("bulkRestoreBtn");
 
     function renderTable() {
         tableBody.innerHTML = "";
         const start = (currentPage - 1) * rowsPerPage;
         const end = start + rowsPerPage;
-        const paginated = filteredTutors.slice(start, end);
+        const paginated = filteredEmployees.slice(start, end);
 
-        paginated.forEach(tutor => {
+        paginated.forEach(employee => {
+            const isSelected = selectedEmployees.has(employee.id);
+            const typeColor = employee.type === 'tutor' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800';
+            const typeText = employee.type === 'tutor' ? 'Tutor' : 'Supervisor';
+            
             const row = `
                 <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${tutor.date}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${tutor.name}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${tutor.phone}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">
-                        <a href="mailto:${tutor.email}">${tutor.email}</a>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <input type="checkbox" 
+                               class="employee-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                               data-id="${employee.id}" 
+                               data-type="${employee.type}"
+                               ${isSelected ? 'checked' : ''}>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${tutor.reason}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${employee.archived_at}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${employee.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${employee.phone}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">
+                        <a href="mailto:${employee.email}">${employee.email}</a>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${typeColor}">
+                            ${typeText}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${employee.reason}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            ${tutor.status}
+                            ${employee.status}
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
-                        <button class="px-3 py-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors text-xs font-medium">
+                        <button onclick="restoreEmployee('${employee.id}', '${employee.type}')" 
+                                class="px-3 py-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors text-xs font-medium">
                             Restore
                         </button>
                     </td>
@@ -122,7 +144,8 @@
             tableBody.insertAdjacentHTML("beforeend", row);
         });
 
-        const total = filteredTutors.length;
+        // Update pagination info
+        const total = filteredEmployees.length;
         const startResult = total === 0 ? 0 : start + 1;
         const endResult = Math.min(end, total);
         paginationInfo.textContent = `Showing ${startResult}-${endResult} of ${total} results`;
@@ -130,20 +153,126 @@
         pageNumber.textContent = currentPage;
         prevBtn.disabled = currentPage === 1;
         nextBtn.disabled = end >= total;
+
+        // Update select all checkbox
+        updateSelectAllCheckbox();
+        updateBulkRestoreButton();
     }
 
     function updateFilter() {
         const query = searchInput.value.toLowerCase();
         const reasonFilter = filterReason.value;
-        filteredTutors = tutors.filter(t =>
-            (t.name.toLowerCase().includes(query) || t.email.toLowerCase().includes(query) || t.phone.includes(query)) &&
-            (reasonFilter === "" || t.reason === reasonFilter)
+        filteredEmployees = archivedEmployees.data.filter(emp =>
+            (emp.name.toLowerCase().includes(query) || emp.email.toLowerCase().includes(query) || emp.phone.includes(query)) &&
+            (reasonFilter === "" || emp.reason === reasonFilter)
         );
         currentPage = 1;
+        selectedEmployees.clear();
         renderTable();
         clearSearch.classList.toggle("hidden", query === "");
     }
 
+    function updateSelectAllCheckbox() {
+        const checkboxes = document.querySelectorAll('.employee-checkbox');
+        const checkedCount = document.querySelectorAll('.employee-checkbox:checked').length;
+        selectAllCheckbox.checked = checkedCount === checkboxes.length && checkboxes.length > 0;
+        selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+    }
+
+    function updateBulkRestoreButton() {
+        const checkedBoxes = document.querySelectorAll('.employee-checkbox:checked');
+        bulkRestoreBtn.disabled = checkedBoxes.length === 0;
+        bulkRestoreBtn.textContent = checkedBoxes.length > 0 ? `Restore Selected (${checkedBoxes.length})` : 'Restore Selected';
+    }
+
+    function restoreEmployee(id, type) {
+        if (confirm('Are you sure you want to restore this employee?')) {
+            fetch('{{ route("employees.restore") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ id: id, type: type })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while restoring the employee.');
+            });
+        }
+    }
+
+    function bulkRestore() {
+        const checkedBoxes = document.querySelectorAll('.employee-checkbox:checked');
+        if (checkedBoxes.length === 0) {
+            alert('Please select employees to restore.');
+            return;
+        }
+
+        if (confirm(`Are you sure you want to restore ${checkedBoxes.length} selected employees?`)) {
+            const ids = Array.from(checkedBoxes).map(cb => cb.dataset.id);
+            const types = Array.from(checkedBoxes).map(cb => cb.dataset.type);
+            
+            // Group by type for bulk operations
+            const tutorIds = ids.filter((id, index) => types[index] === 'tutor');
+            const supervisorIds = ids.filter((id, index) => types[index] === 'supervisor');
+
+            const promises = [];
+            
+            if (tutorIds.length > 0) {
+                promises.push(
+                    fetch('{{ route("employees.bulk-restore") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({ ids: tutorIds, type: 'tutor' })
+                    })
+                );
+            }
+            
+            if (supervisorIds.length > 0) {
+                promises.push(
+                    fetch('{{ route("employees.bulk-restore") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({ ids: supervisorIds, type: 'supervisor' })
+                    })
+                );
+            }
+
+            Promise.all(promises)
+                .then(responses => Promise.all(responses.map(r => r.json())))
+                .then(results => {
+                    const successCount = results.reduce((sum, result) => sum + (result.success ? 1 : 0), 0);
+                    if (successCount === results.length) {
+                        alert('All selected employees have been restored successfully!');
+                        location.reload();
+                    } else {
+                        alert('Some employees could not be restored. Please try again.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while restoring employees.');
+                });
+        }
+    }
+
+    // Event listeners
     searchInput.addEventListener("input", updateFilter);
     filterReason.addEventListener("change", updateFilter);
     clearSearch.addEventListener("click", () => {
@@ -159,9 +288,38 @@
     });
 
     nextBtn.addEventListener("click", () => {
-        if ((currentPage * rowsPerPage) < filteredTutors.length) {
+        if ((currentPage * rowsPerPage) < filteredEmployees.length) {
             currentPage++;
             renderTable();
+        }
+    });
+
+    selectAllCheckbox.addEventListener("change", (e) => {
+        const checkboxes = document.querySelectorAll('.employee-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = e.target.checked;
+            if (e.target.checked) {
+                selectedEmployees.add(cb.dataset.id);
+            } else {
+                selectedEmployees.delete(cb.dataset.id);
+            }
+        });
+        updateBulkRestoreButton();
+    });
+
+
+    bulkRestoreBtn.addEventListener("click", bulkRestore);
+
+    // Handle individual checkbox changes
+    document.addEventListener('change', (e) => {
+        if (e.target.classList.contains('employee-checkbox')) {
+            if (e.target.checked) {
+                selectedEmployees.add(e.target.dataset.id);
+            } else {
+                selectedEmployees.delete(e.target.dataset.id);
+            }
+            updateSelectAllCheckbox();
+            updateBulkRestoreButton();
         }
     });
 

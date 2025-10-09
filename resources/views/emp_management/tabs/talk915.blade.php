@@ -70,13 +70,8 @@
     <table class="w-full">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Hired</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MS Teams</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ESL Teaching Experience</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available Time</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -90,46 +85,35 @@
                     $tutorDetails = $tutor->tutorDetails;
                 @endphp
                 <tr class="hover:bg-gray-50 talk915-row" data-searchable="{{ strtolower(($tutor->full_name ?? '') . ' ' . ($tutor->email ?? '') . ' ' . ($tutor->phone_number ?? '')) }}">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $tutor->created_at ? $tutor->created_at->format('M j, Y') : 'N/A' }}
-                    </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        <a href="#" class="text-black-600 hover:text-black-800">{{ $tutor->full_name }}</a>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $tutor->phone_number ?? 'N/A' }}
+                        {{ $tutor->full_name }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">
                         <a href="mailto:{{ $tutor->email }}">{{ $tutor->email }}</a>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $talk915Account->username ?? 'N/A' }}@talk915.com
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $tutorDetails->address ?? 'N/A' }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $tutorDetails->esl_experience ?? 'N/A' }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         @if($talk915Account)
-                            {{ $talk915Account->getFormattedAvailableTimeAttribute() }}
+                            <div class="flex flex-col">
+                                <span class="font-medium text-gray-700">{{ $talk915Account->getFormattedAvailableTimeAttribute() }}</span>
+                                <span class="text-xs text-blue-600 font-medium">(Talk915 Account)</span>
+                            </div>
                         @else
-                            N/A
+                            <span class="text-red-500 text-sm">No Talk915 availability</span>
                         @endif
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $tutor->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                            {{ $tutor->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
                             {{ ucfirst($tutor->status) }}
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                         <div class="flex space-x-2">
-                        <button onclick="openEmployeeModal('tutor', '{{ $tutor->tutorID }}')" 
-                                class="w-8 h-8 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 inline-flex items-center justify-center transition-colors"
-                                title="View Details">
-                            <i class="fas fa-search text-xs"></i>
-                        </button>
+                            <button onclick="openEmployeeModal('tutor', '{{ $tutor->tutorID }}')" 
+                                    class="w-8 h-8 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 inline-flex items-center justify-center transition-colors"
+                                    title="View Details">
+                                <i class="fas fa-search text-xs"></i>
+                            </button>
                             @if($tutor->status === 'active')
                                 <button onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'inactive')" class="px-3 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors text-xs font-medium" title="Deactivate">
                                     Deactivate
@@ -144,7 +128,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="10" class="px-6 py-4 text-center text-sm text-gray-500">
+                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
                         No tutors found with Talk915 accounts.
                     </td>
                 </tr>

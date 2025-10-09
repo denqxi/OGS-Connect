@@ -21,7 +21,12 @@ class TutorAssignmentService
      */
     public function autoAssignTutors($date = null, $day = null, $accountName = 'GLS')
     {
-        Log::info('Starting auto-assignment', ['date' => $date, 'day' => $day, 'account' => $accountName]);
+        Log::info('🚀 AUTO-ASSIGN STARTED', [
+            'date' => $date, 
+            'day' => $day, 
+            'account' => $accountName,
+            'timestamp' => now()->format('Y-m-d H:i:s')
+        ]);
         
         $query = DailyData::query();
         
@@ -62,7 +67,19 @@ class TutorAssignmentService
             return $needsMoreTutors && $canBeAssigned;
         });
 
-        Log::info('Classes needing tutors', ['count' => $classes->count()]);
+        Log::info('📋 CLASSES FOUND', [
+            'total_classes' => $classes->count(),
+            'classes' => $classes->map(function($class) {
+                return [
+                    'id' => $class->id,
+                    'class' => $class->class,
+                    'date' => $class->date,
+                    'time' => $class->time_jst,
+                    'required' => $class->number_required,
+                    'assigned' => $class->tutorAssignments()->count()
+                ];
+            })->toArray()
+        ]);
 
         $assignedCount = 0;
         $results = [];
@@ -71,20 +88,42 @@ class TutorAssignmentService
             $currentAssigned = $class->tutorAssignments()->count();
             $needMore = $class->number_required - $currentAssigned;
             
-            Log::info('Processing class', [
-                'id' => $class->id,
+            Log::info('🎯 PROCESSING CLASS', [
+                'class_id' => $class->id,
                 'school' => $class->school,
-                'class' => $class->class,
+                'class_name' => $class->class,
                 'date' => $class->date,
-                'time_jst' => $class->time_jst,
+                'time' => $class->time_jst,
+                'day' => Carbon::parse($class->date)->format('l'),
                 'current_assigned' => $currentAssigned,
+                'required' => $class->number_required,
                 'need_more' => $needMore
             ]);
             
             if ($needMore > 0) {
                 $bestTutors = $this->findBestTutorsForClass($class, $needMore, $accountName);
                 
-                Log::info('Found potential tutors', ['count' => count($bestTutors)]);
+                if (count($bestTutors) > 0) {
+                    Log::info('👥 TUTORS FOUND', [
+                        'count' => count($bestTutors),
+                        'tutors' => array_map(function($match) {
+                            return [
+                                'tutor_id' => $match['tutor']->tutorID,
+                                'username' => $match['tutor']->tusername,
+                                'similarity' => $match['similarity']
+                            ];
+                        }, $bestTutors)
+                    ]);
+                } else {
+                    Log::info('❌ NO TUTORS FOUND', [
+                        'class_id' => $class->id,
+                        'class_name' => $class->class,
+                        'date' => $class->date,
+                        'time' => $class->time_jst,
+                        'day' => Carbon::parse($class->date)->format('l'),
+                        'reason' => 'No tutors available at this time or day'
+                    ]);
+                }
                 
                 foreach ($bestTutors as $tutorMatch) {
                     // Check if tutor is not already assigned to this class
@@ -111,10 +150,16 @@ class TutorAssignmentService
                             'time' => $class->time_jst
                         ];
                         
-                        Log::info('Assigned tutor to class', [
-                            'tutor' => $tutorMatch['tutor']->tusername,
-                            'class' => $class->class,
-                            'similarity' => $tutorMatch['similarity']
+                        Log::info('✅ TUTOR ASSIGNED', [
+                            'tutor_id' => $tutorMatch['tutor']->tutorID,
+                            'tutor_username' => $tutorMatch['tutor']->tusername,
+                            'class_id' => $class->id,
+                            'class_name' => $class->class,
+                            'school' => $class->school,
+                            'date' => $class->date,
+                            'time' => $class->time_jst,
+                            'similarity_score' => $tutorMatch['similarity'],
+                            'assigned_at' => now()->format('Y-m-d H:i:s')
                         ]);
                     }
                 }
@@ -126,7 +171,12 @@ class TutorAssignmentService
             $this->createAssignmentHistoryRecords($results);
         }
 
-        Log::info('Auto-assignment completed', ['total_assigned' => $assignedCount]);
+        Log::info('🏁 AUTO-ASSIGN COMPLETED', [
+            'total_assigned' => $assignedCount,
+            'total_classes_processed' => $classes->count(),
+            'assignments' => $results,
+            'completed_at' => now()->format('Y-m-d H:i:s')
+        ]);
 
         return [
             'assigned' => $assignedCount,
@@ -152,11 +202,18 @@ class TutorAssignmentService
         $classDayName = Carbon::parse($class->date)->format('l'); // Full day name (Monday, Tuesday, etc.)
         $classTime = Carbon::parse($class->time_jst);
         
-        Log::info('Finding tutors for class', [
+        // Convert JST to PHT for comparison with tutor availability (PHT is 1 hour behind JST)
+        $classTimePht = $classTime->copy()->subHour();
+        
+        Log::info('🔍 SEARCHING FOR TUTORS', [
             'class_day' => $classDayName,
-            'class_time' => $classTime->format('H:i:s'),
+            'class_time_jst' => $classTime->format('H:i:s'),
+            'class_time_pht' => $classTimePht->format('H:i:s'),
+            'class_time_minutes_jst' => $classTime->hour * 60 + $classTime->minute,
+            'class_time_minutes_pht' => $classTimePht->hour * 60 + $classTimePht->minute,
             'account' => $accountName,
-            'total_tutors' => $availableTutors->count()
+            'total_eligible_tutors' => $availableTutors->count(),
+            'limit_needed' => $limit
         ]);
 
         $tutorSimilarities = [];
@@ -197,8 +254,8 @@ class TutorAssignmentService
                     continue;
                 }
                 
-                // Calculate best similarity for this day
-                $maxSimilarity = $this->calculateAccountSystemSimilarity($classTime, $dayTimes, $tutorAccount, $classDayName);
+                // Calculate best similarity for this day using PHT time
+                $maxSimilarity = $this->calculateAccountSystemSimilarity($classTimePht, $dayTimes, $tutorAccount, $classDayName);
                 
             } else {
                 // Fallback to old availability system if account has no new data
@@ -218,29 +275,39 @@ class TutorAssignmentService
                         continue;
                     }
                     
-                    $maxSimilarity = $this->calculateNewSystemSimilarity($classTime, $dayTimes, $tutor, $classDayName);
+                    $maxSimilarity = $this->calculateNewSystemSimilarity($classTimePht, $dayTimes, $tutor, $classDayName);
                 } else {
                     // No availability data found - skip this tutor
                     continue;
                 }
             }
 
-            // Only consider tutors with good similarity (> 0.5 for stricter matching)
-            if ($maxSimilarity > 0.5) {
+            // Only consider tutors with good similarity (> 0.8 for strict time matching)
+            // This ensures tutors are only assigned if they're actually available at the class time
+            if ($maxSimilarity > 0.8) {
                 $tutorSimilarities[] = [
                     'tutor' => $tutor,
                     'similarity' => $maxSimilarity
                 ];
                 
-                Log::debug('Tutor similarity calculated', [
-                    'tutor' => $tutor->tusername,
-                    'similarity' => $maxSimilarity
+                Log::info('✅ TUTOR AVAILABLE', [
+                    'tutor_id' => $tutor->tutorID,
+                    'tutor_username' => $tutor->tusername,
+                    'similarity_score' => $maxSimilarity,
+                    'class_time_jst' => $classTime->format('H:i:s'),
+                    'class_time_pht' => $classTimePht->format('H:i:s'),
+                    'class_day' => $classDayName
                 ]);
             } else {
-                Log::debug('Tutor rejected due to low similarity', [
-                    'tutor' => $tutor->tusername,
-                    'similarity' => $maxSimilarity,
-                    'threshold' => 0.5
+                Log::info('❌ TUTOR NOT AVAILABLE', [
+                    'tutor_id' => $tutor->tutorID,
+                    'tutor_username' => $tutor->tusername,
+                    'similarity_score' => $maxSimilarity,
+                    'threshold' => 0.8,
+                    'class_time_jst' => $classTime->format('H:i:s'),
+                    'class_time_pht' => $classTimePht->format('H:i:s'),
+                    'class_day' => $classDayName,
+                    'reason' => 'Not available at this time or day'
                 ]);
             }
         }
@@ -325,31 +392,19 @@ class TutorAssignmentService
                 
                 // If class time falls within the available time range, high similarity
                 if ($classMinutes >= $startMinutes && $classMinutes <= $endMinutes) {
-                    $similarity = 1.0; // Perfect match
+                    $similarity = 1.0; // Perfect match - tutor is available at this exact time
                     Log::debug('Perfect time match found', [
                         'similarity' => $similarity
                     ]);
                 } else {
-                    // Calculate distance-based similarity
-                    $distance = min(
-                        abs($classMinutes - $startMinutes),
-                        abs($classMinutes - $endMinutes)
-                    );
-                    
-                    // Use stricter threshold - only allow assignments within 2 hours (120 minutes)
-                    $maxDistance = 120; // Reduced from 240 to 120 minutes
-                    if ($distance > $maxDistance) {
-                        $similarity = 0; // Too far apart
-                        Log::debug('Time too far apart, similarity set to 0', [
-                            'distance' => $distance,
-                            'max_allowed' => $maxDistance
-                        ]);
-                    } else {
-                        $similarity = max(0, 1 - ($distance / $maxDistance));
-                        Log::debug('Distance-based similarity calculated', [
-                            'similarity' => $similarity
-                        ]);
-                    }
+                    // Tutor is not available at this time - set similarity to 0
+                    $similarity = 0;
+                    Log::debug('Tutor not available at class time', [
+                        'class_time_minutes' => $classMinutes,
+                        'available_start' => $startMinutes,
+                        'available_end' => $endMinutes,
+                        'similarity' => $similarity
+                    ]);
                 }
                 
                 // Apply preference bonus if available
@@ -398,37 +453,20 @@ class TutorAssignmentService
                 ]);
                 
                 if ($classMinutes >= $startMinutes && $classMinutes <= $endMinutes) {
-                    $similarity = 1.0; // Perfect match
+                    $similarity = 1.0; // Perfect match - tutor is available at this exact time
                     Log::debug('Perfect time match found', [
                         'similarity' => $similarity,
                         'class_within_range' => true
                     ]);
                 } else {
-                    $distance = min(
-                        abs($classMinutes - $startMinutes),
-                        abs($classMinutes - $endMinutes)
-                    );
-                    
-                    Log::debug('Time distance calculated', [
-                        'distance_minutes' => $distance,
-                        'distance_hours' => round($distance / 60, 2)
+                    // Tutor is not available at this time - set similarity to 0
+                    $similarity = 0;
+                    Log::debug('Tutor not available at class time', [
+                        'class_time_minutes' => $classMinutes,
+                        'available_start' => $startMinutes,
+                        'available_end' => $endMinutes,
+                        'similarity' => $similarity
                     ]);
-                    
-                    $maxDistance = 120; 
-                    if ($distance > $maxDistance) {
-                        $similarity = 0; 
-                        Log::debug('Time too far apart, similarity set to 0', [
-                            'distance' => $distance,
-                            'max_allowed' => $maxDistance
-                        ]);
-                    } else {
-                        $similarity = max(0, 1 - ($distance / $maxDistance));
-                        Log::debug('Distance-based similarity calculated', [
-                            'similarity' => $similarity,
-                            'distance' => $distance,
-                            'max_distance' => $maxDistance
-                        ]);
-                    }
                 }
                 
                 // Apply preference bonus if available

@@ -60,15 +60,9 @@
     <table class="w-full">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Hired</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Birth Date</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MS Teams Account</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned Account</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned Role</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shift</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
@@ -76,20 +70,12 @@
         <tbody class="bg-white divide-y divide-gray-200" id="supervisorTableBody">
             @forelse($supervisors ?? [] as $supervisor)
             <tr class="hover:bg-gray-50 supervisor-row" data-searchable="{{ strtolower(($supervisor->full_name ?? '') . ' ' . ($supervisor->semail ?? '') . ' ' . ($supervisor->sphone ?? '')) }}">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ $supervisor->created_at ? $supervisor->created_at->format('M d, Y') : 'N/A' }}
-                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    <a href="#" class="text-black-600 hover:text-black-800">{{ $supervisor->full_name ?? 'N/A' }}</a>
+                    {{ $supervisor->full_name ?? 'N/A' }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ $supervisor->birth_date ? \Carbon\Carbon::parse($supervisor->birth_date)->format('M j, Y') : 'N/A' }}
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">
+                    <a href="mailto:{{ $supervisor->semail ?? '' }}">{{ $supervisor->semail ?? 'N/A' }}</a>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ $supervisor->semail ?? 'N/A' }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $supervisor->sconNum ?? 'N/A' }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $supervisor->steams ?? 'N/A' }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     @if($supervisor->assigned_account)
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -99,8 +85,6 @@
                         <span class="text-gray-400">Unassigned</span>
                     @endif
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $supervisor->srole ?? 'N/A' }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $supervisor->sshift ?? 'N/A' }}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
                         {{ $supervisor->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
@@ -130,7 +114,7 @@
             </tr>
             @empty
             <tr id="noSupervisorResultsRow">
-                <td colspan="11" class="px-6 py-8 text-center text-gray-500">
+                <td colspan="5" class="px-6 py-8 text-center text-gray-500">
                     <i class="fas fa-user-tie text-4xl mb-4 opacity-50"></i>
                     <p class="text-lg font-medium">No supervisors found</p>
                     <p class="text-sm">Try adjusting your search criteria</p>

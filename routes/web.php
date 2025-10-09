@@ -46,6 +46,8 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
     Route::get('/employees', [\App\Http\Controllers\EmployeeManagementController::class, 'index'])->name('employees.index');
     Route::get('/employees/tutor/{tutor}', [\App\Http\Controllers\EmployeeManagementController::class, 'viewTutor'])->name('employees.tutor.view');
     Route::get('/employees/supervisor/{supervisor}', [\App\Http\Controllers\EmployeeManagementController::class, 'viewSupervisor'])->name('employees.supervisor.view');
+    Route::post('/employees/restore', [\App\Http\Controllers\EmployeeManagementController::class, 'restoreEmployee'])->name('employees.restore');
+    Route::post('/employees/bulk-restore', [\App\Http\Controllers\EmployeeManagementController::class, 'bulkRestore'])->name('employees.bulk-restore');
     Route::post('/import/upload', [ImportController::class, 'upload'])->name('import.upload');
     Route::get('/supervisor/profile', [SupervisorProfileController::class, 'index'])->name('supervisor.profile');
     Route::post('/supervisor/profile/security-questions', [SupervisorProfileController::class, 'updateSecurityQuestions'])->name('supervisor.security-questions.update');
