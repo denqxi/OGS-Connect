@@ -18,6 +18,11 @@
 /public/storage
 /storage/*.key
 /storage/pail
+
+# Utility PHP files
+clear_daily_data.php
+clear_daily_data_force.php
+update_gls_timeslots_correct.php
 /vendor
 Homestead.json
 Homestead.yaml
