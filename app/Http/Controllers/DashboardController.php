@@ -274,6 +274,7 @@ class DashboardController extends Controller
     private function getRecentActivity()
     {
         return ScheduleHistory::with('dailyData')
+            ->where('created_at', '>=', now()->subHours(24)) // Only show activities from last 24 hours
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get()
@@ -288,6 +289,27 @@ class DashboardController extends Controller
                     'reason' => $activity->reason
                 ];
             });
+    }
+
+    /**
+     * Clear old schedule history records (older than 1 day)
+     */
+    public function clearOldHistory()
+    {
+        try {
+            $deletedCount = ScheduleHistory::where('created_at', '<', now()->subDay())->delete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Cleared {$deletedCount} old schedule history records",
+                'deleted_count' => $deletedCount
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to clear old history: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

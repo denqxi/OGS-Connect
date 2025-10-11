@@ -5,11 +5,11 @@
 @section('content')
 @include('layouts.header', ['pageTitle' => 'Dashboard'])
 
-<div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+<div class="w-full px-4 sm:px-6 lg:px-8 py-6 min-w-0">
     <!-- Row 1: 4 Stat Boxes -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 max-w-full">
         <!-- Applicants This Month -->
-        <div class="bg-white rounded-lg shadow-md p-4 relative">
+        <div class="bg-white rounded-lg shadow-md p-4 relative min-w-0 overflow-hidden">
             <div class="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-[#0E335D20]">
                 <svg class="w-5 h-5 text-[#0E335D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -24,7 +24,7 @@
         </div>
 
         <!-- For Demo Applicants -->
-        <div class="bg-white rounded-lg shadow-md p-4 relative">
+        <div class="bg-white rounded-lg shadow-md p-4 relative min-w-0 overflow-hidden">
             <div class="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-[#E6B80022]">
                 <svg class="w-5 h-5 text-[#E6B800]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -39,7 +39,7 @@
         </div>
 
         <!-- Onboarding Applicants -->
-        <div class="bg-white rounded-lg shadow-md p-4 relative">
+        <div class="bg-white rounded-lg shadow-md p-4 relative min-w-0 overflow-hidden">
             <div class="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-[#A78BFA22]">
                 <svg class="w-5 h-5 text-[#A78BFA]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -56,7 +56,7 @@
         </div>
 
         <!-- Existing Employees -->
-        <div class="bg-white rounded-lg shadow-md p-4 relative">
+        <div class="bg-white rounded-lg shadow-md p-4 relative min-w-0 overflow-hidden">
             <div class="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-[#9DC9FD22]">
                 <svg class="w-5 h-5 text-[#9DC9FD]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -76,23 +76,23 @@
     <!-- Row 2: Reports -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Hiring & Onboarding Reports -->
-        <div class="bg-white rounded-lg shadow-md p-6 flex flex-col">
+        <div class="bg-white rounded-lg shadow-md p-6 flex flex-col min-w-0">
             <h2 class="text-lg font-semibold text-[#0E335D] mb-4">Hiring &amp; Onboarding Reports</h2>
 
-            <div class="grid grid-cols-2 items-center gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 items-center gap-4 min-w-0">
                 <!-- Left Column: Status List -->
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600">Not Recommended</span>
-                        <span class="font-semibold text-[#AA1B1B]">{{ $stats['hiring_stats']['not_recommended'] }}</span>
+                <div class="space-y-4 min-w-0">
+                    <div class="flex items-center justify-between min-w-0">
+                        <span class="text-sm text-gray-600 truncate">Not Recommended</span>
+                        <span class="font-semibold text-[#AA1B1B] ml-2">{{ $stats['hiring_stats']['not_recommended'] }}</span>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600">No Answer</span>
-                        <span class="font-semibold text-[#FF7515]">{{ $stats['hiring_stats']['no_answer'] }}</span>
+                    <div class="flex items-center justify-between min-w-0">
+                        <span class="text-sm text-gray-600 truncate">No Answer</span>
+                        <span class="font-semibold text-[#FF7515] ml-2">{{ $stats['hiring_stats']['no_answer'] }}</span>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600">Declined</span>
-                        <span class="font-semibold text-[#E02F2F]">{{ $stats['hiring_stats']['declined'] }}</span>
+                    <div class="flex items-center justify-between min-w-0">
+                        <span class="text-sm text-gray-600 truncate">Declined</span>
+                        <span class="font-semibold text-[#E02F2F] ml-2">{{ $stats['hiring_stats']['declined'] }}</span>
                     </div>
 
                     <!-- Mini Line Graph for Status Trends -->
@@ -102,7 +102,7 @@
                 </div>
 
                 <!-- Right Column: Thicker Doughnut Chart -->
-                <div class="flex justify-center">
+                <div class="flex justify-center min-w-0">
                     <canvas id="hiringOnboardChart" width="140" height="140"></canvas>
                 </div>
             </div>
@@ -400,6 +400,7 @@
             }
         }
     });
+
 </script>
 
 @endsection

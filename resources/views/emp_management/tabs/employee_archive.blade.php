@@ -119,7 +119,7 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${employee.archived_at}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${employee.name}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${employee.phone}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                         <a href="mailto:${employee.email}">${employee.email}</a>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">

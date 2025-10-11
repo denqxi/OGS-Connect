@@ -7,6 +7,7 @@ use App\Models\Tutor;
 use App\Models\TutorAssignment;
 use App\Services\TutorAssignmentService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
@@ -196,6 +197,9 @@ class TutorAssignmentController extends Controller
                 }
             }
             
+            // Assign supervisor to the class if not already assigned
+            $this->assignSupervisorToClass($class);
+            
             DB::commit();
             
             return response()->json([
@@ -288,5 +292,34 @@ class TutorAssignmentController extends Controller
         // Add your permission logic here
         // For now, allowing all operations
         return true;
+    }
+
+    /**
+     * Assign supervisor to class if not already assigned
+     */
+    private function assignSupervisorToClass($class)
+    {
+        // Get current supervisor ID
+        $currentSupervisorId = null;
+        if (Auth::guard('supervisor')->check()) {
+            $currentSupervisorId = Auth::guard('supervisor')->user()->supID;
+        } elseif (session('supervisor_id')) {
+            $currentSupervisorId = session('supervisor_id');
+        }
+
+        // Only assign if we have a supervisor ID and the class is not already assigned
+        if ($currentSupervisorId && !$class->assigned_supervisor) {
+            $class->update([
+                'assigned_supervisor' => $currentSupervisorId,
+                'assigned_at' => now()
+            ]);
+
+            Log::info("Supervisor assigned to class via manual tutor assignment", [
+                'class_id' => $class->id,
+                'supervisor_id' => $currentSupervisorId,
+                'class_name' => $class->class,
+                'schedule_date' => $class->date
+            ]);
+        }
     }
 }

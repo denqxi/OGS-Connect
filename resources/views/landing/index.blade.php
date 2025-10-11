@@ -331,7 +331,7 @@
                             <img src="images/l1.png" alt="Step Icon" class="w-7 h-7 sm:w-8 sm:h-8">
                         </div>
                         <div class="text-xs font-bold text-ogs-green mb-2">STEP 1</div>
-                        <h4 class="font-semibold text-sm sm:text-base">Fill out the google form.</h4>
+                        <h4 class="font-semibold text-sm sm:text-base">Fill out the Application Form.</h4>
                     </div>
 
                     <!-- Step 2 -->
@@ -412,7 +412,7 @@
                         <i class="fas fa-share-alt mr-3 text-ogs-green"></i>Follow us
                     </h3>
                     <div class="space-y-4">
-                        <a href="#" class="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl p-3 hover:bg-white/20 transition-colors">
+                        <a href="https://www.facebook.com/OGSOutsourcingSolutions" class="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl p-3 hover:bg-white/20 transition-colors">
                             <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                                 <i class="fab fa-facebook-f text-white text-sm"></i>
                             </div>
@@ -424,7 +424,7 @@
                             </div>
                             <span class="text-sm">Outsourcing Global Solutions | Davao City</span>
                         </a>
-                        <a href="#" class="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl p-3 hover:bg-white/20 transition-colors">
+                        <a href="https://www.instagram.com/ogs.2018/" class="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl p-3 hover:bg-white/20 transition-colors">
                             <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
                                 <i class="fab fa-instagram text-white text-sm"></i>
                             </div>

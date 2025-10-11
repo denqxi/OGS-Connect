@@ -58,18 +58,22 @@
 
 <!-- Main Content -->
 <div class="bg-white rounded-lg shadow-sm p-6">
+    <!-- Back Button - Separated and positioned better -->
+    <div class="mb-4">
+        <a href="{{ route('schedules.index', array_merge(request()->except(['view_date', 'search', 'school_filter']), ['tab' => 'history'])) }}"
+            class="inline-flex items-center space-x-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium 
+                    hover:bg-gray-200 hover:text-gray-900 transform transition duration-200 hover:scale-105 border border-gray-300">
+            <i class="fas fa-arrow-left text-xs"></i>
+            <span>Back to Schedule History</span>
+        </a>
+    </div>
+
     <!-- Header Section -->
     <div class="flex items-center justify-between mb-6">
         <!-- Left: Title -->
         <h2 class="text-xl font-semibold text-gray-800">Finalized Schedule</h2>
         <!-- Right: Buttons -->
         <div class="flex items-center space-x-2">
-            <a href="{{ route('schedules.index', array_merge(request()->except(['view_date', 'search', 'school_filter']), ['tab' => 'history'])) }}"
-                class="flex items-center space-x-2 px-4 py-2 bg-[#606979] text-white rounded-full text-sm font-medium 
-                        hover:bg-[#4f5a66] transform transition duration-200 hover:scale-105">
-                <i class="fas fa-arrow-left"></i>
-                <span>Back to History</span>
-            </a>
 
             <button onclick="exportSingleSchedule('{{ $date }}')" 
                     class="flex items-center space-x-2 bg-[#0E335D] text-white px-4 py-2 rounded-full text-sm font-medium 

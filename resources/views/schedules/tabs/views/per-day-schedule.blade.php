@@ -50,6 +50,16 @@
     </div>
     @endif
     
+    <!-- Back Button - Separated and positioned better -->
+    <div class="mb-4">
+        <a href="{{ route('schedules.index', ['tab' => 'class', 'page' => $page ?? 1]) }}"
+            class="inline-flex items-center space-x-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium 
+                    hover:bg-gray-200 hover:text-gray-900 transform transition duration-200 hover:scale-105 border border-gray-300">
+            <i class="fas fa-arrow-left text-xs"></i>
+            <span>Back to Class Scheduling</span>
+        </a>
+    </div>
+
     <!-- Header Section -->
     <div class="flex items-center justify-between mb-6">
         <!-- Left: Title -->
@@ -61,12 +71,6 @@
         </h2>
         <!-- Right: Buttons -->
         <div class="flex items-center space-x-2">
-            <a href="{{ route('schedules.index', ['tab' => 'class', 'page' => $page ?? 1]) }}"
-                class="flex items-center space-x-2 px-4 py-2 bg-[#606979] text-white rounded-full text-sm font-medium 
-                        hover:bg-[#4f5a66] transform transition duration-200 hover:scale-105">
-                <i class="fas fa-arrow-left"></i>
-                <span>Back</span>
-            </a>
 
             <!-- Auto-Assign Button for this specific date -->
             @if($isFinalized)

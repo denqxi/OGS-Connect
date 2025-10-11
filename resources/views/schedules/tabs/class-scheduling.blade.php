@@ -127,7 +127,7 @@
                     @if(request()->hasAny(['search', 'date', 'day', 'status']))
                     <a href="{{ route('schedules.index', ['tab' => 'class']) }}" 
                        onclick="event.preventDefault(); document.getElementById('filterForm').reset(); removePageParam(); window.location='{{ route('schedules.index', ['tab' => 'class']) }}';"
-                       class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors">
+                       class="bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors">
                         Clear
                     </a>
                     @endif
@@ -183,7 +183,7 @@
         </table>
 
         <!-- No Search Results Message -->
-        <div id="noSearchResults" class="hidden bg-white px-6 py-8 text-center text-gray-500 border-t">
+        <div id="noSearchResults" class="hidden bg-white px-6 py-8 text-center text-gray-500 border-t border-gray-200">
             <i class="fas fa-search text-4xl mb-4 opacity-50"></i>
             <p class="text-lg font-medium">No schools found</p>
             <p class="text-sm">Try adjusting your search terms</p>
@@ -192,7 +192,7 @@
 
     <!-- Upload Progress Modal -->
     <div id="uploadModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg p-6 w-96">
+        <div class="bg-white rounded-lg p-6 w-96 border border-gray-200">
             <div class="text-center">
                 <div class="mb-4">
                     <i id="uploadIcon" class="fas fa-file-upload text-4xl text-blue-600"></i>
@@ -208,7 +208,7 @@
 
     <!-- Pagination -->
     <div id="paginationContainer">
-        @include('schedules.partials.class-pagination', ['dailyData' => $dailyData])
+        @include('schedules.partials.compact-class-pagination', ['dailyData' => $dailyData])
     </div>
 
     <!-- Scripts -->

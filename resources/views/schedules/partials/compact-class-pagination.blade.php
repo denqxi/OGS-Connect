@@ -3,38 +3,38 @@
     unset($queryParams['page']); // Remove existing page parameter
     
     // Build base URL properly
-    $baseParams = array_merge($queryParams, ['tab' => $tab]);
-    $baseUrl = route('employees.index', $baseParams);
+    $baseParams = array_merge($queryParams, ['tab' => 'class']);
+    $baseUrl = route('schedules.index', $baseParams);
     
     // Add proper query string separator
     $separator = strpos($baseUrl, '?') !== false ? '&' : '?';
     
     // Calculate smart pagination range
-    $currentPage = $data->currentPage();
-    $lastPage = $data->lastPage();
+    $currentPage = $dailyData->currentPage();
+    $lastPage = $dailyData->lastPage();
     
-    // Always use compact format for consistency across all tabs
+    // Always use compact format for consistency
 @endphp
 
-@if($data->hasPages())
+@if(isset($dailyData) && method_exists($dailyData, 'hasPages') && $dailyData->hasPages())
 <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between h-16 w-full" id="paginationSection" data-pagination-version="compact-v2">
     <div class="text-sm text-gray-500">
-        @if($data->total() > 0)
-            Showing {{ $data->firstItem() }} to {{ $data->lastItem() }} of {{ $data->total() }} results
+        @if($dailyData->total() > 0)
+            Showing {{ $dailyData->firstItem() }} to {{ $dailyData->lastItem() }} of {{ $dailyData->total() }} results
         @else
             Showing 0 results
         @endif
     </div>
     <div class="flex items-center justify-center space-x-2 w-[300px]">
         {{-- Previous Button --}}
-        @if ($data->onFirstPage())
+        @if ($dailyData->onFirstPage())
             <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center" disabled>
                 <i class="fas fa-chevron-left"></i>
             </button>
         @else
-            <a href="{{ $baseUrl . $separator . 'page=' . ($data->currentPage() - 1) }}"
-               class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center transition-colors"
-               data-page="{{ $data->currentPage() - 1 }}">
+            <a href="{{ $baseUrl . $separator . 'page=' . ($dailyData->currentPage() - 1) }}"
+               class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+               data-page="{{ $dailyData->currentPage() - 1 }}">
                 <i class="fas fa-chevron-left"></i>
             </a>
         @endif
@@ -43,10 +43,10 @@
         <button class="w-8 h-8 bg-slate-700 text-white rounded text-sm flex items-center justify-center font-medium">{{ $currentPage }}</button>
 
         {{-- Next Button --}}
-        @if ($data->hasMorePages())
-            <a href="{{ $baseUrl . $separator . 'page=' . ($data->currentPage() + 1) }}"
-               class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center transition-colors"
-               data-page="{{ $data->currentPage() + 1 }}">
+        @if ($dailyData->hasMorePages())
+            <a href="{{ $baseUrl . $separator . 'page=' . ($dailyData->currentPage() + 1) }}"
+               class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+               data-page="{{ $dailyData->currentPage() + 1 }}">
                 <i class="fas fa-chevron-right"></i>
             </a>
         @else
@@ -59,10 +59,10 @@
 @else
 <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between h-16 w-full" id="paginationSection">
     <div class="text-sm text-gray-500">
-        @if($data->total() > 0)
-            Showing {{ $data->count() }} of {{ $data->total() }} results
+        @if(isset($dailyData) && method_exists($dailyData, 'total') && $dailyData->total() > 0)
+            Showing {{ count($dailyData) }} of {{ $dailyData->total() }} results
         @else
-            Showing 0 results
+            Showing {{ count($dailyData ?? []) }} results
         @endif
     </div>
     <div class="flex items-center justify-center space-x-2 w-[300px]">

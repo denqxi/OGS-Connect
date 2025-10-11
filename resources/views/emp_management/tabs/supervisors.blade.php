@@ -73,7 +73,7 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {{ $supervisor->full_name ?? 'N/A' }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                     <a href="mailto:{{ $supervisor->semail ?? '' }}">{{ $supervisor->semail ?? 'N/A' }}</a>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

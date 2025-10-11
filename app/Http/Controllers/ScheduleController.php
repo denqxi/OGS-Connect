@@ -516,7 +516,7 @@ class ScheduleController extends Controller
             if ($request->ajax()) {
                 // Return JSON response for AJAX requests
                 $html = view('schedules.partials.class-schedule-table', ['schedules' => $schedules])->render();
-                $pagination = view('schedules.partials.class-pagination', ['dailyData' => $schedules])->render();
+                $pagination = view('schedules.partials.compact-class-pagination', ['dailyData' => $schedules])->render();
             
             return response()->json([
                 'success' => true,

@@ -88,7 +88,7 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {{ $tutor->full_name }}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                         <a href="mailto:{{ $tutor->email ?? '' }}">{{ $tutor->email ?? 'N/A' }}</a>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

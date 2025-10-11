@@ -2,9 +2,25 @@
     {{-- Show the daily schedule view for finalized schedules --}}
     @include('schedules.tabs.views.finalized-schedule', ['date' => request('view_date')])
 @else
-<!-- Page Title -->
+<!-- Page Title with Export Button -->
 <div class="bg-white border-b border-gray-200 px-6 py-4">
-    <h2 class="text-xl font-semibold text-gray-800">Schedule History</h2>
+    <div class="flex items-center justify-between">
+        <h2 class="text-xl font-semibold text-gray-800">Schedule History</h2>
+        
+        <!-- Action Buttons -->
+        <div class="flex items-center space-x-2">
+            <!-- Export Button -->
+            <button type="button"
+                id="exportButton"
+                onclick="exportSelectedSchedules()"
+                class="flex items-center space-x-2 bg-[#0E335D] text-white px-4 py-2 rounded-full text-sm font-medium 
+                        hover:bg-[#184679] transform transition duration-200 hover:scale-105 opacity-50 cursor-not-allowed"
+                disabled>
+                <i class="fas fa-file-export"></i>
+                <span id="exportButtonText">Export File (0 selected)</span>
+            </button>
+        </div>
+    </div>
 </div>
 
 <!-- Search Filters -->
@@ -45,30 +61,13 @@
             </select>
         </div>
 
-        <!-- Right Group: Search and Export Buttons -->
+        <!-- Right Group: Search Button -->
         <div class="flex items-center space-x-2">
             <button type="submit"
-                class="flex items-center space-x-2 bg-[#2A5382] text-white px-4 py-2 rounded-full text-sm font-medium 
-                        hover:bg-[#1e3a5c] transform transition duration-200 hover:scale-105">
+                class="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium 
+                        hover:bg-blue-700 transform transition duration-200 hover:scale-105">
                 <i class="fas fa-search"></i>
                 <span>Search</span>
-            </button>
-            @if(request()->hasAny(['search', 'date', 'day']))
-                <a href="{{ route('schedules.index', ['tab' => 'history']) }}" 
-                   class="flex items-center space-x-2 bg-gray-500 text-white px-4 py-2 rounded-full text-sm font-medium 
-                          hover:bg-gray-600 transform transition duration-200 hover:scale-105">
-                    <i class="fas fa-times"></i>
-                    <span>Clear</span>
-                </a>
-            @endif
-            <button type="button"
-                id="exportButton"
-                onclick="exportSelectedSchedules()"
-                class="flex items-center space-x-2 bg-[#0E335D] text-white px-4 py-2 rounded-full text-sm font-medium 
-                        hover:bg-[#184679] transform transition duration-200 hover:scale-105 opacity-50 cursor-not-allowed"
-                disabled>
-                <i class="fas fa-file-export"></i>
-                <span id="exportButtonText">Export File (0 selected)</span>
             </button>
         </div>
     </form>

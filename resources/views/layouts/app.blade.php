@@ -14,6 +14,59 @@
         [x-cloak] {
             display: none !important;
         }
+        
+        /* Font Size Classes - Only for main content, exclude sidebar */
+        .font-size-small main,
+        .font-size-small main * {
+            font-size: 0.875rem !important; /* 14px */
+        }
+        
+        .font-size-small main h1, 
+        .font-size-small main .text-xl {
+            font-size: 1.125rem !important; /* 18px */
+        }
+        
+        .font-size-small main h2, 
+        .font-size-small main .text-lg {
+            font-size: 1rem !important; /* 16px */
+        }
+        
+        .font-size-small main .text-sm {
+            font-size: 0.75rem !important; /* 12px */
+        }
+        
+        .font-size-small main .text-xs {
+            font-size: 0.625rem !important; /* 10px */
+        }
+        
+        .font-size-large main,
+        .font-size-large main * {
+            font-size: 1.125rem !important; /* 18px */
+        }
+        
+        .font-size-large main h1, 
+        .font-size-large main .text-xl {
+            font-size: 1.5rem !important; /* 24px */
+        }
+        
+        .font-size-large main h2, 
+        .font-size-large main .text-lg {
+            font-size: 1.25rem !important; /* 20px */
+        }
+        
+        .font-size-large main .text-sm {
+            font-size: 1rem !important; /* 16px */
+        }
+        
+        .font-size-large main .text-xs {
+            font-size: 0.875rem !important; /* 14px */
+        }
+        
+        /* Default medium size (no class needed) */
+        .font-size-medium main,
+        .font-size-medium main * {
+            font-size: 1rem !important; /* 16px - default */
+        }
     </style>
     <script>
         // Prevent back button access after logout
@@ -31,6 +84,36 @@
                 window.history.pushState(null, null, window.location.href);
             });
         }
+        
+        // Font Size Changer Functions
+        function setFontSize(size) {
+            const body = document.body;
+            
+            // Remove existing font size classes
+            body.classList.remove('font-size-small', 'font-size-medium', 'font-size-large');
+            
+            // Add new font size class
+            if (size !== 'medium') {
+                body.classList.add('font-size-' + size);
+            }
+            
+            // Save preference to localStorage
+            localStorage.setItem('fontSize', size);
+            
+            // Close dropdown
+            const dropdown = document.querySelector('[x-data]');
+            if (dropdown && dropdown._x_dataStack) {
+                dropdown._x_dataStack[0].open = false;
+            }
+        }
+        
+        // Apply saved font size on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedFontSize = localStorage.getItem('fontSize');
+            if (savedFontSize) {
+                setFontSize(savedFontSize);
+            }
+        });
     </script>
 </head>
 <body class="bg-gray-50 font-sans">
@@ -64,17 +147,27 @@
         // Enhanced smooth transitions for sidebar navigation
         document.addEventListener('DOMContentLoaded', function() {
             const navLinks = document.querySelectorAll('.sidebar-nav-item');
-            const sidebar = document.querySelector('.group');
+            const sidebar = document.querySelector('div[class*="group"]');
             const mainContent = document.querySelector('main');
             
             // Handle sidebar hover to adjust main content margin
             if (sidebar && mainContent) {
+                // Set initial margin
+                mainContent.style.marginLeft = '5rem';
+                
                 sidebar.addEventListener('mouseenter', function() {
                     mainContent.style.marginLeft = 'calc(18rem - 30px)';
                 });
                 
                 sidebar.addEventListener('mouseleave', function() {
                     mainContent.style.marginLeft = '5rem'; // 80px
+                });
+                
+                // Handle window resize to reset margin
+                window.addEventListener('resize', function() {
+                    if (!sidebar.matches(':hover')) {
+                        mainContent.style.marginLeft = '5rem';
+                    }
                 });
             }
             

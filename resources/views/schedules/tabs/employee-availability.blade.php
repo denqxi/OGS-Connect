@@ -149,7 +149,7 @@
                             @endphp
                         @endif
                     <a href="{{ route('schedules.index', ['tab' => 'employee']) }}" 
-                       class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors">
+                       class="bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors">
                         Clear
                     </a>
                     </div>
@@ -182,8 +182,8 @@
                     {{ $tutor->full_name ?? 'N/A' }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tutor->phone_number ?? 'N/A' }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">
-                    <a href="mailto:{{ $tutor->email ?? '' }}">{{ $tutor->email ?? 'N/A' }}</a>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {{ $tutor->email ?? 'N/A' }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     @if($glsAccount)
@@ -369,9 +369,16 @@
                             @php
                                 $displayTime = $filteredTime ?: $glsAccount->formatted_available_time;
                                 $displayTime = is_array($displayTime) ? implode(', ', $displayTime) : $displayTime;
+                                $shortTime = strlen($displayTime) > 20 ? substr($displayTime, 0, 20) . '...' : $displayTime;
                             @endphp
-                            <span class="font-medium text-gray-700">{{ $displayTime }}</span>
-                            <span class="text-xs text-green-600 font-medium">(GLS Account)</span>
+                            <div class="flex flex-col">
+                                <button onclick="toggleAvailability('{{ $tutor->tutorID }}')" 
+                                        class="text-left text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors">
+                                    <span id="short-time-{{ $tutor->tutorID }}">{{ $shortTime }}</span>
+                                    <span id="full-time-{{ $tutor->tutorID }}" class="hidden">{{ $displayTime }}</span>
+                                </button>
+                                <span class="text-xs text-green-600 font-medium">(GLS Account)</span>
+                            </div>
                         </div>
                     @else
                         <span class="text-red-500 text-sm">No GLS availability</span>

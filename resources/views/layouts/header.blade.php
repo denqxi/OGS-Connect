@@ -2,16 +2,37 @@
     <h1 class="text-base md:text-lg font-bold text-[#0E335D]">{{ $pageTitle ?? 'OGS Connect' }}</h1>
     
     <div class="flex items-center space-x-3 md:space-x-4">
-        <!-- Theme Toggle -->
-        <button class="p-2 text-[#0E335D] hover:text-[#0B284A] rounded-lg transition-colors duration-300">
-            <i class="fas fa-sun text-lg md:text-xl"></i>
-        </button>
-
-        <!-- Notifications -->
-        <button class="p-2 text-[#0E335D] hover:text-[#0B284A] rounded-lg relative transition-colors duration-300">
-            <i class="fas fa-bell text-lg md:text-xl"></i>
-            <span class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-        </button>
+        <!-- Font Size Toggle -->
+        <div x-data="{ open: false }" class="relative">
+            <button @click="open = !open" 
+                    class="p-2 text-[#0E335D] hover:text-[#0B284A] rounded-lg transition-colors duration-300"
+                    title="Font Size">
+                <i class="fas fa-text-height text-lg md:text-xl"></i>
+            </button>
+            
+            <!-- Font Size Dropdown -->
+            <div x-show="open" x-cloak @click.away="open = false" 
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 scale-95" 
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-150" 
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <button onclick="setFontSize('small')" 
+                        class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <i class="fas fa-minus mr-2"></i> Small
+                </button>
+                <button onclick="setFontSize('medium')" 
+                        class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <i class="fas fa-equals mr-2"></i> Medium
+                </button>
+                <button onclick="setFontSize('large')" 
+                        class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <i class="fas fa-plus mr-2"></i> Large
+                </button>
+            </div>
+        </div>
 
         <!-- Profile Image with Dropdown -->
         <div x-data="{ open: false }" class="relative w-10 h-10 md:w-10 cursor-pointer">

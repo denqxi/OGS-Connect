@@ -411,3 +411,14 @@ function showNotification(message, type) {
         }, 300);
     }, duration);
 }
+
+// Toggle availability display
+function toggleAvailability(tutorId) {
+    const shortTime = document.getElementById(`short-time-${tutorId}`);
+    const fullTime = document.getElementById(`full-time-${tutorId}`);
+    
+    if (shortTime && fullTime) {
+        shortTime.classList.toggle('hidden');
+        fullTime.classList.toggle('hidden');
+    }
+}

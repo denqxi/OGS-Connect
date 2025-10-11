@@ -64,7 +64,7 @@
 
                 @if(request()->hasAny(['search', 'status', 'time_slot', 'day']))
                     <a href="{{ route('employees.index', ['tab' => 'gls']) }}" 
-                       class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors">
+                       class="bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors">
                         Clear
                     </a>
                 @endif
@@ -94,7 +94,7 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {{ $tutor->full_name ?? 'N/A' }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                     <a href="mailto:{{ $tutor->email ?? '' }}">{{ $tutor->email ?? 'N/A' }}</a>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -160,7 +160,7 @@
         <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center" disabled>
             <i class="fas fa-chevron-left"></i>
         </button>
-        <button class="w-8 h-8 bg-slate-700 text-white rounded text-sm flex items-center justify-center">1</button>
+        <button class="w-8 h-8 bg-blue-600 text-white rounded text-sm flex items-center justify-center">1</button>
         <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center" disabled>
             <i class="fas fa-chevron-right"></i>
         </button>

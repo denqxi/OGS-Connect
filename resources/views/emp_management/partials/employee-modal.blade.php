@@ -4,7 +4,7 @@
         <!-- Loading State -->
         <div id="modal-loading" class="text-center py-12">
             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p class="text-gray-500 mt-4">Loading employee details...</p>
+            <p class="text-gray-600 mt-4">Loading employee details...</p>
         </div>
 
         <!-- Modal Content -->
@@ -22,19 +22,19 @@
                 </div>
 
                 <!-- Profile Overview -->
-                <div class="bg-gradient-to-r from-blue-100 via-green-100 to-green-200 p-6">
+                <div class="bg-gradient-to-r from-blue-50 via-blue-100 to-blue-50 p-6">
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between">
                         <div class="flex items-center space-x-4">
                             <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=96&h=96&fit=crop&crop=face"
-                                alt="Profile" class="w-20 h-20 rounded-full object-cover border-2 border-[#0E335D]">
+                                alt="Profile" class="w-20 h-20 rounded-full object-cover border-2 border-blue-400">
                             <div>
                                 <h2 class="text-lg font-semibold text-[#0E335D]" id="tutor-name">Tutor Name</h2>
-                                <p class="text-gray-700 text-sm" id="tutor-email">tutor@email.com</p>
-                                <p class="text-gray-600 text-xs" id="tutor-id">Tutor ID: N/A</p>
+                                <p class="text-gray-600 text-sm" id="tutor-email">tutor@email.com</p>
+                                <p class="text-gray-500 text-xs" id="tutor-id">Tutor ID: N/A</p>
                             </div>
                         </div>
                         <div class="mt-4 md:mt-0 text-left md:text-right w-full md:w-40">
-                            <label class="block text-sm text-gray-700 mb-1">Status:</label>
+                            <label class="block text-sm text-gray-600 mb-1">Status:</label>
                             <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium" id="tutor-status-badge">
                                 Active
                             </span>
@@ -46,7 +46,7 @@
                 <div class="bg-white border-b border-gray-200 px-6">
                     <nav class="flex space-x-8">
                         <button onclick="showTutorTab('personal')" id="tutor-personal-tab"
-                            class="py-4 px-1 border-b-2 border-[#0E335D] font-medium text-sm text-[#0E335D]">
+                            class="py-4 px-1 border-b-2 border-blue-600 font-medium text-sm text-blue-600">
                             <i class="fas fa-user mr-2"></i>Personal Info
                         </button>
                         <button onclick="showTutorTab('payment')" id="tutor-payment-tab"
@@ -424,14 +424,20 @@ function populateTutorModal(data) {
                         </div>
                     ` : ''}
                     <div>
-                        <label class="block text-sm text-gray-600 mb-1">Available Time</label>
-                        <input type="text" value="${account.formatted_available_time || 'N/A'}" readonly
-                            class="border border-gray-300 rounded-md px-3 py-2 w-full bg-gray-50 text-gray-900">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-600 mb-1">Available Days</label>
-                        <input type="text" value="${account.formatted_available_days || 'N/A'}" readonly
-                            class="border border-gray-300 rounded-md px-3 py-2 w-full bg-gray-50 text-gray-900">
+                        <label class="block text-sm text-gray-600 mb-1">Work Availability</label>
+                        <button type="button" onclick="toggleAvailability('${account.id}-${account.account_name}')" 
+                            class="w-full text-left border border-gray-300 rounded-md px-3 py-2 bg-gray-50 text-gray-900 hover:bg-gray-100 transition-colors flex items-center justify-between">
+                            <span id="availability-summary-${account.id}-${account.account_name}">${getAvailabilitySummary(account)}</span>
+                            <i class="fas fa-chevron-down transition-transform duration-200" id="availability-arrow-${account.id}-${account.account_name}"></i>
+                        </button>
+                        <div id="availability-details-${account.id}-${account.account_name}" class="hidden mt-2 border border-gray-200 rounded-md bg-white shadow-sm">
+                            <div class="p-3">
+                                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Availability Details</div>
+                                <div class="space-y-2">
+                                    ${getAvailabilityList(account)}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     ${account.account_name === 'Talk915' && account.ms_teams_id ? `
                         <div>
@@ -627,5 +633,91 @@ function toggleSupervisorStatus(supervisorId, newStatus) {
         button.disabled = false;
         button.innerHTML = originalText;
     });
+}
+
+// Helper functions for availability display
+function getAvailabilitySummary(account) {
+    const availableTime = account.formatted_available_time || 'N/A';
+    const availableDays = account.formatted_available_days || 'N/A';
+    
+    if (availableTime === 'N/A' && availableDays === 'N/A') {
+        return 'No availability information';
+    }
+    
+    // Count available entries
+    let count = 0;
+    if (availableTime !== 'N/A') {
+        count += availableTime.split(', ').length;
+    }
+    if (availableDays !== 'N/A') {
+        count += availableDays.split(', ').length;
+    }
+    
+    return `${count} availability entries - Click to view details`;
+}
+
+function getAvailabilityList(account) {
+    const availableTime = account.formatted_available_time || 'N/A';
+    const availableDays = account.formatted_available_days || 'N/A';
+    
+    let html = '';
+    
+    if (availableTime !== 'N/A') {
+        const timeEntries = availableTime.split(', ');
+        timeEntries.forEach(entry => {
+            html += `<div class="flex items-center py-1 px-2 bg-blue-50 rounded text-sm">
+                        <i class="fas fa-clock text-blue-500 mr-2"></i>
+                        <span class="text-gray-700">${entry.trim()}</span>
+                     </div>`;
+        });
+    }
+    
+    if (availableDays !== 'N/A') {
+        const dayEntries = availableDays.split(', ');
+        dayEntries.forEach(entry => {
+            html += `<div class="flex items-center py-1 px-2 bg-green-50 rounded text-sm">
+                        <i class="fas fa-calendar text-green-500 mr-2"></i>
+                        <span class="text-gray-700">${entry.trim()}</span>
+                     </div>`;
+        });
+    }
+    
+    if (!html) {
+        html = '<div class="text-gray-500 italic text-sm">No availability information</div>';
+    }
+    
+    return html;
+}
+
+// Toggle availability dropdown
+function toggleAvailability(uniqueId) {
+    const details = document.getElementById(`availability-details-${uniqueId}`);
+    const arrow = document.getElementById(`availability-arrow-${uniqueId}`);
+    
+    if (details && arrow) {
+        const isOpen = !details.classList.contains('hidden');
+        
+        if (isOpen) {
+            // Close this dropdown
+            details.classList.add('hidden');
+            arrow.style.transform = 'rotate(0deg)';
+        } else {
+            // Close all other availability dropdowns first
+            document.querySelectorAll('[id^="availability-details-"]').forEach(dropdown => {
+                if (dropdown.id !== `availability-details-${uniqueId}`) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+            document.querySelectorAll('[id^="availability-arrow-"]').forEach(arrowEl => {
+                if (arrowEl.id !== `availability-arrow-${uniqueId}`) {
+                    arrowEl.style.transform = 'rotate(0deg)';
+                }
+            });
+            
+            // Open this dropdown
+            details.classList.remove('hidden');
+            arrow.style.transform = 'rotate(180deg)';
+        }
+    }
 }
 </script>
