@@ -35,7 +35,7 @@ Route::get('/application-form/cancel', function () {
     return view('application_form.cancel'); // cancel.blade.php
 })->name('application.form.cancel');
 
-Route::get('/application-form/submit', function () {
+Route::get('/application-form/success', function () {
     return view('application_form.submit'); // submit.blade.php
 })->name('application.form.success');
 

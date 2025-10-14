@@ -5,8 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OGS Connect - Start Your Teaching Journey</title>
-    <meta name="description" content="Join OGS Connect - Premier ESL tutoring platform connecting learners with qualified Filipino tutors. Start your teaching journey today!">
-    <meta name="keywords" content="ESL tutoring, online teaching, Filipino tutors, English language learning, OGS Connect">
+    <meta name="description"
+        content="Join OGS Connect - Premier ESL tutoring platform connecting learners with qualified Filipino tutors. Start your teaching journey today!">
+    <meta name="keywords"
+        content="ESL tutoring, online teaching, Filipino tutors, English language learning, OGS Connect">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script>
@@ -46,32 +48,42 @@
         .gradient-bg {
             background: linear-gradient(135deg, #4ADE80 0%, #22C55E 100%);
         }
+
         .hero-pattern {
             background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         }
+
         .floating {
             animation: floating 3s ease-in-out infinite;
         }
+
         @keyframes floating {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
         }
-        
+
         /* Image transparency methods */
         .transparent-bg {
             background: transparent !important;
         }
-        
+
         .remove-white-bg {
             mix-blend-mode: multiply;
             background: transparent;
         }
-        
+
         .remove-black-bg {
             mix-blend-mode: screen;
             background: transparent;
         }
-        
+
         .png-transparent {
             background: transparent;
             /* For PNG images that already have transparency */
@@ -85,7 +97,8 @@
         <div class="flex justify-between items-center h-16 px-4 sm:px-6 lg:px-8">
             <!-- Left Logo -->
             <div class="flex items-center animate-fade-in">
-                <img src="{{ asset('images/logo.png') }}" alt="OGS Connect" class="h-12 ms-4 object-contain hover:scale-105 transition-transform duration-300">
+                <img src="{{ asset('images/logo.png') }}" alt="OGS Connect"
+                    class="h-12 ms-4 object-contain hover:scale-105 transition-transform duration-300">
                 <div class="ml-3">
                     <div class="text-lg font-bold text-ogs-dark-navy">OUTSOURCING</div>
                     <div class="text-xs font-bold text-gray-600">GLOBAL SOLUTIONS</div>
@@ -108,7 +121,8 @@
 
             <!-- Mobile Button -->
             <div class="sm:hidden flex items-center">
-                <button id="mobile-menu-button" class="focus:outline-none p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                <button id="mobile-menu-button"
+                    class="focus:outline-none p-2 rounded-lg hover:bg-gray-100 transition-colors">
                     <svg class="w-6 h-6 text-ogs-dark-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M4 6h16M4 12h16M4 18h16" />
@@ -147,16 +161,16 @@
     <section class="w-full py-12 relative overflow-hidden">
         <!-- Background Pattern -->
         <div class="absolute inset-0 hero-pattern opacity-5"></div>
-        
+
         <div class="flex flex-col lg:flex-row items-center gap-8 relative z-10">
             <!-- Left Content with Enhanced Green BG -->
-            <div
-                class="flex-1 w-full gradient-bg rounded-tr-[100px] sm:rounded-tr-[200px] lg:rounded-tr-[200px] 
+            <div class="flex-1 w-full gradient-bg rounded-tr-[100px] sm:rounded-tr-[200px] lg:rounded-tr-[200px] 
                p-6 sm:p-10 lg:p-16 flex flex-col justify-center min-h-[400px] lg:h-[548px] relative overflow-hidden">
 
                 <!-- Floating Elements -->
                 <div class="absolute top-10 right-10 w-20 h-20 bg-white/10 rounded-full floating"></div>
-                <div class="absolute bottom-20 left-10 w-16 h-16 bg-white/10 rounded-full floating" style="animation-delay: 1s;"></div>
+                <div class="absolute bottom-20 left-10 w-16 h-16 bg-white/10 rounded-full floating"
+                    style="animation-delay: 1s;"></div>
 
                 <div class="relative z-10 animate-slide-up">
                     <div class="inline-block bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 mb-4">
@@ -165,14 +179,17 @@
                         </span>
                     </div>
 
-                    <h1 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-6 text-ogs-dark-navy leading-tight">
+                    <h1
+                        class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-6 text-ogs-dark-navy leading-tight">
                         START YOUR<br>
                         <span class="text-white drop-shadow-lg">TEACHING JOURNEY</span><br>
                         WITH OGS!
                     </h1>
 
-                    <p class="text-sm sm:text-base md:text-lg mb-8 font-semibold text-ogs-dark-navy opacity-90 leading-relaxed">
-                        Outsourcing Global Solutions is a premier provider of English as a Second Language (ESL) services,
+                    <p
+                        class="text-sm sm:text-base md:text-lg mb-8 font-semibold text-ogs-dark-navy opacity-90 leading-relaxed">
+                        Outsourcing Global Solutions is a premier provider of English as a Second Language (ESL)
+                        services,
                         specializing in connecting learners with highly-qualified Filipino tutors.
                     </p>
 
@@ -192,9 +209,8 @@
             <!-- Right Card with Enhanced Animation -->
             <div class="flex-1 w-full flex justify-center px-4 sm:px-6 lg:px-8 animate-fade-in">
                 <div class="relative">
-                    <img src="images/hiring-card.png" alt="We are Hiring - Online ESL Tutor" 
-                         class="max-w-full h-auto floating" 
-                         style="background: transparent; mix-blend-mode: multiply;">
+                    <img src="images/hiring-card.png" alt="We are Hiring - Online ESL Tutor"
+                        class="max-w-full h-auto floating" style="background: transparent; mix-blend-mode: multiply;">
                     <!-- Decorative elements -->
                     <div class="absolute -top-4 -right-4 w-8 h-8 bg-ogs-green rounded-full animate-pulse-slow"></div>
                     <div class="absolute -bottom-4 -left-4 w-6 h-6 bg-ogs-navy rounded-full animate-bounce-slow"></div>
@@ -215,15 +231,17 @@
                         <img src="images/we-r-h.png" alt="We are Hiring - Online ESL Tutor"
                             class="max-w-full h-auto rounded-3xl shadow-2xl hover:shadow-3xl transition-shadow duration-300">
                         <!-- Decorative overlay -->
-                        <div class="absolute inset-0 bg-gradient-to-tr from-ogs-green/20 to-transparent rounded-3xl"></div>
+                        <div class="absolute inset-0 bg-gradient-to-tr from-ogs-green/20 to-transparent rounded-3xl">
+                        </div>
                     </div>
                 </div>
 
                 <!-- Content -->
-                <div class="gradient-bg rounded-3xl p-6 sm:p-8 lg:p-10 text-white relative overflow-hidden animate-slide-up">
+                <div
+                    class="gradient-bg rounded-3xl p-6 sm:p-8 lg:p-10 text-white relative overflow-hidden animate-slide-up">
                     <!-- Background Pattern -->
                     <div class="absolute inset-0 hero-pattern opacity-10"></div>
-                    
+
                     <div class="relative z-10">
                         <div class="mb-6 text-center lg:text-left">
                             <div class="inline-block bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 mb-4">
@@ -231,7 +249,8 @@
                                     <i class="fas fa-users mr-2"></i>Join Our Team
                                 </span>
                             </div>
-                            <div class="text-base sm:text-lg font-semibold text-ogs-dark-navy mb-2">We are looking for</div>
+                            <div class="text-base sm:text-lg font-semibold text-ogs-dark-navy mb-2">We are looking for
+                            </div>
                             <div class="text-2xl sm:text-3xl font-bold text-ogs-dark-navy">ESL Online Tutors</div>
                         </div>
 
@@ -240,36 +259,48 @@
                                 <i class="fas fa-clipboard-check mr-3 text-ogs-navy"></i>Qualifications:
                             </div>
                             <div class="space-y-4">
-                                <div class="flex items-start bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors">
-                                    <div class="w-8 h-8 bg-ogs-navy rounded-full flex items-center justify-center mr-4 mt-0.5 flex-shrink-0">
+                                <div
+                                    class="flex items-start bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors">
+                                    <div
+                                        class="w-8 h-8 bg-ogs-navy rounded-full flex items-center justify-center mr-4 mt-0.5 flex-shrink-0">
                                         <i class="fas fa-graduation-cap text-white text-sm"></i>
                                     </div>
-                                    <span class="text-sm sm:text-base text-ogs-dark-navy font-medium">At least college-level
+                                    <span class="text-sm sm:text-base text-ogs-dark-navy font-medium">At least
+                                        college-level
                                         education in any English language-related course</span>
                                 </div>
-                                <div class="flex items-start bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors">
-                                    <div class="w-8 h-8 bg-ogs-navy rounded-full flex items-center justify-center mr-4 mt-0.5 flex-shrink-0">
+                                <div
+                                    class="flex items-start bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors">
+                                    <div
+                                        class="w-8 h-8 bg-ogs-navy rounded-full flex items-center justify-center mr-4 mt-0.5 flex-shrink-0">
                                         <i class="fas fa-comments text-white text-sm"></i>
                                     </div>
-                                    <span class="text-sm sm:text-base text-ogs-dark-navy font-medium">Fluent in English with
+                                    <span class="text-sm sm:text-base text-ogs-dark-navy font-medium">Fluent in English
+                                        with
                                         clear communication skills and a neutral accent</span>
                                 </div>
-                                <div class="flex items-start bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors">
-                                    <div class="w-8 h-8 bg-ogs-navy rounded-full flex items-center justify-center mr-4 mt-0.5 flex-shrink-0">
+                                <div
+                                    class="flex items-start bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors">
+                                    <div
+                                        class="w-8 h-8 bg-ogs-navy rounded-full flex items-center justify-center mr-4 mt-0.5 flex-shrink-0">
                                         <i class="fas fa-heart text-white text-sm"></i>
                                     </div>
                                     <span class="text-sm sm:text-base text-ogs-dark-navy font-medium">Responsible,
                                         committed, and friendly</span>
                                 </div>
-                                <div class="flex items-start bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors">
-                                    <div class="w-8 h-8 bg-ogs-navy rounded-full flex items-center justify-center mr-4 mt-0.5 flex-shrink-0">
+                                <div
+                                    class="flex items-start bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors">
+                                    <div
+                                        class="w-8 h-8 bg-ogs-navy rounded-full flex items-center justify-center mr-4 mt-0.5 flex-shrink-0">
                                         <i class="fas fa-laptop text-white text-sm"></i>
                                     </div>
                                     <span class="text-sm sm:text-base text-ogs-dark-navy font-medium">Computer
                                         literate</span>
                                 </div>
-                                <div class="flex items-start bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors">
-                                    <div class="w-8 h-8 bg-ogs-navy rounded-full flex items-center justify-center mr-4 mt-0.5 flex-shrink-0">
+                                <div
+                                    class="flex items-start bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors">
+                                    <div
+                                        class="w-8 h-8 bg-ogs-navy rounded-full flex items-center justify-center mr-4 mt-0.5 flex-shrink-0">
                                         <i class="fas fa-birthday-cake text-white text-sm"></i>
                                     </div>
                                     <span class="text-sm sm:text-base text-ogs-dark-navy font-medium">Age: 18-45 years
@@ -284,9 +315,9 @@
                         </a>
 
 
+                    </div>
                 </div>
             </div>
-        </div>
     </section>
 
 
@@ -295,7 +326,7 @@
         <!-- Background Elements -->
         <div class="absolute top-20 left-10 w-32 h-32 bg-ogs-green/10 rounded-full blur-xl"></div>
         <div class="absolute bottom-20 right-10 w-40 h-40 bg-ogs-navy/10 rounded-full blur-xl"></div>
-        
+
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
             <!-- Heading -->
             <div class="animate-fade-in">
@@ -311,7 +342,8 @@
             </div>
 
             <!-- Description -->
-            <p class="text-sm sm:text-base text-gray-600 mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed animate-slide-up">
+            <p
+                class="text-sm sm:text-base text-gray-600 mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed animate-slide-up">
                 With OGS Connect, applying is simple and fast. From filling out your form to starting your first class,
                 everything is done in one smooth process. No hassle, no confusion — just a clear path to becoming part
                 of OGS.
@@ -326,8 +358,10 @@
                 <!-- Steps Grid -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6">
                     <!-- Step 1 -->
-                    <div class="bg-white rounded-2xl p-6 text-ogs-dark-navy shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-slide-up border border-ogs-green/20">
-                        <div class="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-ogs-green to-ogs-dark-green rounded-xl flex items-center justify-center mb-4 mx-auto shadow-md">
+                    <div
+                        class="bg-white rounded-2xl p-6 text-ogs-dark-navy shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-slide-up border border-ogs-green/20">
+                        <div
+                            class="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-ogs-green to-ogs-dark-green rounded-xl flex items-center justify-center mb-4 mx-auto shadow-md">
                             <img src="images/l1.png" alt="Step Icon" class="w-7 h-7 sm:w-8 sm:h-8">
                         </div>
                         <div class="text-xs font-bold text-ogs-green mb-2">STEP 1</div>
@@ -335,35 +369,46 @@
                     </div>
 
                     <!-- Step 2 -->
-                    <div class="bg-white rounded-2xl p-6 text-ogs-dark-navy shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-slide-up border border-ogs-green/20" style="animation-delay: 0.1s;">
-                        <div class="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-ogs-green to-ogs-dark-green rounded-xl flex items-center justify-center mb-4 mx-auto shadow-md">
+                    <div class="bg-white rounded-2xl p-6 text-ogs-dark-navy shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-slide-up border border-ogs-green/20"
+                        style="animation-delay: 0.1s;">
+                        <div
+                            class="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-ogs-green to-ogs-dark-green rounded-xl flex items-center justify-center mb-4 mx-auto shadow-md">
                             <img src="images/l2.png" alt="Phone Call Icon" class="w-7 h-7 sm:w-8 sm:h-8">
                         </div>
                         <div class="text-xs font-bold text-ogs-green mb-2">STEP 2</div>
-                        <h4 class="font-semibold text-sm sm:text-base">Await a phone call for your initial interview.</h4>
+                        <h4 class="font-semibold text-sm sm:text-base">Await a phone call for your initial interview.
+                        </h4>
                     </div>
 
                     <!-- Step 3 -->
-                    <div class="bg-white rounded-2xl p-6 text-ogs-dark-navy shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-slide-up border border-ogs-green/20" style="animation-delay: 0.2s;">
-                        <div class="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-ogs-green to-ogs-dark-green rounded-xl flex items-center justify-center mb-4 mx-auto shadow-md">
+                    <div class="bg-white rounded-2xl p-6 text-ogs-dark-navy shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-slide-up border border-ogs-green/20"
+                        style="animation-delay: 0.2s;">
+                        <div
+                            class="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-ogs-green to-ogs-dark-green rounded-xl flex items-center justify-center mb-4 mx-auto shadow-md">
                             <img src="images/l3.png" alt="Training Icon" class="w-7 h-7 sm:w-8 sm:h-8">
                         </div>
                         <div class="text-xs font-bold text-ogs-green mb-2">STEP 3</div>
-                        <h4 class="font-semibold text-sm sm:text-base">Upon successful evaluation, proceed with training and demo.</h4>
+                        <h4 class="font-semibold text-sm sm:text-base">Upon successful evaluation, proceed with training
+                            and demo.</h4>
                     </div>
 
                     <!-- Step 4 -->
-                    <div class="bg-white rounded-2xl p-6 text-ogs-dark-navy shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-slide-up border border-ogs-green/20" style="animation-delay: 0.3s;">
-                        <div class="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-ogs-green to-ogs-dark-green rounded-xl flex items-center justify-center mb-4 mx-auto shadow-md">
+                    <div class="bg-white rounded-2xl p-6 text-ogs-dark-navy shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-slide-up border border-ogs-green/20"
+                        style="animation-delay: 0.3s;">
+                        <div
+                            class="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-ogs-green to-ogs-dark-green rounded-xl flex items-center justify-center mb-4 mx-auto shadow-md">
                             <img src="images/l4.png" alt="Onboarding Icon" class="w-7 h-7 sm:w-8 sm:h-8">
                         </div>
                         <div class="text-xs font-bold text-ogs-green mb-2">STEP 4</div>
-                        <h4 class="font-semibold text-sm sm:text-base">If qualified, advance to the onboarding stage</h4>
+                        <h4 class="font-semibold text-sm sm:text-base">If qualified, advance to the onboarding stage
+                        </h4>
                     </div>
 
                     <!-- Step 5 -->
-                    <div class="bg-white rounded-2xl p-6 text-ogs-dark-navy shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-slide-up border border-ogs-green/20" style="animation-delay: 0.4s;">
-                        <div class="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-ogs-green to-ogs-dark-green rounded-xl flex items-center justify-center mb-4 mx-auto shadow-md">
+                    <div class="bg-white rounded-2xl p-6 text-ogs-dark-navy shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-slide-up border border-ogs-green/20"
+                        style="animation-delay: 0.4s;">
+                        <div
+                            class="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-ogs-green to-ogs-dark-green rounded-xl flex items-center justify-center mb-4 mx-auto shadow-md">
                             <img src="images/l5.png" alt="Start Teaching Icon" class="w-7 h-7 sm:w-8 sm:h-8">
                         </div>
                         <div class="text-xs font-bold text-ogs-green mb-2">STEP 5</div>
@@ -385,7 +430,7 @@
     <footer class="bg-gradient-to-br from-ogs-dark-navy to-ogs-navy text-white py-16 relative overflow-hidden">
         <!-- Background Pattern -->
         <div class="absolute inset-0 hero-pattern opacity-5"></div>
-        
+
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div class="grid md:grid-cols-3 gap-8">
                 <div class="animate-fade-in">
@@ -396,7 +441,8 @@
                         Provide high-quality and affordable ESL education for individuals looking to improve their
                         language skills through our innovative OGS Connect platform.
                     </p>
-                    <div class="flex items-center bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                    <a href="https://outsourcingglobalsolutions.com/" target="_blank" rel="noopener noreferrer"
+                        class="flex items-center bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors">
                         <div class="w-12 h-12 mr-4">
                             <img src="{{ asset('images/logo.png') }}" alt="OGS Logo"
                                 class="w-full h-full object-cover rounded-full">
@@ -405,27 +451,32 @@
                             <div class="font-semibold text-ogs-green">OGS Outsourcing Solutions</div>
                             <div class="text-xs text-gray-400">Connecting the world through education</div>
                         </div>
-                    </div>
+                    </a>
+
                 </div>
                 <div class="animate-slide-up">
                     <h3 class="text-lg font-semibold mb-6 flex items-center">
                         <i class="fas fa-share-alt mr-3 text-ogs-green"></i>Follow us
                     </h3>
                     <div class="space-y-4">
-                        <a href="#" class="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl p-3 hover:bg-white/20 transition-colors">
+                        <a href="https://www.facebook.com/profile.php?id=100063906496558" target="_blank"
+                            class="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl p-3 hover:bg-white/20 transition-colors">
                             <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                                 <i class="fab fa-facebook-f text-white text-sm"></i>
                             </div>
                             <span class="text-sm">Outsourcing Global Solutions - OGS</span>
                         </a>
-                        <a href="#" class="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl p-3 hover:bg-white/20 transition-colors">
+                        <a href="https://www.facebook.com/OGSOutsourcingSolutions/" target="_blank"
+                            class="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl p-3 hover:bg-white/20 transition-colors">
                             <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                                 <i class="fab fa-facebook-f text-white text-sm"></i>
                             </div>
                             <span class="text-sm">Outsourcing Global Solutions | Davao City</span>
                         </a>
-                        <a href="#" class="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl p-3 hover:bg-white/20 transition-colors">
-                            <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                        <a href="https://www.instagram.com/ogs.2018/" target="_blank"
+                            class="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl p-3 hover:bg-white/20 transition-colors">
+                            <div
+                                class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
                                 <i class="fab fa-instagram text-white text-sm"></i>
                             </div>
                             <span class="text-sm">@ogs.2018</span>
@@ -437,18 +488,22 @@
                         <i class="fas fa-envelope mr-3 text-ogs-green"></i>Get in touch
                     </h3>
                     <div class="space-y-4">
-                        <div class="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl p-3">
+                        <a href="https://maps.app.goo.gl/FDSHcPDbGJTwohY58" target="_blank" rel="noopener noreferrer"
+                            class="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl p-3 hover:bg-white/20 transition-colors">
                             <div class="w-8 h-8 bg-ogs-green rounded-full flex items-center justify-center">
                                 <i class="fas fa-map-marker-alt text-white text-sm"></i>
                             </div>
                             <span class="text-sm">Davao, Davao City, 8000</span>
-                        </div>
-                        <div class="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl p-3">
+                        </a>
+                        <a href="https://mail.google.com/mail/?view=cm&fs=1&to=ogs.recruitment@gmail.com"
+                            target="_blank" rel="noopener noreferrer"
+                            class="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl p-3 hover:bg-white/20 transition-colors">
                             <div class="w-8 h-8 bg-ogs-green rounded-full flex items-center justify-center">
                                 <i class="fas fa-envelope text-white text-sm"></i>
                             </div>
                             <span class="text-sm">ogs.recruitment@gmail.com</span>
-                        </div>
+                        </a>
+
                         <div class="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl p-3">
                             <div class="w-8 h-8 bg-ogs-green rounded-full flex items-center justify-center">
                                 <i class="fas fa-phone text-white text-sm"></i>

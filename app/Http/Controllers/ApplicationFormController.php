@@ -35,7 +35,7 @@ class ApplicationFormController extends Controller
             'days' => 'required|array|min:1',
             'platforms' => 'required|array|min:1',
             'can_teach' => 'required|array|min:1',
-            'terms_agreement' => 'required|accepted',
+            'terms_agreement' => 'required',
         ];
 
         // Conditional validation for referral
@@ -80,25 +80,40 @@ class ApplicationFormController extends Controller
         $validatedData['referrer_name'] = $request->input('referrer_name');
         $validatedData['interview_time'] = $request->input('interview_time');
         $validatedData['status'] = 'pending'; // Set default status
+        
+        // Convert terms_agreement from "on" to boolean
+        $validatedData['terms_agreement'] = $request->has('terms_agreement') ? true : false;
+        
+        // Additional validation for terms agreement
+        if (!$validatedData['terms_agreement']) {
+            return redirect()->back()
+                ->withErrors(['terms_agreement' => 'You must agree to the Terms and Conditions.'])
+                ->withInput();
+        }
 
         try {
             $application = Application::create($validatedData);
             Log::info('Application created successfully', ['application_id' => $application->id]);
             
             // Create notification for new application submission
-            $this->createNotification(
-                'info',
-                'New Application Submitted',
-                "A new application has been submitted by {$validatedData['first_name']} {$validatedData['last_name']} ({$validatedData['email']}). Please review the application in the hiring & onboarding section.",
-                'fas fa-user-plus',
-                'blue',
-                [
-                    'application_id' => $application->id,
-                    'applicant_name' => $validatedData['first_name'] . ' ' . $validatedData['last_name'],
-                    'applicant_email' => $validatedData['email'],
-                    'submitted_at' => now()->toISOString()
-                ]
-            );
+            try {
+                $this->createNotification(
+                    'info',
+                    'New Application Submitted',
+                    "A new application has been submitted by {$validatedData['first_name']} {$validatedData['last_name']} ({$validatedData['email']}). Please review the application in the hiring & onboarding section.",
+                    'fas fa-user-plus',
+                    'blue',
+                    [
+                        'application_id' => $application->id,
+                        'applicant_name' => $validatedData['first_name'] . ' ' . $validatedData['last_name'],
+                        'applicant_email' => $validatedData['email'],
+                        'submitted_at' => now()->toISOString()
+                    ]
+                );
+            } catch (\Exception $notificationError) {
+                // Log notification error but don't fail the application creation
+                Log::warning('Notification creation failed: ' . $notificationError->getMessage());
+            }
             
         } catch (\Exception $e) {
             // Log the error for debugging

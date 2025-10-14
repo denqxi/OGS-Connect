@@ -195,12 +195,12 @@
                 </div>
                 <div class="flex space-x-6 md:col-span-2">
                     <label class="inline-flex items-center">
-                        <input type="radio" name="workSetup" value="work_from_home" 
+                        <input type="radio" name="work_type" value="work_from_home" 
                                {{ $application->work_type === 'work_from_home' ? 'checked' : '' }} disabled>
                         <span class="ml-2">Work from Home</span>
                     </label>
                     <label class="inline-flex items-center">
-                        <input type="radio" name="workSetup" value="work_at_site" 
+                        <input type="radio" name="work_type" value="work_at_site" 
                                {{ $application->work_type === 'work_at_site' ? 'checked' : '' }} disabled>
                         <span class="ml-2">Work at Site</span>
                     </label>
@@ -235,11 +235,11 @@
             <div class="flex flex-col md:flex-row md:items-center md:space-x-4">
                 <div class="flex space-x-6 mb-4 md:mb-0">
                     <label class="inline-flex items-center">
-                        <input type="radio" {{ $application->source === 'fb_boosting' ? 'checked' : '' }} disabled>
+                        <input type="radio" name="source" value="fb_boosting" {{ $application->source === 'fb_boosting' ? 'checked' : '' }} disabled>
                         <span class="ml-2">FB Boosting</span>
                     </label> 
                     <label class="inline-flex items-center">
-                        <input type="radio" {{ $application->source === 'referral' ? 'checked' : '' }} disabled>
+                        <input type="radio" name="source" value="referral" {{ $application->source === 'referral' ? 'checked' : '' }} disabled>
                         <span class="ml-2">Referral</span>
                     </label>
                 </div>
@@ -274,15 +274,15 @@
                         </div>
                         <div class="text-sm font-medium text-gray-700 mb-2">Days Available:</div>
                         <div class="grid grid-cols-4 gap-2 mb-2">
-                            <label><input type="checkbox" {{ in_array('monday', $application->days) ? 'checked' : '' }} disabled> Mon</label>
-                            <label><input type="checkbox" {{ in_array('tuesday', $application->days) ? 'checked' : '' }} disabled> Tue</label>
-                            <label><input type="checkbox" {{ in_array('wednesday', $application->days) ? 'checked' : '' }} disabled> Wed</label>
-                            <label><input type="checkbox" {{ in_array('thursday', $application->days) ? 'checked' : '' }} disabled> Thu</label>
+                            <label><input type="checkbox" {{ (is_array($application->days) && in_array('monday', $application->days)) ? 'checked' : '' }} disabled> Mon</label>
+                            <label><input type="checkbox" {{ (is_array($application->days) && in_array('tuesday', $application->days)) ? 'checked' : '' }} disabled> Tue</label>
+                            <label><input type="checkbox" {{ (is_array($application->days) && in_array('wednesday', $application->days)) ? 'checked' : '' }} disabled> Wed</label>
+                            <label><input type="checkbox" {{ (is_array($application->days) && in_array('thursday', $application->days)) ? 'checked' : '' }} disabled> Thu</label>
                         </div>
                         <div class="grid grid-cols-3 gap-2">
-                            <label><input type="checkbox" {{ in_array('friday', $application->days) ? 'checked' : '' }} disabled> Fri</label>
-                            <label><input type="checkbox" {{ in_array('saturday', $application->days) ? 'checked' : '' }} disabled> Sat</label>
-                            <label><input type="checkbox" {{ in_array('sunday', $application->days) ? 'checked' : '' }} disabled> Sun</label>
+                            <label><input type="checkbox" {{ (is_array($application->days) && in_array('friday', $application->days)) ? 'checked' : '' }} disabled> Fri</label>
+                            <label><input type="checkbox" {{ (is_array($application->days) && in_array('saturday', $application->days)) ? 'checked' : '' }} disabled> Sat</label>
+                            <label><input type="checkbox" {{ (is_array($application->days) && in_array('sunday', $application->days)) ? 'checked' : '' }} disabled> Sun</label>
                         </div>
                     </div>
                 </div>
@@ -293,13 +293,13 @@
                         <label class="text-sm font-normal text-gray-500 mb-2">Platform Familiarity</label>
                         <div class="p-4 border rounded-lg shadow-lg mb-4">
                             <div class="grid grid-cols-3 gap-2 mb-2">
-                                <label><input type="checkbox" {{ in_array('classin', $application->platforms) ? 'checked' : '' }} disabled> ClassIn</label>
-                                <label><input type="checkbox" {{ in_array('zoom', $application->platforms) ? 'checked' : '' }} disabled> Zoom</label>
-                                <label><input type="checkbox" {{ in_array('voov', $application->platforms) ? 'checked' : '' }} disabled> Voov</label>
+                                <label><input type="checkbox" {{ (is_array($application->platforms) && in_array('classin', $application->platforms)) ? 'checked' : '' }} disabled> ClassIn</label>
+                                <label><input type="checkbox" {{ (is_array($application->platforms) && in_array('zoom', $application->platforms)) ? 'checked' : '' }} disabled> Zoom</label>
+                                <label><input type="checkbox" {{ (is_array($application->platforms) && in_array('voov', $application->platforms)) ? 'checked' : '' }} disabled> Voov</label>
                             </div>
                             <div class="grid grid-cols-2 gap-2">
-                                <label><input type="checkbox" {{ in_array('ms_teams', $application->platforms) ? 'checked' : '' }} disabled> MS Teams</label>
-                                <label><input type="checkbox" {{ in_array('others', $application->platforms) ? 'checked' : '' }} disabled> Others</label>
+                                <label><input type="checkbox" {{ (is_array($application->platforms) && in_array('ms_teams', $application->platforms)) ? 'checked' : '' }} disabled> MS Teams</label>
+                                <label><input type="checkbox" {{ (is_array($application->platforms) && in_array('others', $application->platforms)) ? 'checked' : '' }} disabled> Others</label>
                             </div>
                         </div>
 
@@ -317,11 +317,11 @@
                         <label class="text-sm font-normal text-gray-500 mb-2">Can Teach</label>
                         <div class="p-4 border rounded-lg shadow-lg space-y-4">
                             <div class="grid grid-cols-2 gap-2">
-                                <label><input type="checkbox" {{ in_array('kids', $application->can_teach) ? 'checked' : '' }} disabled> Kids</label>
-                                <label><input type="checkbox" {{ in_array('teenager', $application->can_teach) ? 'checked' : '' }} disabled> Teenager</label>
+                                <label><input type="checkbox" {{ (is_array($application->can_teach) && in_array('kids', $application->can_teach)) ? 'checked' : '' }} disabled> Kids</label>
+                                <label><input type="checkbox" {{ (is_array($application->can_teach) && in_array('teenager', $application->can_teach)) ? 'checked' : '' }} disabled> Teenager</label>
                             </div>
                             <div>
-                                <label><input type="checkbox" {{ in_array('adults', $application->can_teach) ? 'checked' : '' }} disabled> Adults</label>
+                                <label><input type="checkbox" {{ (is_array($application->can_teach) && in_array('adults', $application->can_teach)) ? 'checked' : '' }} disabled> Adults</label>
                             </div>
                         </div>
                     </div>

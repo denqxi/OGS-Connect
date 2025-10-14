@@ -86,7 +86,7 @@
         });
     </script>
 
-    <main class="max-w-full mx-auto p-6 sm:p-8 bg-gray-50">
+    <main class="max-w-7xl mx-auto p-6 sm:p-8 bg-gray-50">
         <!-- Form Header -->
         <div class="bg-ogs-green shadow-lg text-ogs-dark-navy font-bold text-center text-2xl rounded-md py-3 mb-6">
             APPLICATION FORM
@@ -519,9 +519,13 @@
                 </div>
 
                 <!-- Action Button Section -->
-                <div class="mt-8 flex justify-center">
+                <div class="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+                    <button type="button" id="cancelBtn"
+                        class="w-full sm:w-auto max-w-md shadow-lg px-6 py-3 rounded-full bg-gray-500 text-white hover:bg-gray-600 transition-colors font-medium">
+                        CANCEL APPLICATION
+                    </button>
                     <button type="button" id="submitBtn"
-                        class="w-full max-w-md shadow-lg px-6 py-3 rounded-full bg-ogs-green text-white hover:bg-ogs-dark-green transition-colors font-medium">
+                        class="w-full sm:w-auto max-w-md shadow-lg px-6 py-3 rounded-full bg-ogs-green text-white hover:bg-ogs-dark-green transition-colors font-medium">
                         SUBMIT APPLICATION
                     </button>
                 </div>
@@ -576,13 +580,32 @@
         </div>
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay"
-        class="fixed inset-0 bg-black bg-opacity-60 flex flex-col items-center justify-center hidden z-50">
-        <p class="text-white font-semibold text-lg mb-4">Submitting Application...</p>
-        <div class="w-3/4 max-w-sm bg-gray-200 rounded-full h-3 overflow-hidden">
-            <div id="progressBar"
-                class="bg-green-500 h-3 w-0 transition-all duration-100 ease-linear"></div>
+    <!-- Cancel Confirmation Modal -->
+    <div id="cancelModal"
+        class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm sm:max-w-md text-left shadow-lg">
+            <!-- Row 1: Header -->
+            <h3
+                class="text-base sm:text-lg font-bold text-gray-900 mb-2 text-center sm:text-left">
+                Cancel Application?
+            </h3>
+
+            <!-- Row 2: Subheading -->
+            <p class="text-sm sm:text-base text-gray-700 mb-6 text-center sm:text-left">
+                Are you sure you want to cancel your application? All entered information will be lost and cannot be recovered.
+            </p>
+
+            <!-- Row 3: Buttons -->
+            <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4">
+                <button id="goBackCancelBtn"
+                    class="w-full sm:w-auto px-6 py-2 rounded-full bg-[#9CA3AF] text-white font-semibold text-sm hover:bg-[#7B8790] hover:scale-105 transition-transform duration-200">
+                    GO BACK
+                </button>
+                <button id="confirmCancelBtn" 
+                    class="w-full sm:w-auto px-6 py-2 rounded-full bg-[#F65353] text-white font-semibold text-sm hover:bg-[#E53E3E] hover:scale-105 transition-transform duration-200">
+                    CANCEL APPLICATION
+                </button>
+            </div>
         </div>
     </div>
 
@@ -596,6 +619,12 @@
                                 const loadingOverlay = document.getElementById('loadingOverlay');
                                 const progressBar = document.getElementById('progressBar');
                                 const requiredFieldsModal = document.getElementById('requiredFieldsModal');
+
+                                // --- CANCEL FLOW ---
+                                const cancelBtn = document.getElementById('cancelBtn');
+                                const cancelModal = document.getElementById('cancelModal');
+                                const goBackCancelBtn = document.getElementById('goBackCancelBtn');
+                                const confirmCancelBtn = document.getElementById('confirmCancelBtn');
 
                                 let shouldSubmitForm = false;
 
@@ -622,14 +651,16 @@
 
                                 // --- Form Validation ---
                                 function validateForm() {
+                                    console.log('Starting form validation...');
                                     const requiredFields = [
                                         'first_name', 'last_name', 'birth_date', 'address', 'contact_number', 'email',
                                         'education', 'esl_experience', 'resume_link', 'intro_video', 'work_type',
-                                        'start_time', 'end_time', 'source', 'interview_time', 'terms_agreement'
+                                        'start_time', 'end_time', 'interview_time', 'terms_agreement'
                                     ];
 
                                     const missingFields = [];
                                     const formData = new FormData(form);
+                                    console.log('Form data collected');
 
                                     // Interview time check
                                     const interviewTime = formData.get('interview_time');
@@ -648,6 +679,12 @@
                                             missingFields.push(fieldNames[fieldName] || fieldName);
                                         }
                                     });
+
+                                    // Special handling for radio buttons (source field)
+                                    const sourceValue = formData.get('source');
+                                    if (!sourceValue) {
+                                        missingFields.push('How Did You Hear About Us');
+                                    }
 
                                     // Referral check
                                     const referralRadio = document.getElementById('referralRadio');
@@ -693,6 +730,7 @@
                                         missingFields.push('Terms and Conditions Agreement');
                                     }
 
+                                    console.log('Validation complete. Missing fields:', missingFields);
                                     return missingFields;
                                 }
 
@@ -769,11 +807,36 @@
 
                                 // --- Terms Modal Functions ---
                                 function showTermsModal() {
-                                    document.getElementById('termsModal').classList.remove('hidden');
+                                    const modal = document.getElementById('termsModal');
+                                    if (modal) {
+                                        modal.classList.remove('hidden');
+                                    } else {
+                                        console.error('Terms modal not found');
+                                    }
                                 }
                                 
                                 function hideTermsModal() {
-                                    document.getElementById('termsModal').classList.add('hidden');
+                                    const modal = document.getElementById('termsModal');
+                                    if (modal) {
+                                        modal.classList.add('hidden');
+                                    }
+                                }
+                                
+                                // --- Required Fields Modal Functions ---
+                                function showRequiredFieldsModal() {
+                                    const modal = document.getElementById('requiredFieldsModal');
+                                    if (modal) {
+                                        modal.classList.remove('hidden');
+                                    } else {
+                                        console.error('Required fields modal not found');
+                                    }
+                                }
+                                
+                                function closeRequiredFieldsModal() {
+                                    const modal = document.getElementById('requiredFieldsModal');
+                                    if (modal) {
+                                        modal.classList.add('hidden');
+                                    }
                                 }
                                 
                                 // --- Terms Agreement Status Management ---
@@ -815,17 +878,25 @@
                                 // --- Submit Flow ---
                                 submitBtn.addEventListener('click', (e) => {
                                     e.preventDefault();
+                                    console.log('Submit button clicked');
                                     const missingFields = validateForm();
+                                    console.log('Missing fields:', missingFields);
                                     highlightMissingFields(missingFields);
 
                                     if (missingFields.length > 0) {
+                                        console.log('Validation failed, showing required fields modal');
                                         // Show terms indicator if terms agreement is missing
                                         if (missingFields.includes('Terms and Conditions Agreement')) {
                                             updateTermsStatus();
                                         }
                                         showRequiredFieldsModal();
                                     } else {
-                                        submitModal.classList.remove('hidden');
+                                        console.log('Validation passed, showing submit modal');
+                                        if (submitModal) {
+                                            submitModal.classList.remove('hidden');
+                                        } else {
+                                            console.error('Submit modal not found');
+                                        }
                                     }
                                 });
 
@@ -833,7 +904,9 @@
                                 goBackSubmitBtn.addEventListener('click', (e) => {
                                     e.preventDefault();
                                     shouldSubmitForm = false;
-                                    submitModal.classList.add('hidden'); // stays on form with data intact
+                                    if (submitModal) {
+                                        submitModal.classList.add('hidden'); // stays on form with data intact
+                                    }
                                 });
 
                                 // Confirm submit
@@ -841,22 +914,33 @@
                                     e.preventDefault();
                                     shouldSubmitForm = true;
 
-                                    submitModal.classList.add('hidden');
-                                    loadingOverlay.classList.remove('hidden');
+                                    if (submitModal) {
+                                        submitModal.classList.add('hidden');
+                                    }
+                                    if (loadingOverlay) {
+                                        loadingOverlay.classList.remove('hidden');
+                                    }
 
+                                    // Simulate progress bar
                                     let progress = 0;
                                     const interval = setInterval(() => {
-                                        progress += 5;
-                                        progressBar.style.width = progress + "%";
+                                        progress += 10;
+                                        if (progressBar) {
+                                            progressBar.style.width = progress + "%";
+                                        }
 
                                         if (progress >= 100) {
                                             clearInterval(interval);
-                                            if (shouldSubmitForm) {
-                                                console.log('Submitting form...');
-                                                form.submit(); // finally send to DB
-                                            }
+                                            // Small delay to ensure progress bar completes
+                                            setTimeout(() => {
+                                                if (shouldSubmitForm) {
+                                                    console.log('Submitting form...');
+                                                    console.log('Form data:', new FormData(form));
+                                                    form.submit(); // finally send to DB
+                                                }
+                                            }, 100);
                                         }
-                                    }, 50); // Faster progress
+                                    }, 100);
                                 });
 
                                 // Prevent accidental submit unless confirmed
@@ -865,9 +949,38 @@
                                     if (!shouldSubmitForm) {
                                         console.log('Preventing form submission');
                                         e.preventDefault();
+                                        return false;
                                     } else {
                                         console.log('Allowing form submission');
+                                        // Hide loading overlay when form actually submits
+                                        if (loadingOverlay) {
+                                            loadingOverlay.classList.add('hidden');
+                                        }
                                     }
+                                });
+
+                                // --- CANCEL FLOW EVENT LISTENERS ---
+                                // Cancel button click
+                                cancelBtn.addEventListener('click', (e) => {
+                                    e.preventDefault();
+                                    if (cancelModal) {
+                                        cancelModal.classList.remove('hidden');
+                                    }
+                                });
+
+                                // Go back from cancel modal
+                                goBackCancelBtn.addEventListener('click', (e) => {
+                                    e.preventDefault();
+                                    if (cancelModal) {
+                                        cancelModal.classList.add('hidden');
+                                    }
+                                });
+
+                                // Confirm cancel
+                                confirmCancelBtn.addEventListener('click', (e) => {
+                                    e.preventDefault();
+                                    // Navigate to cancel page
+                                    window.location.href = '{{ route("application.form.cancel") }}';
                                 });
 
                                 // --- Extra: Instant red highlight on blur/input ---

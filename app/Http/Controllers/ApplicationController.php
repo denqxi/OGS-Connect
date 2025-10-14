@@ -49,6 +49,12 @@ class ApplicationController extends Controller
                     throw new \Exception('This demo has already been hired.');
                 }
 
+                // Check if tutor with this email already exists
+                $existingTutor = Tutor::where('email', $demo->email)->first();
+                if ($existingTutor) {
+                    throw new \Exception('A tutor with email ' . $demo->email . ' already exists (Tutor ID: ' . $existingTutor->tutorID . '). Please use a different email or contact the administrator.');
+                }
+
                 // Use database transaction to ensure data integrity
                 $tutor = DB::transaction(function () use ($demo, $request, $id) {
                     // Generate system ID (tutorID) using the Tutor model method - OGS-T0001 format
@@ -139,6 +145,12 @@ class ApplicationController extends Controller
                 
                 if ($demo->status === 'hired') {
                     throw new \Exception('This demo has already been hired.');
+                }
+
+                // Check if tutor with this email already exists
+                $existingTutor = Tutor::where('email', $request->personal_email)->first();
+                if ($existingTutor) {
+                    throw new \Exception('A tutor with email ' . $request->personal_email . ' already exists (Tutor ID: ' . $existingTutor->tutorID . '). Please use a different email or contact the administrator.');
                 }
 
                 $tutor = Tutor::create([
