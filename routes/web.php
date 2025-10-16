@@ -8,6 +8,13 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PaymentInformationController;
 use App\Http\Controllers\SupervisorProfileController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Log;
+
+// Temporary test route for logging
+Route::get('/test-log', function () {
+    Log::info('Test log entry from web route - logging works!');
+    return 'Log test complete - check storage/logs/laravel.log';
+});
 
 Route::get('/', function () {
     return view('landing.index');
@@ -184,6 +191,15 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
     // API route to save tutor assignments
     Route::post('/api/save-tutor-assignments', [TutorAssignmentController::class, 'saveAssignments'])->name('api.save-tutor-assignments');
 
+    // API route to remove individual tutor assignment
+    Route::post('/api/remove-tutor-assignment', [TutorAssignmentController::class, 'removeTutorAssignment'])->name('api.remove-tutor-assignment');
+
+    // API route for getting cancelled tutors
+    Route::get('/api/cancelled-tutors', [TutorAssignmentController::class, 'getCancelledTutors'])->name('api.cancelled-tutors');
+    
+    // Page route for viewing cancelled tutors
+    Route::get('/cancelled-tutors', [TutorAssignmentController::class, 'viewCancelledTutors'])->name('cancelled-tutors.view');
+
     // API route for real-time search
     Route::get('/api/search-schedules', [ScheduleController::class, 'searchSchedules'])->name('api.search-schedules');
     Route::get('/api/search-tutors', [ScheduleController::class, 'searchTutors'])->name('api.search-tutors');
@@ -193,6 +209,7 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
     
     // Dashboard API routes
     Route::get('/api/dashboard-data', [DashboardController::class, 'getDashboardData'])->name('api.dashboard-data');
+    Route::post('/api/dashboard-filtered-data', [DashboardController::class, 'getFilteredDashboardData'])->name('api.dashboard-filtered-data');
     Route::get('/api/dashboard-weekly-trends', [DashboardController::class, 'getWeeklyTrendsData'])->name('api.dashboard-weekly-trends');
     Route::post('/api/clear-old-history', [DashboardController::class, 'clearOldHistory'])->name('api.clear-old-history');
 });

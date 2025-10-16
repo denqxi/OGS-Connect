@@ -104,7 +104,28 @@
                     Login Failed
                   </h3>
                   <div class="mt-1 text-sm text-red-700">
-                    <p>Invalid credentials.</p>
+                    <p>{{ $errors->first('login_id') }}</p>
+                    @if($errors->has('remaining_attempts'))
+                      @if($errors->has('attempt_message') && !empty($errors->first('attempt_message')))
+                        <p class="mt-2 font-medium">
+                          <i class="fas fa-exclamation-triangle mr-1"></i>
+                          {{ $errors->first('attempt_message') }}
+                        </p>
+                      @elseif(!$errors->has('attempt_message'))
+                        <p class="mt-2 font-medium">
+                          <i class="fas fa-exclamation-triangle mr-1"></i>
+                          Remaining attempts: <span class="font-bold">{{ $errors->first('remaining_attempts') }}</span>
+                        </p>
+                      @endif
+                    @elseif($errors->has('throttled'))
+                      <p class="mt-2 font-medium">
+                        <i class="fas fa-lock mr-1"></i>
+                        Account temporarily locked due to too many failed attempts.
+                      </p>
+                      <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+                        💡 Having trouble logging in? Try using the "Forgot Password?" button below to reset your password.
+                      </div>
+                    @endif
                   </div>
                 </div>
               </div>
@@ -165,103 +186,149 @@
           <div id="resetFields" class="hidden space-y-4">
             <!-- CSRF Token -->
             <input type="hidden" name="_token" value="{{ csrf_token() }}">
+            
+            <!-- Success Message for Reset Mode -->
+            @if (session('status'))
+              <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div class="flex">
+                  <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                  </div>
+                  <div class="ml-3">
+                    <p class="text-sm font-medium text-green-800">
+                      {{ session('status') }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            @endif
+            
             <div>
               <label for="reset_username" class="block text-sm font-medium text-gray-700 mb-2">
-                Email or ID <span class="text-red-500">*</span>
+                Username or Email <span class="text-red-500">*</span>
               </label>
               <div class="relative">
-              <input type="text" 
-                     id="reset_username" 
-                     name="username" 
-                     value="{{ old('username') }}"
-                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @if(isset($errors) && $errors->has('username')) border-red-500 @endif"
-                     placeholder="Enter your email or ID">
+                <input type="text" 
+                       id="reset_username" 
+                       name="username" 
+                       value="{{ old('username') }}"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @if(isset($errors) && $errors->has('username')) border-red-500 @endif"
+                       placeholder="Enter your username or email address">
                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <i class="fas fa-user text-gray-400"></i>
+                  <i class="fas fa-envelope text-gray-400"></i>
                 </div>
               </div>
               @if(isset($errors) && $errors->has('username'))
                 <p class="mt-1 text-sm text-red-600">{{ $errors->first('username') }}</p>
               @endif
+              <p class="mt-1 text-xs text-gray-500">
+                Enter your Tutor/Supervisor ID or email address to receive a password reset link
+              </p>
             </div>
 
-            <div>
-              <label for="user_type" class="block text-sm font-medium text-gray-700 mb-2">
-                Account Type <span class="text-red-500">*</span>
-              </label>
-              <div id="user_type_display" class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-700 mb-2">
-                <span class="text-sm">Account type will be detected automatically</span>
+            <!-- Email Verification Success Message -->
+            @if (session('status'))
+              <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div class="flex">
+                  <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                  </div>
+                  <div class="ml-3">
+                    <p class="text-sm font-medium text-green-800">
+                      {{ session('status') }}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <input type="hidden" id="user_type" name="user_type" value="">
-            </div>
+            @endif
 
-            <div>
-              <label for="security_question" class="block text-sm font-medium text-gray-700 mb-2">
-                Security Question <span class="text-red-500">*</span>
-              </label>
-              <div id="security_question_display" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700">
-                <span class="text-sm">Please enter your username and account type first</span>
+            <div class="text-right">
+              <button type="button" onclick="switchToLoginMode()" class="text-ogs-navy font-semibold text-xs sm:text-sm hover:underline">
+                <i class="fas fa-arrow-left mr-1"></i>
+                Back to Login
+              </button>
+            </div>
+          </div>
+
+          <!-- New Password Reset Fields (from email link) -->
+          <div id="newPasswordFields" class="hidden space-y-4">
+            <!-- CSRF Token -->
+            <input type="hidden" name="_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="token" id="reset_token" value="">
+            <input type="hidden" name="email" id="reset_email" value="">
+            
+            <!-- User Info Display -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <i class="fas fa-user text-blue-400"></i>
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm font-medium text-blue-800">
+                    Setting new password for: <span id="resetUserEmail" class="font-mono"></span>
+                  </p>
+                </div>
               </div>
-              <input type="hidden" id="security_question" name="security_question" value="">
-              @if(isset($errors) && $errors->has('security_question'))
-                <p class="mt-1 text-sm text-red-600">{{ $errors->first('security_question') }}</p>
-              @endif
             </div>
 
+            <!-- New Password Field -->
             <div>
-              <label for="security_answer1" class="block text-sm font-medium text-gray-700 mb-2">
-                Your Answer <span class="text-red-500">*</span>
-              </label>
-              <div class="relative">
-                <input type="password" 
-                       id="security_answer1" 
-                       name="security_answer1" 
-                       value="{{ old('security_answer1') }}"
-                       class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @if(isset($errors) && $errors->has('security_answer1')) border-red-500 @endif"
-                       placeholder="Enter your answer">
-                <button type="button" onclick="togglePasswordField(this)" class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <svg class="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                  </svg>
-                </button>
-              </div>
-              @if(isset($errors) && $errors->has('security_answer1'))
-                <p class="mt-1 text-sm text-red-600">{{ $errors->first('security_answer1') }}</p>
-              @endif
-            </div>
-
-            <div>
-              <label for="security_question2" class="block text-sm font-medium text-gray-700 mb-2">
-                Second Security Question <span class="text-red-500">*</span>
-              </label>
-              <div id="security_question_display2" class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-700 mb-2">
-                <span class="text-sm">Please enter your email/ID and account type first</span>
-              </div>
-              <input type="hidden" id="security_question2" name="security_question2" value="">
-            </div>
-
-            <div>
-              <label for="security_answer2" class="block text-sm font-medium text-gray-700 mb-2">
-                Your Answer <span class="text-red-500">*</span>
+              <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                New Password <span class="text-red-500">*</span>
               </label>
               <div class="relative">
                 <input type="password" 
-                       id="security_answer2" 
-                       name="security_answer2" 
-                       value="{{ old('security_answer2') }}"
-                       class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @if(isset($errors) && $errors->has('security_answer2')) border-red-500 @endif"
-                       placeholder="Enter your answer">
-                <button type="button" onclick="togglePasswordField(this)" class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <svg class="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                  </svg>
-                </button>
+                       id="new_password_field" 
+                       name="password" 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent"
+                       placeholder="Enter your new password"
+                       minlength="8"
+                       oninput="validateNewPassword()"
+                       required>
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                  <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" onclick="togglePasswordField(this)">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                  </button>
+                </div>
               </div>
-              @if(isset($errors) && $errors->has('security_answer2'))
-                <p class="mt-1 text-sm text-red-600">{{ $errors->first('security_answer2') }}</p>
-              @endif
+              <div id="password-strength" class="mt-1 text-xs"></div>
+            </div>
+
+            <!-- Confirm Password Field -->
+            <div>
+              <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-2">
+                Confirm New Password <span class="text-red-500">*</span>
+              </label>
+              <div class="relative">
+                <input type="password" 
+                       id="password_confirmation" 
+                       name="password_confirmation" 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent"
+                       placeholder="Confirm your new password"
+                       minlength="8"
+                       oninput="validatePasswordMatch()"
+                       required>
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                  <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" onclick="togglePasswordField(this)">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div id="password-match" class="mt-1 text-xs"></div>
             </div>
 
             <div class="text-right">
@@ -382,24 +449,35 @@
     debugLog('Current form action:', '{{ route("login") }}');
     debugLog('CSRF token present:', document.querySelector('input[name="_token"]') ? 'Yes' : 'No');
 
-    // Add event listeners for security question fetching
+    // Add event listeners for form validation
     document.addEventListener('DOMContentLoaded', function() {
-      const usernameField = document.getElementById('reset_username');
-      const userTypeField = document.getElementById('user_type');
       const loginIdField = document.getElementById('login_id');
-      
-      if (usernameField) {
-        usernameField.addEventListener('input', fetchSecurityQuestion);
-      }
-      
-      if (userTypeField) {
-        userTypeField.addEventListener('change', fetchSecurityQuestion);
-      }
       
       // Add validation for login ID field
       if (loginIdField) {
         loginIdField.addEventListener('input', validateLoginId);
         loginIdField.addEventListener('blur', validateLoginId);
+      }
+
+      // Initially remove required attributes from hidden password reset fields
+      const newPasswordField = document.getElementById('new_password_field');
+      const confirmPasswordField = document.getElementById('password_confirmation');
+      if (newPasswordField) newPasswordField.removeAttribute('required');
+      if (confirmPasswordField) confirmPasswordField.removeAttribute('required');
+
+      // Check if we should show reset mode (from forgot-password redirect)
+      @if(session('show_reset'))
+        switchToResetMode();
+      @endif
+
+      // Check if we're coming from a password reset link (URL parameters)
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('reset_mode') === 'true') {
+        const resetToken = urlParams.get('token');
+        const resetEmail = urlParams.get('email');
+        if (resetToken && resetEmail) {
+          switchToNewPasswordMode(resetToken, resetEmail);
+        }
       }
     });
 
@@ -484,28 +562,28 @@
       const mainDescription = document.getElementById('mainDescription');
       if (mainTitle && mainDescription) {
         mainTitle.textContent = 'Reset Your Password';
-        mainDescription.textContent = 'Answer the security question below to reset your password.';
+        mainDescription.textContent = 'Enter your username or email address to receive a password reset link.';
         debugLog('Title and description updated');
       } else {
         debugLog('Title or description element not found');
       }
       
-      // Change submit button
+      // Change submit button to email reset
       const submitButton = document.getElementById('submitButton');
       if (submitButton) {
-        submitButton.innerHTML = '<i class="fas fa-check mr-2"></i>VERIFY & RESET';
+        submitButton.innerHTML = '<i class="fas fa-envelope mr-2"></i>SEND RESET EMAIL';
         submitButton.type = 'button';
         submitButton.onclick = function(e) {
           e.preventDefault();
-          debugLog('Reset button clicked');
-          verifyAndReset();
+          debugLog('Send reset email button clicked');
+          sendResetEmail();
         };
-        debugLog('Submit button changed to reset mode');
+        debugLog('Submit button changed to email reset mode');
       } else {
         debugLog('Submit button not found');
       }
       
-      // Focus on first reset field
+      // Focus on username field
       const resetUsername = document.getElementById('reset_username');
       if (resetUsername) {
         resetUsername.focus();
@@ -514,10 +592,96 @@
         debugLog('Reset username field not found');
       }
       
-      // Clear any existing form data and fetch security question
+      // Clear any existing form data
       clearAllFormFields();
-      debugLog('Fetching security question...');
-      fetchSecurityQuestion();
+    }
+
+    function switchToNewPasswordMode(resetToken, resetEmail) {
+      debugLog('Switching to new password mode from reset link');
+      debugLog('Reset token:', resetToken);
+      debugLog('Reset email:', resetEmail);
+      
+      if (!resetToken || !resetEmail) {
+        debugLog('No reset token or email provided');
+        return;
+      }
+      
+      // Hide all other fields
+      const loginFields = document.getElementById('loginFields');
+      const resetFields = document.getElementById('resetFields');
+      const passwordResetFields = document.getElementById('passwordResetFields');
+      const newPasswordFields = document.getElementById('newPasswordFields');
+      
+      if (loginFields) loginFields.classList.add('hidden');
+      if (resetFields) resetFields.classList.add('hidden');
+      if (passwordResetFields) passwordResetFields.classList.add('hidden');
+      
+      // Remove required attributes from hidden login fields to prevent form validation errors
+      const loginIdField = document.getElementById('login_id');
+      const loginPasswordField = document.getElementById('password');
+      if (loginIdField) {
+        loginIdField.removeAttribute('required');
+        debugLog('Removed required from login_id field');
+      }
+      if (loginPasswordField) {
+        loginPasswordField.removeAttribute('required');
+        debugLog('Removed required from login password field');
+      }
+      
+      // Show new password fields
+      if (newPasswordFields) {
+        newPasswordFields.classList.remove('hidden');
+        // Add required attributes to the fields
+        const newPasswordField = document.getElementById('new_password_field');
+        const confirmPasswordField = document.getElementById('password_confirmation');
+        if (newPasswordField) newPasswordField.setAttribute('required', 'required');
+        if (confirmPasswordField) confirmPasswordField.setAttribute('required', 'required');
+        debugLog('New password fields shown');
+      } else {
+        debugLog('New password fields not found');
+        return;
+      }
+      
+      // Set token and email in hidden fields
+      const tokenField = document.getElementById('reset_token');
+      const emailField = document.getElementById('reset_email');
+      const emailDisplay = document.getElementById('resetUserEmail');
+      
+      if (tokenField) tokenField.value = resetToken;
+      if (emailField) emailField.value = resetEmail;
+      if (emailDisplay) emailDisplay.textContent = resetEmail;
+      
+      // Change title and description
+      const mainTitle = document.getElementById('mainTitle');
+      const mainDescription = document.getElementById('mainDescription');
+      if (mainTitle && mainDescription) {
+        mainTitle.textContent = 'Set New Password';
+        mainDescription.textContent = 'Please enter your new password below.';
+        debugLog('Title and description updated for new password mode');
+      }
+      
+      // Update submit button
+      const submitButton = document.getElementById('submitButton');
+      if (submitButton) {
+        submitButton.innerHTML = '<i class="fas fa-lock mr-2"></i>UPDATE PASSWORD';
+        submitButton.type = 'submit';
+        submitButton.onclick = null; // Remove any existing onclick handlers
+        debugLog('Submit button changed to update password mode');
+      }
+      
+      // Focus on new password field
+      const newPasswordField = document.getElementById('new_password_field');
+      if (newPasswordField) {
+        newPasswordField.focus();
+        debugLog('Focus set to new password field');
+      }
+      
+      // Update form action
+      const form = document.querySelector('form');
+      if (form) {
+        form.action = '/reset-password';
+        debugLog('Form action updated to password reset store route');
+      }
     }
 
     function switchToPasswordResetMode() {
@@ -585,6 +749,18 @@
         debugLog('Login fields shown');
       }
       
+      // Restore required attributes to login fields
+      const loginIdField = document.getElementById('login_id');
+      const loginPasswordField = document.getElementById('password');
+      if (loginIdField) {
+        loginIdField.setAttribute('required', 'required');
+        debugLog('Restored required to login_id field');
+      }
+      if (loginPasswordField) {
+        loginPasswordField.setAttribute('required', 'required');
+        debugLog('Restored required to login password field');
+      }
+      
       // Show any error messages from login
       const errorAlert = document.getElementById('loginErrorAlert');
       if (errorAlert) {
@@ -606,6 +782,18 @@
         debugLog('Password reset fields hidden');
       }
       
+      // Hide new password fields and remove required attributes
+      const newPasswordFields = document.getElementById('newPasswordFields');
+      if (newPasswordFields) {
+        newPasswordFields.classList.add('hidden');
+        // Remove required attributes from hidden fields
+        const newPasswordField = document.getElementById('new_password_field');
+        const confirmPasswordField = document.getElementById('password_confirmation');
+        if (newPasswordField) newPasswordField.removeAttribute('required');
+        if (confirmPasswordField) confirmPasswordField.removeAttribute('required');
+        debugLog('New password fields hidden and required attributes removed');
+      }
+      
       // Change title and description back
       const mainTitle = document.getElementById('mainTitle');
       const mainDescription = document.getElementById('mainDescription');
@@ -622,6 +810,14 @@
         submitButton.type = 'submit';
         submitButton.onclick = null;
         debugLog('Submit button reset to login mode');
+      }
+      
+      // Reset form action to login
+      const form = document.querySelector('form');
+      if (form) {
+        form.action = '/login';
+        form.method = 'POST';
+        debugLog('Form action reset to login');
       }
       
       // Focus on login field
@@ -755,200 +951,40 @@
       }
     }
 
-    // Function to fetch security question for user
-    function fetchSecurityQuestion() {
-      const username = document.getElementById('reset_username').value;
-      const userType = document.getElementById('user_type').value;
+    function clearAllFormFields() {
+      debugLog('Clearing all form fields');
       
-      if (!username) {
-        document.getElementById('user_type_display').innerHTML = '<span class="text-sm">Account type will be detected automatically</span>';
-        document.getElementById('user_type').value = '';
-        document.getElementById('security_question_display').innerHTML = '<span class="text-sm">Please enter your email/ID first</span>';
-        document.getElementById('security_question_display2').innerHTML = '<span class="text-sm">Please enter your email/ID first</span>';
-        document.getElementById('security_question').value = '';
-        document.getElementById('security_question2').value = '';
-        return;
+      // Clear login fields
+      const loginIdField = document.getElementById('login_id');
+      const passwordField = document.getElementById('password');
+      if (loginIdField) {
+        loginIdField.value = '';
+        loginIdField.classList.remove('border-red-500', 'border-green-500');
       }
-
-      debugLog('Detecting account type and fetching security questions for:', { username });
-
-      // Make AJAX request to detect account type and get security questions
-      fetch('/api/get-security-question', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        },
-        body: JSON.stringify({
-          username: username
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        debugLog('Security question response:', data);
-        
-        if (data.success && data.user_type && data.questions && data.questions.length >= 2) {
-          // Update account type display
-          const accountTypeText = data.user_type === 'tutor' ? 'Tutor' : 'Supervisor';
-          document.getElementById('user_type_display').innerHTML = `<span class="text-sm font-medium text-green-600">${accountTypeText}</span>`;
-          document.getElementById('user_type').value = data.user_type;
-          
-          // First question
-          document.getElementById('security_question_display').innerHTML = `<span class="text-sm font-medium">${data.questions[0]}</span>`;
-          document.getElementById('security_question').value = data.questions[0];
-          
-          // Second question
-          document.getElementById('security_question_display2').innerHTML = `<span class="text-sm font-medium">${data.questions[1]}</span>`;
-          document.getElementById('security_question2').value = data.questions[1];
-        } else if (data.success === false && data.message) {
-          // Show error message
-          document.getElementById('user_type_display').innerHTML = '<span class="text-sm text-red-600">Account not found</span>';
-          document.getElementById('user_type').value = '';
-          document.getElementById('security_question_display').innerHTML = '<span class="text-sm text-red-600">' + data.message + '</span>';
-          document.getElementById('security_question_display2').innerHTML = '<span class="text-sm text-red-600">' + data.message + '</span>';
-          document.getElementById('security_question').value = '';
-          document.getElementById('security_question2').value = '';
-        } else {
-          document.getElementById('user_type_display').innerHTML = '<span class="text-sm text-red-600">Account not found</span>';
-          document.getElementById('user_type').value = '';
-          document.getElementById('security_question_display').innerHTML = '<span class="text-sm text-red-600">No security questions found for this account</span>';
-          document.getElementById('security_question_display2').innerHTML = '<span class="text-sm text-red-600">No security questions found for this account</span>';
-          document.getElementById('security_question').value = '';
-          document.getElementById('security_question2').value = '';
-        }
-      })
-      .catch(error => {
-        debugLog('Error fetching security questions:', error);
-        document.getElementById('user_type_display').innerHTML = '<span class="text-sm text-red-600">Error detecting account</span>';
-        document.getElementById('user_type').value = '';
-        document.getElementById('security_question_display').innerHTML = '<span class="text-sm text-red-600">Error loading security questions</span>';
-        document.getElementById('security_question_display2').innerHTML = '<span class="text-sm text-red-600">Error loading security questions</span>';
-        document.getElementById('security_question').value = '';
-        document.getElementById('security_question2').value = '';
-      });
+      if (passwordField) {
+        passwordField.value = '';
+      }
+      
+      // Clear reset fields
+      const resetUsernameField = document.getElementById('reset_username');
+      if (resetUsernameField) resetUsernameField.value = '';
+      
+      // Clear password reset fields
+      const newPasswordField = document.getElementById('new_password');
+      const confirmPasswordField = document.getElementById('confirm_password');
+      if (newPasswordField) newPasswordField.value = '';
+      if (confirmPasswordField) confirmPasswordField.value = '';
+      
+      // Clear password strength indicators
+      const passwordStrengthDiv = document.getElementById('password-strength');
+      const passwordMatchDiv = document.getElementById('password-match');
+      if (passwordStrengthDiv) passwordStrengthDiv.innerHTML = '';
+      if (passwordMatchDiv) passwordMatchDiv.innerHTML = '';
+      
+      debugLog('All form fields cleared');
     }
 
-    function verifyAndReset() {
-      debugLog('Starting password reset verification');
-      
-      // Get form elements with null checks
-      const usernameEl = document.getElementById('reset_username');
-      const userTypeEl = document.getElementById('user_type');
-      const securityQuestionEl = document.getElementById('security_question');
-      const securityAnswerEl = document.getElementById('security_answer1');
-      const securityQuestion2El = document.getElementById('security_question2');
-      const securityAnswer2El = document.getElementById('security_answer2');
-      
-      // Check if all elements exist
-      if (!usernameEl || !userTypeEl || !securityQuestionEl || !securityAnswerEl || !securityQuestion2El || !securityAnswer2El) {
-        debugLog('Missing form elements:', {
-          usernameEl: !!usernameEl,
-          userTypeEl: !!userTypeEl,
-          securityQuestionEl: !!securityQuestionEl,
-          securityAnswerEl: !!securityAnswerEl,
-          securityQuestion2El: !!securityQuestion2El,
-          securityAnswer2El: !!securityAnswer2El
-        });
-        alert('Form elements not found. Please refresh the page and try again.');
-        return;
-      }
-      
-      const username = usernameEl.value;
-      const userType = userTypeEl.value;
-      const securityQuestion = securityQuestionEl.value;
-      const securityAnswer = securityAnswerEl.value;
-      const securityQuestion2 = securityQuestion2El.value;
-      const securityAnswer2 = securityAnswer2El.value;
-
-      debugLog('Form values:', {
-        username: username,
-        userType: userType,
-        securityQuestion: securityQuestion,
-        securityAnswer: securityAnswer,
-        securityQuestion2: securityQuestion2,
-        securityAnswer2: securityAnswer2
-      });
-
-      // Validate all fields
-      if (!username || !userType || !securityQuestion || !securityAnswer || !securityQuestion2 || !securityAnswer2) {
-        debugLog('Validation failed - missing fields');
-        alert('Please fill in all fields.');
-        return;
-      }
-
-      debugLog('Validation passed, submitting form for server-side verification');
-
-      // Submit via AJAX to handle validation errors properly
-      const formData = new FormData();
-      formData.append('username', username);
-      formData.append('user_type', userType);
-      formData.append('security_question', securityQuestion);
-      formData.append('security_answer1', securityAnswer);
-      formData.append('security_question2', securityQuestion2);
-      formData.append('security_answer2', securityAnswer2);
-      
-      // Add CSRF token
-      const tokenInput = document.querySelector('input[name="_token"]');
-      if (tokenInput) {
-        formData.append('_token', tokenInput.value);
-        debugLog('CSRF token found:', tokenInput.value);
-      } else {
-        debugLog('CSRF token not found - this will cause a CSRF error');
-      }
-      
-      // Clear any existing error messages
-      clearErrorMessages();
-      
-      // Submit the form via AJAX
-      fetch('{{ route("password.reset.request") }}', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-          'Accept': 'application/json'
-        }
-      })
-      .then(response => {
-        if (response.ok) {
-          // Success - store user info and switch to password reset form on the same page
-          debugLog('Security questions verified successfully, switching to password reset form');
-          
-          // Store user information for the password reset form
-          window.passwordResetUser = {
-            username: username,
-            userType: userType,
-            securityQuestion: securityQuestion,
-            securityAnswer: securityAnswer,
-            securityQuestion2: securityQuestion2,
-            securityAnswer2: securityAnswer2
-          };
-          
-          switchToPasswordResetMode();
-        } else {
-          return response.json().then(data => {
-            throw new Error(data.message || 'Validation failed');
-          });
-        }
-      })
-      .catch(error => {
-        debugLog('Validation error:', error.message);
-        showErrorMessage(error.message);
-      });
-    }
-
-    function clearErrorMessages() {
-      // Clear any existing error messages
-      const errorElements = document.querySelectorAll('.error-message');
-      errorElements.forEach(el => el.remove());
-      
-      // Remove error styling from input fields
-      const inputFields = document.querySelectorAll('#security_answer1, #security_answer2');
-      inputFields.forEach(field => {
-        field.classList.remove('border-red-500');
-        field.classList.add('border-gray-300');
-      });
-    }
-
+    // Simple error message function for email verification
     function showErrorMessage(message) {
       // Create error message element
       const errorDiv = document.createElement('div');
@@ -971,76 +1007,353 @@
       if (resetFields) {
         resetFields.appendChild(errorDiv);
       }
+    }
+
+    // Send password reset email
+    function sendResetEmail() {
+      const username = document.getElementById('reset_username').value;
+      const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
       
-      // Add error styling to input fields
-      const inputFields = document.querySelectorAll('#security_answer1, #security_answer2');
-      inputFields.forEach(field => {
-        field.classList.remove('border-gray-300');
-        field.classList.add('border-red-500');
+      debugLog('CSRF Token:', csrfToken);
+      
+      if (!username) {
+        showErrorMessage('Please enter your username or email.');
+        return;
+      }
+      
+      debugLog('Sending password reset email...');
+      
+      // Clear any existing error messages
+      const existingErrors = document.querySelectorAll('.error-message');
+      existingErrors.forEach(error => error.remove());
+      
+      // Show loading state
+      const submitButton = document.getElementById('submitButton');
+      const originalText = submitButton.innerHTML;
+      submitButton.disabled = true;
+      submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>SENDING EMAIL...';
+      
+      // For emails, let the server auto-detect the user type
+      let userType = 'auto'; // Server will determine this for emails
+      if (username.startsWith('OGS-S')) {
+        userType = 'supervisor';
+      } else if (username.startsWith('OGS-T')) {
+        userType = 'tutor';
+      } else if (username.includes('@')) {
+        userType = 'auto'; // Server will search both tables and determine correct type
+      }
+      
+      const fetchUrl = '{{ route("password.email") }}';
+      debugLog('Fetch URL:', fetchUrl);
+      
+      const requestBody = JSON.stringify({
+        email: username,
+        user_type: userType
+      });
+      debugLog('Request body:', requestBody);
+      
+      fetch(fetchUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrfToken,
+          'Accept': 'application/json'
+        },
+        body: requestBody
+      })
+      .then(response => {
+        debugLog('Response status:', response.status);
+        if (response.ok) {
+          return response.json();
+        } else if (response.status === 422) {
+          // Validation errors
+          return response.json().then(data => {
+            const validationMessage = data.errors?.username?.[0] || data.message || 'Validation failed';
+            throw new Error(validationMessage);
+          });
+        } else {
+          return response.json().then(data => {
+            throw new Error(data.message || 'Failed to send reset email');
+          }).catch(() => {
+            throw new Error('Failed to send reset email. Please try again.');
+          });
+        }
+      })
+      .then(data => {
+        debugLog('Email sent successfully');
+        
+        // Show success message
+        const successDiv = document.createElement('div');
+        successDiv.className = 'mt-4 p-4 bg-green-50 border border-green-200 rounded-lg transition-all duration-500 ease-in-out';
+        successDiv.innerHTML = `
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium text-green-800">
+                Password reset email sent! Please check your email inbox and follow the instructions to reset your password.
+              </p>
+            </div>
+          </div>
+        `;
+        
+        const resetFields = document.getElementById('resetFields');
+        resetFields.appendChild(successDiv);
+        
+        // Clear the input field but keep the form visible
+        document.getElementById('reset_username').value = '';
+        
+        // Optionally scroll to the success message
+        successDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        
+        // Auto-hide the success message after 5 seconds
+        setTimeout(() => {
+          successDiv.style.opacity = '0';
+          successDiv.style.transform = 'translateY(-10px)';
+          setTimeout(() => {
+            if (successDiv.parentNode) {
+              successDiv.parentNode.removeChild(successDiv);
+            }
+          }, 500); // Wait for fade out transition to complete
+        }, 5000); // Show for 5 seconds
+      })
+      .catch(error => {
+        debugLog('Email send error:', error.message);
+        showErrorMessage(error.message);
+      })
+      .finally(() => {
+        // Restore button state
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalText;
       });
     }
 
-    function clearAllFormFields() {
-      debugLog('Clearing all form fields');
+    // Update password function
+    function updatePassword() {
+      const password = document.getElementById('new_password_field').value;
+      const passwordConfirmation = document.getElementById('password_confirmation').value;
+      const token = document.getElementById('reset_token').value;
+      const email = document.getElementById('reset_email').value;
       
-      // Clear login fields
-      const loginIdField = document.getElementById('login_id');
-      const passwordField = document.getElementById('password');
-      if (loginIdField) {
-        loginIdField.value = '';
-        loginIdField.classList.remove('border-red-500', 'border-green-500');
-      }
-      if (passwordField) {
-        passwordField.value = '';
-      }
+      debugLog('Updating password...');
+      debugLog('Token:', token);
+      debugLog('Email:', email);
       
-      // Clear reset fields
-      const resetUsernameField = document.getElementById('reset_username');
-      const userTypeField = document.getElementById('user_type');
-      const securityQuestionField = document.getElementById('security_question');
-      const securityAnswer1Field = document.getElementById('security_answer1');
-      const securityQuestion2Field = document.getElementById('security_question2');
-      const securityAnswer2Field = document.getElementById('security_answer2');
-      
-      if (resetUsernameField) resetUsernameField.value = '';
-      if (userTypeField) userTypeField.value = '';
-      if (securityQuestionField) securityQuestionField.value = '';
-      if (securityAnswer1Field) securityAnswer1Field.value = '';
-      if (securityQuestion2Field) securityQuestion2Field.value = '';
-      if (securityAnswer2Field) securityAnswer2Field.value = '';
-      
-      // Clear password reset fields
-      const newPasswordField = document.getElementById('new_password');
-      const confirmPasswordField = document.getElementById('confirm_password');
-      if (newPasswordField) newPasswordField.value = '';
-      if (confirmPasswordField) confirmPasswordField.value = '';
-      
-      // Reset display fields
-      const userTypeDisplay = document.getElementById('user_type_display');
-      const securityQuestionDisplay = document.getElementById('security_question_display');
-      const securityQuestionDisplay2 = document.getElementById('security_question_display2');
-      
-      if (userTypeDisplay) {
-        userTypeDisplay.innerHTML = '<span class="text-sm">Account type will be detected automatically</span>';
-      }
-      if (securityQuestionDisplay) {
-        securityQuestionDisplay.innerHTML = '<span class="text-sm">Please enter your username and account type first</span>';
-      }
-      if (securityQuestionDisplay2) {
-        securityQuestionDisplay2.innerHTML = '<span class="text-sm">Please enter your email/ID and account type first</span>';
+      // Validate passwords
+      if (!password || !passwordConfirmation) {
+        showErrorMessage('Please fill in both password fields.');
+        return;
       }
       
-      // Clear password strength indicators
-      const passwordStrengthDiv = document.getElementById('password-strength');
-      const passwordMatchDiv = document.getElementById('password-match');
-      if (passwordStrengthDiv) passwordStrengthDiv.innerHTML = '';
-      if (passwordMatchDiv) passwordMatchDiv.innerHTML = '';
+      if (password !== passwordConfirmation) {
+        showErrorMessage('Passwords do not match.');
+        return;
+      }
       
-      // Clear any error messages
-      clearErrorMessages();
+      if (password.length < 8) {
+        showErrorMessage('Password must be at least 8 characters long.');
+        return;
+      }
       
-      debugLog('All form fields cleared');
+      if (!token || !email) {
+        showErrorMessage('Reset token or email missing. Please request a new reset link.');
+        return;
+      }
+      
+      // Clear any existing error messages
+      const existingErrors = document.querySelectorAll('.error-message');
+      existingErrors.forEach(error => error.remove());
+      
+      // Show loading state
+      const submitButton = document.getElementById('submitButton');
+      const originalText = submitButton.innerHTML;
+      submitButton.disabled = true;
+      submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>UPDATING...';
+      
+      // Create form data and submit using regular form submission
+      const form = document.querySelector('form');
+      
+      // Update form action and method
+      form.action = '/reset-password';
+      form.method = 'POST';
+      
+      // Set the hidden field values
+      document.getElementById('reset_token').value = token;
+      document.getElementById('reset_email').value = email;
+      
+      // Submit the form
+      form.submit();
     }
+
+    // Validation functions for new password form
+    function validateNewPassword() {
+      const passwordField = document.getElementById('new_password_field');
+      const strengthDiv = document.getElementById('password-strength');
+      
+      if (!passwordField || !strengthDiv) return;
+      
+      const password = passwordField.value;
+      
+      // Clear previous validation
+      passwordField.classList.remove('border-red-500', 'border-green-500');
+      strengthDiv.innerHTML = '';
+      
+      if (password.length === 0) return;
+      
+      let strength = 0;
+      let messages = [];
+      
+      // Length check
+      if (password.length >= 8) {
+        strength++;
+        messages.push('<span class="text-green-600">✓ At least 8 characters</span>');
+      } else {
+        messages.push('<span class="text-red-600">✗ At least 8 characters required</span>');
+      }
+      
+      // Uppercase check
+      if (/[A-Z]/.test(password)) {
+        strength++;
+        messages.push('<span class="text-green-600">✓ Contains uppercase letter</span>');
+      } else {
+        messages.push('<span class="text-yellow-600">• Add uppercase letter for stronger password</span>');
+      }
+      
+      // Lowercase check
+      if (/[a-z]/.test(password)) {
+        strength++;
+        messages.push('<span class="text-green-600">✓ Contains lowercase letter</span>');
+      } else {
+        messages.push('<span class="text-yellow-600">• Add lowercase letter for stronger password</span>');
+      }
+      
+      // Number check
+      if (/\d/.test(password)) {
+        strength++;
+        messages.push('<span class="text-green-600">✓ Contains number</span>');
+      } else {
+        messages.push('<span class="text-yellow-600">• Add number for stronger password</span>');
+      }
+      
+      // Special character check
+      if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+        strength++;
+        messages.push('<span class="text-green-600">✓ Contains special character</span>');
+      } else {
+        messages.push('<span class="text-yellow-600">• Add special character for stronger password</span>');
+      }
+      
+      // Update strength indicator
+      strengthDiv.innerHTML = messages.join('<br>');
+      
+      // Update field border based on minimum requirements
+      if (password.length >= 8) {
+        passwordField.classList.add('border-green-500');
+        passwordField.classList.remove('border-red-500');
+      } else {
+        passwordField.classList.add('border-red-500');
+        passwordField.classList.remove('border-green-500');
+      }
+      
+      // Also validate password match when password changes
+      validatePasswordMatch();
+    }
+
+    function validatePasswordMatch() {
+      const passwordField = document.getElementById('new_password_field');
+      const confirmField = document.getElementById('password_confirmation');
+      const matchDiv = document.getElementById('password-match');
+      
+      if (!passwordField || !confirmField || !matchDiv) return;
+      
+      const password = passwordField.value;
+      const confirm = confirmField.value;
+      
+      // Clear previous validation
+      confirmField.classList.remove('border-red-500', 'border-green-500');
+      matchDiv.innerHTML = '';
+      
+      if (confirm.length === 0) return;
+      
+      if (password === confirm && confirm.length >= 8) {
+        confirmField.classList.add('border-green-500');
+        confirmField.classList.remove('border-red-500');
+        matchDiv.innerHTML = '<span class="text-green-600">✓ Passwords match</span>';
+      } else if (password !== confirm) {
+        confirmField.classList.add('border-red-500');
+        confirmField.classList.remove('border-green-500');
+        matchDiv.innerHTML = '<span class="text-red-600">✗ Passwords do not match</span>';
+      } else if (confirm.length < 8) {
+        confirmField.classList.add('border-red-500');
+        confirmField.classList.remove('border-green-500');
+        matchDiv.innerHTML = '<span class="text-red-600">✗ Password must be at least 8 characters</span>';
+      }
+    }
+
+    // Ensure form submission works correctly for login
+    document.addEventListener('DOMContentLoaded', function() {
+      const form = document.querySelector('form');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          // Get form mode
+          const loginFields = document.getElementById('loginFields');
+          const resetFields = document.getElementById('resetFields');
+          const newPasswordFields = document.getElementById('newPasswordFields');
+          
+          // Check if we're in login mode (loginFields visible, others hidden)
+          if (loginFields && !loginFields.classList.contains('hidden')) {
+            debugLog('Form submitting in login mode');
+            
+            // Ensure password field value is captured
+            const passwordField = document.getElementById('password');
+            if (passwordField) {
+              debugLog('Password field value:', passwordField.value ? 'has value' : 'empty');
+              // Force the field to be enabled and named correctly
+              passwordField.disabled = false;
+              passwordField.name = 'password';
+            }
+            
+            // Disable other password fields to prevent conflicts
+            const otherPasswordFields = form.querySelectorAll('input[type="password"]:not(#password)');
+            otherPasswordFields.forEach(field => {
+              field.disabled = true;
+              debugLog('Disabled other password field:', field.name || field.id);
+            });
+          }
+          
+          // Check if we're in new password mode
+          else if (newPasswordFields && !newPasswordFields.classList.contains('hidden')) {
+            debugLog('Form submitting in new password mode');
+            
+            // Ensure new password fields are enabled and properly named
+            const newPasswordField = document.getElementById('new_password_field');
+            const confirmPasswordField = document.getElementById('password_confirmation');
+            
+            if (newPasswordField) {
+              newPasswordField.disabled = false;
+              newPasswordField.name = 'password';
+              debugLog('New password field enabled');
+            }
+            
+            if (confirmPasswordField) {
+              confirmPasswordField.disabled = false;
+              confirmPasswordField.name = 'password_confirmation';
+              debugLog('Confirm password field enabled');
+            }
+            
+            // Disable login password field to prevent conflicts
+            const loginPasswordField = document.getElementById('password');
+            if (loginPasswordField) {
+              loginPasswordField.disabled = true;
+              debugLog('Login password field disabled');
+            }
+          }
+        });
+      }
+    });
   </script>
 
 </body>

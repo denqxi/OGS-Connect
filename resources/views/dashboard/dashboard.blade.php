@@ -6,6 +6,51 @@
 @include('layouts.header', ['pageTitle' => 'Dashboard'])
 
 <div class="w-full px-4 sm:px-6 lg:px-8 py-6 min-w-0">
+    <!-- Enhanced Filter Section -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <h2 class="text-lg font-semibold text-[#0E335D]">Dashboard Filters</h2>
+            
+            <div class="flex flex-col sm:flex-row gap-4 lg:flex-1 lg:justify-end">
+                <!-- Date Range Filter -->
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <div class="flex flex-col">
+                        <label class="text-xs text-gray-600 mb-1">From Date</label>
+                        <input type="date" id="fromDate" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-[#0E335D]" value="{{ date('Y-m-01') }}">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs text-gray-600 mb-1">To Date</label>
+                        <input type="date" id="toDate" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-[#0E335D]" value="{{ date('Y-m-d') }}">
+                    </div>
+                </div>
+                
+                <!-- Quick Date Filters -->
+                <div class="flex flex-col">
+                    <label class="text-xs text-gray-600 mb-1">Quick Select</label>
+                    <select id="quickDateFilter" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-[#0E335D]">
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month" selected>This Month</option>
+                        <option value="quarter">This Quarter</option>
+                        <option value="year">This Year</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+                
+                <!-- Apply Filter Button -->
+                <div class="flex flex-col justify-end">
+                    <button id="applyFilters" class="px-4 py-2 bg-[#0E335D] text-white rounded-md hover:bg-[#1a4971] transition-colors text-sm font-medium">
+                        Apply Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Current Filter Display -->
+        <div id="currentFilters" class="mt-4 text-sm text-gray-600">
+            Current view: <span id="filterDisplay" class="font-medium text-[#0E335D]">This Month</span>
+        </div>
+    </div>
     <!-- Row 1: 4 Stat Boxes -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 max-w-full">
         <!-- Applicants This Month -->
@@ -17,7 +62,7 @@
                 </svg>
             </div>
             <p class="text-sm font-medium text-[#0E335D]">Applicants This Month</p>
-            <div class="mt-1 text-2xl font-semibold text-gray-900">{{ $stats['applicants_this_month'] }}</div>
+            <div class="mt-1 text-2xl font-semibold text-gray-900" data-stat="applicants_this_month">{{ $stats['applicants_this_month'] }}</div>
             <div class="mt-2">
                 <canvas id="sparklineNewApplicants" height="40"></canvas>
             </div>
@@ -32,7 +77,7 @@
                 </svg>
             </div>
             <p class="text-sm font-medium text-[#0E335D]">For Demo Applicants</p>
-            <div class="mt-1 text-2xl font-semibold text-gray-900">{{ $stats['demo_applicants'] }}</div>
+            <div class="mt-1 text-2xl font-semibold text-gray-900" data-stat="demo_applicants">{{ $stats['demo_applicants'] }}</div>
             <div class="mt-2">
                 <canvas id="sparklineDemoApplicants" height="40"></canvas>
             </div>
@@ -49,7 +94,7 @@
                 </svg>
             </div>
             <p class="text-sm font-medium text-[#0E335D]">Onboarding Applicants</p>
-            <div class="mt-1 text-2xl font-semibold text-gray-900">{{ $stats['onboarding_applicants'] }}</div>
+            <div class="mt-1 text-2xl font-semibold text-gray-900" data-stat="onboarding_applicants">{{ $stats['onboarding_applicants'] }}</div>
             <div class="mt-2">
                 <canvas id="sparklineOnboardApplicants" height="40"></canvas>
             </div>
@@ -66,7 +111,7 @@
                 </svg>
             </div>
             <p class="text-sm font-medium text-[#0E335D]">Existing Employees</p>
-            <div class="mt-1 text-2xl font-semibold text-gray-900">{{ $stats['existing_employees'] }}</div>
+            <div class="mt-1 text-2xl font-semibold text-gray-900" data-stat="existing_employees">{{ $stats['existing_employees'] }}</div>
             <div class="mt-2">
                 <canvas id="sparklineEmployees" height="40"></canvas>
             </div>
@@ -115,11 +160,11 @@
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div class="text-center">
                     <p class="text-xs text-gray-500">Classes Conducted</p>
-                    <p class="text-lg font-semibold text-[#0E335D]">{{ $stats['classes_conducted'] }}</p>
+                    <p class="text-lg font-semibold text-[#0E335D]" data-stat="classes_conducted">{{ $stats['classes_conducted'] }}</p>
                 </div>
                 <div class="text-center">
                     <p class="text-xs text-gray-500">Cancelled Classes</p>
-                    <p class="text-lg font-semibold text-red-500">{{ $stats['cancelled_classes'] }}</p>
+                    <p class="text-lg font-semibold text-red-500" data-stat="cancelled_classes">{{ $stats['cancelled_classes'] }}</p>
                 </div>
             </div>
 
@@ -131,15 +176,15 @@
             <div class="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-200">
                 <div class="text-center">
                     <p class="text-xs text-gray-500">Fully Assigned</p>
-                    <p class="text-sm font-semibold text-green-600">{{ $stats['fully_assigned_classes'] }}</p>
+                    <p class="text-sm font-semibold text-green-600" data-stat="fully_assigned_classes">{{ $stats['fully_assigned_classes'] }}</p>
                 </div>
                 <div class="text-center">
                     <p class="text-xs text-gray-500">Partially Assigned</p>
-                    <p class="text-sm font-semibold text-yellow-600">{{ $stats['partially_assigned_classes'] }}</p>
+                    <p class="text-sm font-semibold text-yellow-600" data-stat="partially_assigned_classes">{{ $stats['partially_assigned_classes'] }}</p>
                 </div>
                 <div class="text-center">
                     <p class="text-xs text-gray-500">Unassigned</p>
-                    <p class="text-sm font-semibold text-red-600">{{ $stats['unassigned_classes'] }}</p>
+                    <p class="text-sm font-semibold text-red-600" data-stat="unassigned_classes">{{ $stats['unassigned_classes'] }}</p>
                 </div>
             </div>
         </div>
@@ -399,6 +444,132 @@
                 }
             }
         }
+    });
+
+    // Dashboard Filtering Functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const quickDateFilter = document.getElementById('quickDateFilter');
+        const fromDate = document.getElementById('fromDate');
+        const toDate = document.getElementById('toDate');
+        const applyFilters = document.getElementById('applyFilters');
+        const filterDisplay = document.getElementById('filterDisplay');
+        
+        // Quick date filter handler
+        quickDateFilter.addEventListener('change', function() {
+            const value = this.value;
+            const today = new Date();
+            
+            switch(value) {
+                case 'today':
+                    fromDate.value = today.toISOString().split('T')[0];
+                    toDate.value = today.toISOString().split('T')[0];
+                    break;
+                case 'week':
+                    const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay()));
+                    const endOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 6));
+                    fromDate.value = startOfWeek.toISOString().split('T')[0];
+                    toDate.value = endOfWeek.toISOString().split('T')[0];
+                    break;
+                case 'month':
+                    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                    fromDate.value = startOfMonth.toISOString().split('T')[0];
+                    toDate.value = endOfMonth.toISOString().split('T')[0];
+                    break;
+                case 'quarter':
+                    const quarter = Math.floor(today.getMonth() / 3);
+                    const startOfQuarter = new Date(today.getFullYear(), quarter * 3, 1);
+                    const endOfQuarter = new Date(today.getFullYear(), quarter * 3 + 3, 0);
+                    fromDate.value = startOfQuarter.toISOString().split('T')[0];
+                    toDate.value = endOfQuarter.toISOString().split('T')[0];
+                    break;
+                case 'year':
+                    const startOfYear = new Date(today.getFullYear(), 0, 1);
+                    const endOfYear = new Date(today.getFullYear(), 11, 31);
+                    fromDate.value = startOfYear.toISOString().split('T')[0];
+                    toDate.value = endOfYear.toISOString().split('T')[0];
+                    break;
+            }
+            
+            if (value !== 'custom') {
+                updateFilterDisplay();
+            }
+        });
+        
+        // Apply filters handler
+        applyFilters.addEventListener('click', function() {
+            const filters = {
+                fromDate: fromDate.value,
+                toDate: toDate.value,
+                dateRange: quickDateFilter.value
+            };
+            
+            // Show loading state
+            this.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2 inline" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Loading...';
+            this.disabled = true;
+            
+            // Fetch filtered data
+            fetch('/api/dashboard-filtered-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(filters)
+            })
+            .then(response => response.json())
+            .then(data => {
+                updateDashboardStats(data);
+                updateFilterDisplay();
+                
+                // Reset button
+                this.innerHTML = 'Apply Filters';
+                this.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error loading filtered data. Please try again.');
+                
+                // Reset button
+                this.innerHTML = 'Apply Filters';
+                this.disabled = false;
+            });
+        });
+        
+        function updateFilterDisplay() {
+            const dateRange = quickDateFilter.value;
+            const dateText = dateRange.charAt(0).toUpperCase() + dateRange.slice(1);
+            filterDisplay.textContent = dateText;
+        }
+        
+        function updateDashboardStats(data) {
+            // Update stat boxes
+            document.querySelector('[data-stat="applicants_this_month"]').textContent = data.applicants_this_month || 0;
+            document.querySelector('[data-stat="demo_applicants"]').textContent = data.demo_applicants || 0;
+            document.querySelector('[data-stat="onboarding_applicants"]').textContent = data.onboarding_applicants || 0;
+            document.querySelector('[data-stat="existing_employees"]').textContent = data.existing_employees || 0;
+            
+            // Update GLS scheduling stats
+            document.querySelector('[data-stat="classes_conducted"]').textContent = data.classes_conducted || 0;
+            document.querySelector('[data-stat="cancelled_classes"]').textContent = data.cancelled_classes || 0;
+            document.querySelector('[data-stat="fully_assigned_classes"]').textContent = data.fully_assigned_classes || 0;
+            document.querySelector('[data-stat="partially_assigned_classes"]').textContent = data.partially_assigned_classes || 0;
+            document.querySelector('[data-stat="unassigned_classes"]').textContent = data.unassigned_classes || 0;
+            
+            // Update charts if needed
+            if (data.chart_data) {
+                updateCharts(data.chart_data);
+            }
+        }
+        
+        function updateCharts(chartData) {
+            // Update existing charts with new data
+            // This would update the Chart.js instances with new data
+            console.log('Chart data updated:', chartData);
+        }
+        
+        // Initialize filter display
+        updateFilterDisplay();
     });
 
 </script>

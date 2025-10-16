@@ -348,4 +348,121 @@ class DashboardController extends Controller
             'tutor_utilization' => $this->getTutorUtilization($weekStart)
         ];
     }
+
+    /**
+     * Get filtered dashboard data based on date range and school
+     */
+    public function getFilteredDashboardData(Request $request)
+    {
+        $fromDate = $request->input('fromDate');
+        $toDate = $request->input('toDate');
+        
+        // Validate dates
+        if (!$fromDate || !$toDate) {
+            return response()->json(['error' => 'Date range is required'], 400);
+        }
+        
+        try {
+            $startDate = Carbon::parse($fromDate);
+            $endDate = Carbon::parse($toDate);
+            
+            $stats = [
+                // Top 4 Stat Boxes - filtered by date range
+                'applicants_this_month' => $this->getFilteredApplicants($startDate, $endDate),
+                'demo_applicants' => $this->getFilteredDemoApplicants($startDate, $endDate),
+                'onboarding_applicants' => $this->getFilteredOnboardingApplicants($startDate, $endDate),
+                'existing_employees' => $this->getFilteredExistingEmployees($startDate, $endDate),
+                
+                // GLS Scheduling Reports - filtered by date range
+                'classes_conducted' => $this->getFilteredClassesConducted($startDate, $endDate),
+                'cancelled_classes' => $this->getFilteredCancelledClasses($startDate, $endDate),
+                'total_classes' => $this->getFilteredTotalClasses($startDate, $endDate),
+                'fully_assigned_classes' => $this->getFilteredFullyAssignedClasses($startDate, $endDate),
+                'partially_assigned_classes' => $this->getFilteredPartiallyAssignedClasses($startDate, $endDate),
+                'unassigned_classes' => $this->getFilteredUnassignedClasses($startDate, $endDate),
+                
+                // Additional stats
+                'date_range' => $fromDate . ' to ' . $toDate,
+                'filtered' => true
+            ];
+            
+            return response()->json($stats);
+            
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Invalid date format'], 400);
+        }
+    }
+    
+    /**
+     * Filtered statistics methods
+     */
+    private function getFilteredApplicants($startDate, $endDate)
+    {
+        return Tutor::whereBetween('created_at', [$startDate, $endDate])
+                   ->where('status', 'active')
+                   ->count();
+    }
+    
+    private function getFilteredDemoApplicants($startDate, $endDate)
+    {
+        return Tutor::whereBetween('created_at', [$startDate, $endDate])
+                   ->where('status', 'demo')
+                   ->count();
+    }
+    
+    private function getFilteredOnboardingApplicants($startDate, $endDate)
+    {
+        return Tutor::whereBetween('created_at', [$startDate, $endDate])
+                   ->where('status', 'onboarding')
+                   ->count();
+    }
+    
+    private function getFilteredExistingEmployees($startDate, $endDate)
+    {
+        return Tutor::where('created_at', '<', $startDate)
+                   ->where('status', 'active')
+                   ->count();
+    }
+    
+    private function getFilteredClassesConducted($startDate, $endDate)
+    {
+        return DailyData::whereBetween('date', [$startDate, $endDate])
+                        ->where('class_status', 'conducted')
+                        ->count();
+    }
+    
+    private function getFilteredCancelledClasses($startDate, $endDate)
+    {
+        return DailyData::whereBetween('date', [$startDate, $endDate])
+                        ->where('class_status', 'cancelled')
+                        ->count();
+    }
+    
+    private function getFilteredTotalClasses($startDate, $endDate)
+    {
+        return DailyData::whereBetween('date', [$startDate, $endDate])
+                        ->count();
+    }
+    
+    private function getFilteredFullyAssignedClasses($startDate, $endDate)
+    {
+        return DailyData::whereBetween('date', [$startDate, $endDate])
+                        ->whereColumn('assigned_tutors', '>=', 'number_required')
+                        ->count();
+    }
+    
+    private function getFilteredPartiallyAssignedClasses($startDate, $endDate)
+    {
+        return DailyData::whereBetween('date', [$startDate, $endDate])
+                        ->where('assigned_tutors', '>', 0)
+                        ->whereColumn('assigned_tutors', '<', 'number_required')
+                        ->count();
+    }
+    
+    private function getFilteredUnassignedClasses($startDate, $endDate)
+    {
+        return DailyData::whereBetween('date', [$startDate, $endDate])
+                        ->where('assigned_tutors', 0)
+                        ->count();
+    }
 }
