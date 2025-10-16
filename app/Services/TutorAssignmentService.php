@@ -144,6 +144,8 @@ class TutorAssignmentService
                             'tutor_id' => $tutorMatch['tutor']->tutorID,
                             'tutor_name' => $tutorMatch['tutor']->tusername,
                             'similarity_score' => $tutorMatch['similarity'],
+                            'reliability_score' => $tutorMatch['reliability_score'] ?? 0,
+                            'combined_score' => $tutorMatch['combined_score'] ?? $tutorMatch['similarity'],
                             'school' => $class->school,
                             'class_name' => $class->class,
                             'date' => $class->date,
@@ -159,6 +161,9 @@ class TutorAssignmentService
                             'date' => $class->date,
                             'time' => $class->time_jst,
                             'similarity_score' => $tutorMatch['similarity'],
+                            'reliability_score' => $tutorMatch['reliability_score'] ?? 0,
+                            'combined_score' => $tutorMatch['combined_score'] ?? $tutorMatch['similarity'],
+                            'assignment_reason' => 'Auto-assigned based on time availability and reliability history',
                             'assigned_at' => now()->format('Y-m-d H:i:s')
                         ]);
                     }
@@ -285,15 +290,25 @@ class TutorAssignmentService
             // Only consider tutors with good similarity (> 0.8 for strict time matching)
             // This ensures tutors are only assigned if they're actually available at the class time
             if ($maxSimilarity > 0.8) {
+                // Calculate reliability score for this tutor
+                $reliabilityScore = $this->calculateTutorReliabilityScore($tutor);
+                
+                // Calculate combined score (time availability + reliability)
+                $combinedScore = $this->calculateCombinedTutorScore($maxSimilarity, $reliabilityScore);
+                
                 $tutorSimilarities[] = [
                     'tutor' => $tutor,
-                    'similarity' => $maxSimilarity
+                    'similarity' => $maxSimilarity,
+                    'reliability_score' => $reliabilityScore,
+                    'combined_score' => $combinedScore
                 ];
                 
                 Log::info('✅ TUTOR AVAILABLE', [
                     'tutor_id' => $tutor->tutorID,
                     'tutor_username' => $tutor->tusername,
                     'similarity_score' => $maxSimilarity,
+                    'reliability_score' => $reliabilityScore,
+                    'combined_score' => $combinedScore,
                     'class_time_jst' => $classTime->format('H:i:s'),
                     'class_time_pht' => $classTimePht->format('H:i:s'),
                     'class_day' => $classDayName
@@ -312,19 +327,34 @@ class TutorAssignmentService
             }
         }
 
-        // Sort by similarity score (highest first) and return top matches
+        // Sort by combined score (highest first) which considers both time availability and reliability
         usort($tutorSimilarities, function($a, $b) {
+            // Primary sort: Combined score (descending)
+            $combinedComparison = $b['combined_score'] <=> $a['combined_score'];
+            if ($combinedComparison !== 0) {
+                return $combinedComparison;
+            }
+            
+            // Secondary sort: Reliability score (descending) - prefer more reliable tutors
+            $reliabilityComparison = $b['reliability_score'] <=> $a['reliability_score'];
+            if ($reliabilityComparison !== 0) {
+                return $reliabilityComparison;
+            }
+            
+            // Tertiary sort: Time similarity (descending) - prefer better time matches
             return $b['similarity'] <=> $a['similarity'];
         });
 
         $topMatches = array_slice($tutorSimilarities, 0, $limit);
         
-        Log::info('Top tutor matches found', [
+        Log::info('Top tutor matches found (prioritized by reliability)', [
             'count' => count($topMatches),
             'matches' => array_map(function($match) {
                 return [
                     'tutor' => $match['tutor']->tusername,
-                    'similarity' => round($match['similarity'], 3)
+                    'similarity' => round($match['similarity'], 3),
+                    'reliability' => round($match['reliability_score'], 3),
+                    'combined_score' => round($match['combined_score'], 3)
                 ];
             }, $topMatches)
         ]);
@@ -790,5 +820,77 @@ class TutorAssignmentService
         
         // Return null for invalid day names
         return null;
+    }
+
+    /**
+     * Calculate tutor reliability score based on attendance vs cancellation history
+     * Higher score = more reliable tutor (fewer cancellations)
+     * Score range: 0.0 to 1.0
+     */
+    private function calculateTutorReliabilityScore($tutor)
+    {
+        // Look at the last 3 months of assignment history
+        $threeMonthsAgo = Carbon::now()->subMonths(3);
+        
+        // Count total assignments for this tutor in the last 3 months
+        $totalAssignments = TutorAssignment::where('tutor_id', $tutor->tutorID)
+            ->whereHas('dailyData', function($query) use ($threeMonthsAgo) {
+                $query->where('date', '>=', $threeMonthsAgo->format('Y-m-d'));
+            })
+            ->count();
+        
+        // Count cancelled assignments in the last 3 months
+        $cancelledAssignments = TutorAssignment::where('tutor_id', $tutor->tutorID)
+            ->where('status', 'cancelled')
+            ->whereHas('dailyData', function($query) use ($threeMonthsAgo) {
+                $query->where('date', '>=', $threeMonthsAgo->format('Y-m-d'));
+            })
+            ->count();
+        
+        // If no assignment history, give benefit of the doubt with a neutral score
+        if ($totalAssignments === 0) {
+            return 0.7; // Neutral score for new tutors
+        }
+        
+        // Calculate reliability score
+        $cancellationRate = $cancelledAssignments / $totalAssignments;
+        $reliabilityScore = 1.0 - $cancellationRate;
+        
+        // Apply some scaling to ensure tutors with good track records get priority
+        // Tutors with 90%+ attendance get boosted scores
+        if ($reliabilityScore >= 0.9) {
+            $reliabilityScore = min(1.0, $reliabilityScore * 1.1); // Boost reliable tutors
+        }
+        
+        // Tutors with high cancellation rates (>30%) get penalized more
+        if ($cancellationRate > 0.3) {
+            $reliabilityScore = max(0.1, $reliabilityScore * 0.7); // Penalize unreliable tutors
+        }
+        
+        Log::debug('Tutor reliability calculated', [
+            'tutor_id' => $tutor->tutorID,
+            'tutor_username' => $tutor->tusername,
+            'total_assignments' => $totalAssignments,
+            'cancelled_assignments' => $cancelledAssignments,
+            'cancellation_rate' => round($cancellationRate, 3),
+            'reliability_score' => round($reliabilityScore, 3)
+        ]);
+        
+        return max(0.0, min(1.0, $reliabilityScore)); // Ensure score is between 0 and 1
+    }
+
+    /**
+     * Calculate combined score for tutor prioritization
+     * Combines time availability similarity with reliability score
+     */
+    private function calculateCombinedTutorScore($similarity, $reliabilityScore)
+    {
+        // Weight the scores: 60% similarity (time availability), 40% reliability
+        $timeWeight = 0.6;
+        $reliabilityWeight = 0.4;
+        
+        $combinedScore = ($similarity * $timeWeight) + ($reliabilityScore * $reliabilityWeight);
+        
+        return $combinedScore;
     }
 }

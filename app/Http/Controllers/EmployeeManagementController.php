@@ -6,6 +6,7 @@ use App\Models\Tutor;
 use App\Models\Supervisor;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 
 class EmployeeManagementController extends Controller
 {
@@ -435,7 +436,25 @@ class EmployeeManagementController extends Controller
         try {
             if ($request->type === 'tutor') {
                 $tutor = Tutor::findOrFail($request->id);
+                $oldStatus = $tutor->status;
                 $tutor->update(['status' => 'active']);
+                
+                // Get current user info
+                $currentUser = $this->getCurrentAuthenticatedUser();
+                
+                // Log the restore activity
+                \App\Models\AuditLog::logEvent(
+                    'tutor_restored', // eventType
+                    $currentUser['type'], // userType
+                    $currentUser['id'], // userId
+                    $currentUser['email'], // userEmail
+                    $currentUser['name'], // userName
+                    'Tutor Restored', // action
+                    "Tutor {$tutor->full_name} ({$tutor->tutorID}) restored from archive (status changed from {$oldStatus} to active)", // description
+                    ['tutor_id' => $tutor->tutorID, 'old_status' => $oldStatus, 'new_status' => 'active'], // metadata
+                    'medium', // severity
+                    true // isImportant
+                );
                 
                 return response()->json([
                     'success' => true,
@@ -443,7 +462,25 @@ class EmployeeManagementController extends Controller
                 ]);
             } else {
                 $supervisor = Supervisor::findOrFail($request->id);
+                $oldStatus = $supervisor->status;
                 $supervisor->update(['status' => 'active']);
+                
+                // Get current user info
+                $currentUser = $this->getCurrentAuthenticatedUser();
+                
+                // Log the restore activity
+                \App\Models\AuditLog::logEvent(
+                    'supervisor_restored', // eventType
+                    $currentUser['type'], // userType
+                    $currentUser['id'], // userId
+                    $currentUser['email'], // userEmail
+                    $currentUser['name'], // userName
+                    'Supervisor Restored', // action
+                    "Supervisor {$supervisor->full_name} ({$supervisor->supID}) restored from archive (status changed from {$oldStatus} to active)", // description
+                    ['supervisor_id' => $supervisor->supID, 'old_status' => $oldStatus, 'new_status' => 'active'], // metadata
+                    'medium', // severity
+                    true // isImportant
+                );
                 
                 return response()->json([
                     'success' => true,
@@ -469,11 +506,51 @@ class EmployeeManagementController extends Controller
             $restoredCount = 0;
             
             if ($request->type === 'tutor') {
+                // Get tutor names before update for logging
+                $tutors = Tutor::whereIn('tutorID', $request->ids)->get(['tutorID', 'first_name', 'last_name']);
+                
                 $restoredCount = Tutor::whereIn('tutorID', $request->ids)
                     ->update(['status' => 'active']);
+                
+                // Get current user info
+                $currentUser = $this->getCurrentAuthenticatedUser();
+                
+                // Log bulk restore activity
+                \App\Models\AuditLog::logEvent(
+                    'tutors_bulk_restored', // eventType
+                    $currentUser['type'], // userType
+                    $currentUser['id'], // userId
+                    $currentUser['email'], // userEmail
+                    $currentUser['name'], // userName
+                    'Bulk Tutor Restore', // action
+                    "Bulk restored {$restoredCount} tutors from archive. IDs: " . implode(', ', $request->ids), // description
+                    ['restored_count' => $restoredCount, 'tutor_ids' => $request->ids], // metadata
+                    'medium', // severity
+                    true // isImportant
+                );
             } else {
+                // Get supervisor names before update for logging
+                $supervisors = Supervisor::whereIn('supID', $request->ids)->get(['supID', 'sfname', 'slname']);
+                
                 $restoredCount = Supervisor::whereIn('supID', $request->ids)
                     ->update(['status' => 'active']);
+                
+                // Get current user info
+                $currentUser = $this->getCurrentAuthenticatedUser();
+                
+                // Log bulk restore activity
+                \App\Models\AuditLog::logEvent(
+                    'supervisors_bulk_restored', // eventType
+                    $currentUser['type'], // userType
+                    $currentUser['id'], // userId
+                    $currentUser['email'], // userEmail
+                    $currentUser['name'], // userName
+                    'Bulk Supervisor Restore', // action
+                    "Bulk restored {$restoredCount} supervisors from archive. IDs: " . implode(', ', $request->ids), // description
+                    ['restored_count' => $restoredCount, 'supervisor_ids' => $request->ids], // metadata
+                    'medium', // severity
+                    true // isImportant
+                );
             }
 
             return response()->json([
@@ -486,5 +563,102 @@ class EmployeeManagementController extends Controller
                 'message' => 'Failed to restore employees: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Toggle supervisor status (active/inactive)
+     */
+    public function toggleSupervisorStatus(Request $request, Supervisor $supervisor)
+    {
+        try {
+            // Validate the request
+            $request->validate([
+                'status' => 'required|in:active,inactive'
+            ]);
+
+            $newStatus = $request->status;
+            $oldStatus = $supervisor->status;
+            $supervisor->update(['status' => $newStatus]);
+
+            $supervisorName = $supervisor->full_name ?? 'Supervisor';
+            $actionText = $newStatus === 'active' ? 'activated and now has access to the system' : 'deactivated and no longer has system access';
+            
+            // Get current user info (works with multi-guard system)
+            $currentUser = $this->getCurrentAuthenticatedUser();
+            
+            // Log the activity with appropriate severity
+            \App\Models\AuditLog::logEvent(
+                $newStatus === 'active' ? 'supervisor_activated' : 'supervisor_deactivated', // eventType
+                $currentUser['type'], // userType
+                $currentUser['id'], // userId
+                $currentUser['email'], // userEmail
+                $currentUser['name'], // userName
+                $newStatus === 'active' ? 'Supervisor Activated' : 'Supervisor Deactivated', // action
+                "Supervisor {$supervisorName} ({$supervisor->supID}) status changed from {$oldStatus} to {$newStatus}", // description
+                ['supervisor_id' => $supervisor->supID, 'old_status' => $oldStatus, 'new_status' => $newStatus], // metadata
+                'medium', // severity - Status changes are important operational events
+                true // isImportant
+            );
+            
+            return response()->json([
+                'success' => true,
+                'message' => "{$supervisorName} has been {$actionText}",
+                'new_status' => $newStatus
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error toggling supervisor status: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update supervisor status: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get current authenticated user information from any guard
+     */
+    private function getCurrentAuthenticatedUser()
+    {
+        // Check supervisor guard first
+        if (Auth::guard('supervisor')->check()) {
+            $user = Auth::guard('supervisor')->user();
+            return [
+                'type' => 'supervisor',
+                'id' => $user->supID,
+                'email' => $user->semail,
+                'name' => $user->full_name ?? $user->sfname . ' ' . $user->slname
+            ];
+        }
+        
+        // Check regular web guard
+        if (Auth::guard('web')->check()) {
+            $user = Auth::guard('web')->user();
+            return [
+                'type' => 'admin',
+                'id' => $user->id,
+                'email' => $user->email,
+                'name' => $user->name
+            ];
+        }
+        
+        // Check tutor guard (though unlikely in this controller)
+        if (Auth::guard('tutor')->check()) {
+            $user = Auth::guard('tutor')->user();
+            return [
+                'type' => 'tutor',
+                'id' => $user->tutorID,
+                'email' => $user->email,
+                'name' => $user->full_name ?? $user->first_name . ' ' . $user->last_name
+            ];
+        }
+        
+        // Fallback for system actions
+        return [
+            'type' => 'system',
+            'id' => 'system',
+            'email' => 'system@ogsconnect.com',
+            'name' => 'System Admin'
+        ];
     }
 }

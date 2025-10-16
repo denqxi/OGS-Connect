@@ -7,8 +7,11 @@ use App\Http\Controllers\ImportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PaymentInformationController;
 use App\Http\Controllers\SupervisorProfileController;
+use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\EmployeeManagementController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 // Temporary test route for logging
 Route::get('/test-log', function () {
@@ -46,6 +49,13 @@ Route::get('/application-form/submit', function () {
 // Protected routes - require authentication
 Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    
+    // Audit Log routes
+    Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit.index');
+    Route::get('/audit-logs/{auditLog}', [AuditLogController::class, 'show'])->name('audit.show');
+    Route::get('/audit-logs-export', [AuditLogController::class, 'export'])->name('audit.export');
+    Route::get('/api/audit-stats', [AuditLogController::class, 'getStats'])->name('audit.stats');
+    
     Route::get('/scheduling', [ScheduleController::class, 'index'])->name('schedules.index');
     Route::get('/class-scheduling', function () {
         return view('schedules.class-scheduling');
@@ -57,7 +67,6 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
     Route::post('/employees/bulk-restore', [\App\Http\Controllers\EmployeeManagementController::class, 'bulkRestore'])->name('employees.bulk-restore');
     Route::post('/import/upload', [ImportController::class, 'upload'])->name('import.upload');
     Route::get('/supervisor/profile', [SupervisorProfileController::class, 'index'])->name('supervisor.profile');
-    Route::post('/supervisor/profile/security-questions', [SupervisorProfileController::class, 'updateSecurityQuestions'])->name('supervisor.security-questions.update');
     Route::post('/supervisor/profile/role', [SupervisorProfileController::class, 'updateRole'])->name('supervisor.role.update');
     Route::post('/supervisor/profile/personal-info', [SupervisorProfileController::class, 'updatePersonalInfo'])->name('supervisor.personal-info.update');
     Route::post('/supervisor/profile/password', [SupervisorProfileController::class, 'updatePassword'])->name('supervisor.password.update');
@@ -72,7 +81,7 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
 Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
     Route::get('/tutor_portal', function () {
         $tutor = Auth::guard('tutor')->user();
-        $tutor->load(['tutorDetails', 'paymentInformation', 'securityQuestions']); // Load the tutorDetails, paymentInformation, and securityQuestions relationships
+        $tutor->load(['tutorDetails', 'paymentInformation']); // Load the tutorDetails and paymentInformation relationships
         return view('tutor.tutor_portal', compact('tutor'));
     })->name('tutor.portal');
     
@@ -95,7 +104,6 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
             // Tutor personal information and security routes
             Route::post('/tutor/update-personal-info', [\App\Http\Controllers\TutorAvailabilityController::class, 'updatePersonalInfo'])->name('tutor.update-personal-info');
             Route::post('/tutor/change-password', [\App\Http\Controllers\TutorAvailabilityController::class, 'changePassword'])->name('tutor.change-password');
-            Route::post('/tutor/update-security-questions', [\App\Http\Controllers\TutorAvailabilityController::class, 'updateSecurityQuestions'])->name('tutor.update-security-questions');
 });
 
 // Custom logout route for supervisors (doesn't require auth middleware)
@@ -240,6 +248,9 @@ Route::middleware(['auth:supervisor', 'prevent.back'])->group(function () {
 
     // Tutor management routes
     Route::post('/tutors/{tutor}/toggle-status', [ScheduleController::class, 'toggleTutorStatus'])->name('tutors.toggle-status');
+    
+    // Supervisor management routes
+    Route::post('/supervisors/{supervisor}/toggle-status', [EmployeeManagementController::class, 'toggleSupervisorStatus'])->name('supervisors.toggle-status');
 });
 
 

@@ -6,6 +6,7 @@ use App\Models\Tutor;
 use App\Models\DailyData;
 use App\Models\ScheduleHistory;
 use App\Models\Supervisor;
+use App\Models\AuditLog;
 use App\Http\Requests\SaveScheduleRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -113,8 +114,11 @@ class ScheduleController extends Controller
                 $this->applyStatusFilter($dailyData, $request->status);
             }
 
+            $perPage = $request->get('per_page', 5); // Default to 5, allow 5 or 10
+            $perPage = in_array($perPage, [5, 10]) ? $perPage : 5; // Validate input
+
             $dailyData = $dailyData->orderBy('date', 'desc')
-                ->paginate(5)
+                ->paginate($perPage)
                 ->withQueryString();
 
             // Get available dates and days for filtering (only non-finalized for class scheduling)
@@ -130,10 +134,10 @@ class ScheduleController extends Controller
     private function showEmployeeAvailability(Request $request)
     {
         $query = Tutor::with(['accounts' => function($query) {
-            $query->where('account_name', 'GLS')->where('status', 'active');
+            $query->where('account_name', 'GLS');
         }])
         ->whereHas('accounts', function($query) {
-            $query->where('account_name', 'GLS')->where('status', 'active');
+            $query->where('account_name', 'GLS');
         });
         
         // Apply filters
@@ -159,7 +163,7 @@ class ScheduleController extends Controller
             
             
             $query->whereHas('accounts', function($q) use ($dayName, $dayNameLower) {
-                $q->where('account_name', 'GLS')->where('status', 'active')
+                $q->where('account_name', 'GLS')
                   ->where(function($subQuery) use ($dayName, $dayNameLower) {
                       $subQuery->where('available_times', 'like', '%' . $dayName . '%')
                                ->orWhere('available_times', 'like', '%' . $dayNameLower . '%');
@@ -188,8 +192,8 @@ class ScheduleController extends Controller
                     $filteredTutorIds = [];
                     
                     // Get tutors with their accounts
-                    $tutorsWithAccounts = Tutor::with(['accounts' => function($query) {
-                        $query->where('account_name', 'GLS')->where('status', 'active');
+                $tutorsWithAccounts = Tutor::with(['accounts' => function($query) {
+                        $query->where('account_name', 'GLS');
                     }])->whereIn('tutorID', $allTutorIds)->get();
                     
                     foreach ($tutorsWithAccounts as $tutor) {
@@ -211,13 +215,16 @@ class ScheduleController extends Controller
             } else {
                 // Fallback to simple string matching for single time values
                 $query->whereHas('accounts', function($q) use ($timeSlot) {
-                    $q->where('account_name', 'GLS')->where('status', 'active')
+                    $q->where('account_name', 'GLS')
                       ->where('available_times', 'like', '%' . $timeSlot . '%');
                 });
             }
         }
         
-        $tutors = $query->orderBy('first_name')->orderBy('last_name')->paginate(5)->withQueryString();
+        $perPage = $request->get('per_page', 5); // Default to 5, allow 5 or 10
+        $perPage = in_array($perPage, [5, 10]) ? $perPage : 5; // Validate input
+        
+        $tutors = $query->orderBy('first_name')->orderBy('last_name')->paginate($perPage)->withQueryString();
         $availableTimeSlots = $this->getAvailableTimeSlots();
         $availableDays = $this->getAvailableDaysFromTutorAccounts();
         
@@ -323,7 +330,9 @@ class ScheduleController extends Controller
     {
         // Get all classes for the specific date with tutor assignments (paginated)
         $dayClasses = DailyData::where('date', $date)
-            ->with(['tutorAssignments.tutor'])
+            ->with(['tutorAssignments' => function($query) {
+                $query->where('status', '!=', 'cancelled')->with('tutor');
+            }])
                 ->orderBy('school')
                 ->orderBy('time_jst')
             ->paginate(10, ['*'], 'page', $page)
@@ -358,10 +367,10 @@ class ScheduleController extends Controller
 
         // Get available tutors for this day
         $availableTutors = Tutor::with(['accounts' => function($query) {
-            $query->where('account_name', 'GLS')->where('status', 'active');
+            $query->where('account_name', 'GLS');
         }])
         ->whereHas('accounts', function($query) {
-            $query->where('account_name', 'GLS')->where('status', 'active');
+            $query->where('account_name', 'GLS');
         })
         ->where('status', 'active')
         ->get();
@@ -404,22 +413,29 @@ class ScheduleController extends Controller
         // Only show finalized schedules
         $query->where('schedule_status', 'finalized');
 
-        // Apply filters
+        // Apply filters (mutually exclusive: date takes precedence over day)
         if ($request->filled('search')) {
             $query->where('school', 'like', '%' . $request->search . '%');
         }
 
-        if ($request->filled('date')) {
-            $query->whereDate('date', $request->date);
-        }
+        $dateFilter = $request->input('date');
+        $dayFilter = $request->input('day');
 
-        if ($request->filled('day')) {
-            $day = $this->validateDayName($request->day);
+        if ($dateFilter && trim($dateFilter) !== '') {
+            $query->where(function($q) use ($dateFilter) {
+                $q->whereDate('date', $dateFilter)
+                  ->orWhere('date', $dateFilter);
+            });
+        } elseif ($dayFilter && trim($dayFilter) !== '') {
+            $day = $this->validateDayName($dayFilter);
             if ($day) {
-                // Use DAYOFWEEK instead of DAYNAME for more reliable filtering
                 $dayOfWeek = $this->getDayOfWeek($day);
                 if ($dayOfWeek) {
-                    $query->whereRaw('DAYOFWEEK(date) = ?', [$dayOfWeek]);
+                    // Match by numeric day-of-week or by day name for broader compatibility
+                    $query->where(function($q) use ($dayOfWeek, $day) {
+                        $q->whereRaw('DAYOFWEEK(date) = ?', [$dayOfWeek])
+                          ->orWhereRaw('UPPER(DAYNAME(date)) = ?', [strtoupper($day)]);
+                    });
                 }
             }
         }
@@ -431,9 +447,12 @@ class ScheduleController extends Controller
             (SELECT COUNT(*) FROM tutor_assignments ta WHERE ta.daily_data_id IN (SELECT dd2.id FROM daily_data dd2 WHERE dd2.date = daily_data.date) AND (ta.is_backup = 0 OR ta.is_backup IS NULL)) as total_assigned,
             MAX(finalized_at) as finalized_at')
             ->groupBy('date')
-            ->orderBy('date', 'desc')
-            ->paginate(15)
-            ->withQueryString();
+            ->orderBy('date', 'desc');
+
+        $perPage = $request->get('per_page', 5); // Default to 5, allow 5 or 10
+        $perPage = in_array($perPage, [5, 10]) ? $perPage : 5; // Validate input
+
+        $scheduleHistory = $scheduleHistory->paginate($perPage)->withQueryString();
 
         // Get available dates and days for filtering (only finalized schedules)
         $availableDates = DailyData::where('schedule_status', 'finalized')
@@ -508,8 +527,11 @@ class ScheduleController extends Controller
                 $this->applyStatusFilter($schedules, $request->status);
             }
 
+            $perPage = $request->get('per_page', 5); // Default to 5, allow 5 or 10
+            $perPage = in_array($perPage, [5, 10]) ? $perPage : 5; // Validate input
+
             $schedules = $schedules->orderBy('date', 'desc')
-                ->paginate(5)
+                ->paginate($perPage)
                 ->withQueryString();
             
             // Check if this is an AJAX request
@@ -602,6 +624,21 @@ class ScheduleController extends Controller
 
             DB::commit();
             
+            // Log schedule save activity
+            $currentUser = $this->getCurrentAuthenticatedUser();
+            \App\Models\AuditLog::logEvent(
+                $status === 'final' ? 'schedule_finalized' : 'schedule_saved_tentative',
+                $currentUser['type'],
+                $currentUser['id'],
+                $currentUser['email'],
+                $currentUser['name'],
+                $status === 'final' ? 'Schedule Finalized' : 'Schedule Saved as Tentative',
+                "Schedule for {$date} saved as " . ($status === 'final' ? 'finalized' : 'tentative') . " by {$currentUser['name']}. {$updatedCount} classes updated.",
+                ['date' => $date, 'status' => $scheduleStatus, 'updated_count' => $updatedCount],
+                $status === 'final' ? 'high' : 'medium',
+                true
+            );
+            
             return response()->json([
                 'success' => true, 
                 'message' => "Successfully saved {$updatedCount} class(es) as " . ($status === 'final' ? 'final' : 'tentative'),
@@ -662,6 +699,21 @@ class ScheduleController extends Controller
                 'cancellation_reason' => $request->cancellation_reason
             ]);
 
+            // Log class cancellation to audit system
+            $currentUser = $this->getCurrentAuthenticatedUser();
+            AuditLog::logEvent(
+                'class_cancellation',
+                $currentUser['type'],
+                $currentUser['id'],
+                $currentUser['email'],
+                $currentUser['name'],
+                'Class Cancelled',
+                "Class {$class->class} at {$class->school} on {$class->date} cancelled by {$currentUser['name']}. Reason: {$request->cancellation_reason}",
+                ['class_id' => $classId, 'school' => $class->school, 'date' => $class->date, 'reason' => $request->cancellation_reason],
+                'high',
+                true
+            );
+
             // Create history record for the cancellation
             $class->createHistoryRecord(
                 'class_cancelled',
@@ -707,10 +759,28 @@ class ScheduleController extends Controller
             ]);
 
             $newStatus = $request->status;
+            $oldStatus = $tutor->status;
             $tutor->update(['status' => $newStatus]);
 
             $tutorName = $tutor->full_name ?? 'Tutor';
             $actionText = $newStatus === 'active' ? 'activated and is now available for class assignments' : 'deactivated and will no longer receive class assignments';
+            
+            // Get current user info
+            $currentUser = $this->getCurrentAuthenticatedUser();
+            
+            // Log the activity with appropriate severity
+            \App\Models\AuditLog::logEvent(
+                $newStatus === 'active' ? 'tutor_activated' : 'tutor_deactivated', // eventType
+                $currentUser['type'], // userType
+                $currentUser['id'], // userId
+                $currentUser['email'], // userEmail
+                $currentUser['name'], // userName
+                $newStatus === 'active' ? 'Tutor Activated' : 'Tutor Deactivated', // action
+                "Tutor {$tutorName} ({$tutor->tutorID}) status changed from {$oldStatus} to {$newStatus}", // description
+                ['tutor_id' => $tutor->tutorID, 'old_status' => $oldStatus, 'new_status' => $newStatus], // metadata
+                'medium', // severity - Status changes are important operational events
+                true // isImportant
+            );
             
             return response()->json([
                 'success' => true,
@@ -924,7 +994,10 @@ class ScheduleController extends Controller
                 });
             }
             
-            $tutors = $query->orderBy('first_name')->orderBy('last_name')->paginate(5)->withQueryString();
+            $perPage = $request->get('per_page', 5); // Default to 5, allow 5 or 10
+            $perPage = in_array($perPage, [5, 10]) ? $perPage : 5; // Validate input
+            
+            $tutors = $query->orderBy('first_name')->orderBy('last_name')->paginate($perPage)->withQueryString();
             
             // Render the tutor rows HTML
             $html = view('schedules.tabs.partials.tutor-table-rows', compact('tutors'))->render();
@@ -1564,5 +1637,52 @@ class ScheduleController extends Controller
         } catch (\Exception $e) {
             return $time; // Return as-is if error
         }
+    }
+
+    /**
+     * Get current authenticated user information across different guards
+     */
+    private function getCurrentAuthenticatedUser()
+    {
+        // Check supervisor guard first
+        if (Auth::guard('supervisor')->check()) {
+            $user = Auth::guard('supervisor')->user();
+            return [
+                'type' => 'supervisor',
+                'id' => $user->supID,
+                'email' => $user->semail,
+                'name' => $user->full_name ?? ($user->sfname . ' ' . $user->slname)
+            ];
+        }
+        
+        // Check web guard (admin users)
+        if (Auth::guard('web')->check()) {
+            $user = Auth::guard('web')->user();
+            return [
+                'type' => 'admin',
+                'id' => $user->id,
+                'email' => $user->email,
+                'name' => $user->name
+            ];
+        }
+        
+        // Check tutor guard
+        if (Auth::guard('tutor')->check()) {
+            $user = Auth::guard('tutor')->user();
+            return [
+                'type' => 'tutor',
+                'id' => $user->tutorID,
+                'email' => $user->email,
+                'name' => $user->full_name ?? ($user->tfname . ' ' . $user->tlname)
+            ];
+        }
+        
+        // Fallback to system if no authenticated user found
+        return [
+            'type' => 'system',
+            'id' => 'system',
+            'email' => 'system@ogsconnect.com',
+            'name' => 'System Admin'
+        ];
     }
 }
