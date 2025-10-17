@@ -16,6 +16,11 @@ use Illuminate\Support\Facades\Auth;
 
 class TutorAssignmentService
 {
+    // Threshold Configuration for Tutor Assignment
+    const CANCELLATION_RATE_THRESHOLD = 0.30; // 30% - tutors above this rate are excluded from auto-assignment
+    const MINIMUM_ASSIGNMENTS_FOR_THRESHOLD = 5; // Minimum assignments before applying threshold
+    const EVALUATION_PERIOD_MONTHS = 3; // Months to look back for evaluation
+    
     /**
      * Auto-assign tutors using enhanced availability system with account support
      */
@@ -25,7 +30,12 @@ class TutorAssignmentService
             'date' => $date, 
             'day' => $day, 
             'account' => $accountName,
-            'timestamp' => now()->format('Y-m-d H:i:s')
+            'timestamp' => now()->format('Y-m-d H:i:s'),
+            'threshold_config' => [
+                'cancellation_rate_threshold' => round(self::CANCELLATION_RATE_THRESHOLD * 100, 1) . '%',
+                'minimum_assignments_for_threshold' => self::MINIMUM_ASSIGNMENTS_FOR_THRESHOLD,
+                'evaluation_period_months' => self::EVALUATION_PERIOD_MONTHS
+            ]
         ]);
         
         $query = DailyData::query();
@@ -83,6 +93,7 @@ class TutorAssignmentService
 
         $assignedCount = 0;
         $results = [];
+        $thresholdExcludedCount = 0; // Track tutors excluded due to thresholds
 
         foreach ($classes as $class) {
             $currentAssigned = $class->tutorAssignments()->count();
@@ -101,7 +112,7 @@ class TutorAssignmentService
             ]);
             
             if ($needMore > 0) {
-                $bestTutors = $this->findBestTutorsForClass($class, $needMore, $accountName);
+                $bestTutors = $this->findBestTutorsForClass($class, $needMore, $accountName, $thresholdExcludedCount);
                 
                 if (count($bestTutors) > 0) {
                     Log::info('👥 TUTORS FOUND', [
@@ -179,6 +190,12 @@ class TutorAssignmentService
         Log::info('🏁 AUTO-ASSIGN COMPLETED', [
             'total_assigned' => $assignedCount,
             'total_classes_processed' => $classes->count(),
+            'threshold_excluded_tutors' => $thresholdExcludedCount,
+            'threshold_config' => [
+                'cancellation_rate_threshold' => round(self::CANCELLATION_RATE_THRESHOLD * 100, 1) . '%',
+                'minimum_assignments_for_threshold' => self::MINIMUM_ASSIGNMENTS_FOR_THRESHOLD,
+                'evaluation_period_months' => self::EVALUATION_PERIOD_MONTHS
+            ],
             'assignments' => $results,
             'completed_at' => now()->format('Y-m-d H:i:s')
         ]);
@@ -192,7 +209,7 @@ class TutorAssignmentService
     /**
      * Find best tutors for a class using new availability system with account support
      */
-    private function findBestTutorsForClass($class, $limit = 10, $accountName = 'GLS')
+    private function findBestTutorsForClass($class, $limit = 10, $accountName = 'GLS', &$thresholdExcludedCount = 0)
     {
         // Get all active tutors who have accounts for the specified account name
         $availableTutors = Tutor::where('status', 'active')
@@ -293,6 +310,20 @@ class TutorAssignmentService
                 // Calculate reliability score for this tutor
                 $reliabilityScore = $this->calculateTutorReliabilityScore($tutor);
                 
+                // THRESHOLD CHECK: Skip tutors who are excluded due to high cancellation rates
+                if ($reliabilityScore === null) {
+                    $thresholdExcludedCount++; // Increment exclusion counter
+                    Log::info('🚫 TUTOR SKIPPED DUE TO THRESHOLD VIOLATION', [
+                        'tutor_id' => $tutor->tutorID,
+                        'tutor_username' => $tutor->tusername,
+                        'class_time_jst' => $classTime->format('H:i:s'),
+                        'class_time_pht' => $classTimePht->format('H:i:s'),
+                        'class_day' => $classDayName,
+                        'reason' => 'Cancellation rate exceeds threshold - automatically excluded from assignment pool'
+                    ]);
+                    continue; // Skip this tutor entirely
+                }
+                
                 // Calculate combined score (time availability + reliability)
                 $combinedScore = $this->calculateCombinedTutorScore($maxSimilarity, $reliabilityScore);
                 
@@ -303,7 +334,7 @@ class TutorAssignmentService
                     'combined_score' => $combinedScore
                 ];
                 
-                Log::info('✅ TUTOR AVAILABLE', [
+                Log::info('✅ TUTOR AVAILABLE AND ELIGIBLE', [
                     'tutor_id' => $tutor->tutorID,
                     'tutor_username' => $tutor->tusername,
                     'similarity_score' => $maxSimilarity,
@@ -311,7 +342,8 @@ class TutorAssignmentService
                     'combined_score' => $combinedScore,
                     'class_time_jst' => $classTime->format('H:i:s'),
                     'class_time_pht' => $classTimePht->format('H:i:s'),
-                    'class_day' => $classDayName
+                    'class_day' => $classDayName,
+                    'threshold_status' => 'passed'
                 ]);
             } else {
                 Log::info('❌ TUTOR NOT AVAILABLE', [
@@ -695,7 +727,10 @@ class TutorAssignmentService
         Log::debug('Auto-assignment service supervisor detection', [
             'session_supervisor_id' => $sessionSupervisorId,
             'auth_check' => $authCheck,
-            'auth_user' => $authUser ? $authUser->toArray() : null,
+            'auth_user' => $authUser ? [
+                'supID' => $authUser->supID,
+                'username' => $authUser->username ?? 'unknown'
+            ] : null,
             'all_session_data' => session()->all()
         ]);
         
@@ -827,23 +862,53 @@ class TutorAssignmentService
      * Higher score = more reliable tutor (fewer cancellations)
      * Score range: 0.0 to 1.0
      */
+    /**
+     * Calculate tutor reliability score with threshold-based disqualification
+     * Returns null if tutor should be excluded due to high cancellation rate
+     */
     private function calculateTutorReliabilityScore($tutor)
     {
         // Look at the last 3 months of assignment history
-        $threeMonthsAgo = Carbon::now()->subMonths(3);
+        $evaluationPeriod = Carbon::now()->subMonths(self::EVALUATION_PERIOD_MONTHS);
         
-        // Count total assignments for this tutor in the last 3 months
+        // Count total assignments for this tutor in the evaluation period
         $totalAssignments = TutorAssignment::where('tutor_id', $tutor->tutorID)
-            ->whereHas('dailyData', function($query) use ($threeMonthsAgo) {
-                $query->where('date', '>=', $threeMonthsAgo->format('Y-m-d'));
+            ->whereHas('dailyData', function($query) use ($evaluationPeriod) {
+                $query->where('date', '>=', $evaluationPeriod->format('Y-m-d'));
             })
             ->count();
         
-        // Count cancelled assignments in the last 3 months
+        // Count cancelled assignments in the evaluation period
         $cancelledAssignments = TutorAssignment::where('tutor_id', $tutor->tutorID)
             ->where('status', 'cancelled')
-            ->whereHas('dailyData', function($query) use ($threeMonthsAgo) {
-                $query->where('date', '>=', $threeMonthsAgo->format('Y-m-d'));
+            ->whereHas('dailyData', function($query) use ($evaluationPeriod) {
+                $query->where('date', '>=', $evaluationPeriod->format('Y-m-d'));
+            })
+            ->count();
+
+        // Count assignments on finalized schedules (higher weight for reliability)
+        $finalizedAssignments = TutorAssignment::where('tutor_id', $tutor->tutorID)
+            ->whereHas('dailyData', function($query) use ($evaluationPeriod) {
+                $query->where('date', '>=', $evaluationPeriod->format('Y-m-d'))
+                      ->where('schedule_status', 'finalized');
+            })
+            ->count();
+
+        // Count cancelled assignments on finalized schedules (more severe penalty)
+        $cancelledFinalizedAssignments = TutorAssignment::where('tutor_id', $tutor->tutorID)
+            ->where('status', 'cancelled')
+            ->whereHas('dailyData', function($query) use ($evaluationPeriod) {
+                $query->where('date', '>=', $evaluationPeriod->format('Y-m-d'))
+                      ->where('schedule_status', 'finalized');
+            })
+            ->count();
+
+        // Count completed assignments on finalized schedules (reliability boost)
+        $completedFinalizedAssignments = TutorAssignment::where('tutor_id', $tutor->tutorID)
+            ->where('status', 'completed')
+            ->whereHas('dailyData', function($query) use ($evaluationPeriod) {
+                $query->where('date', '>=', $evaluationPeriod->format('Y-m-d'))
+                      ->where('schedule_status', 'finalized');
             })
             ->count();
         
@@ -852,9 +917,68 @@ class TutorAssignmentService
             return 0.7; // Neutral score for new tutors
         }
         
-        // Calculate reliability score
+        // Calculate cancellation rate
         $cancellationRate = $cancelledAssignments / $totalAssignments;
-        $reliabilityScore = 1.0 - $cancellationRate;
+        
+        // Calculate finalized schedule metrics for enhanced reliability scoring
+        $finalizedCancellationRate = $finalizedAssignments > 0 ? ($cancelledFinalizedAssignments / $finalizedAssignments) : 0;
+        $finalizedCompletionRate = $finalizedAssignments > 0 ? ($completedFinalizedAssignments / $finalizedAssignments) : 0;
+        $finalizedParticipationRate = $totalAssignments > 0 ? ($finalizedAssignments / $totalAssignments) : 0;
+        
+        // THRESHOLD CHECK: Exclude tutors with high cancellation rates
+        if ($totalAssignments >= self::MINIMUM_ASSIGNMENTS_FOR_THRESHOLD && 
+            $cancellationRate > self::CANCELLATION_RATE_THRESHOLD) {
+            
+            Log::warning('🚫 TUTOR EXCLUDED DUE TO HIGH CANCELLATION RATE', [
+                'tutor_id' => $tutor->tutorID,
+                'tutor_username' => $tutor->tusername,
+                'total_assignments' => $totalAssignments,
+                'cancelled_assignments' => $cancelledAssignments,
+                'cancellation_rate' => round($cancellationRate * 100, 1) . '%',
+                'threshold' => round(self::CANCELLATION_RATE_THRESHOLD * 100, 1) . '%',
+                'evaluation_period' => self::EVALUATION_PERIOD_MONTHS . ' months',
+                'minimum_assignments' => self::MINIMUM_ASSIGNMENTS_FOR_THRESHOLD,
+                'exclusion_reason' => 'Cancellation rate exceeds threshold - tutor not eligible for auto-assignment'
+            ]);
+            
+            return null; // Return null to indicate tutor should be excluded
+        }
+        
+        // Calculate enhanced reliability score with finalization weighting
+        $baseReliabilityScore = 1.0 - $cancellationRate;
+        
+        // Apply finalization bonuses and penalties
+        $reliabilityScore = $baseReliabilityScore;
+        
+        // FINALIZATION BONUS: Reward tutors who participate in finalized schedules
+        if ($finalizedParticipationRate > 0.5) { // 50%+ of assignments on finalized schedules
+            $reliabilityScore += 0.1; // 10% bonus for high finalized participation
+            Log::debug('📅 FINALIZATION PARTICIPATION BONUS', [
+                'tutor_username' => $tutor->tusername,
+                'finalized_participation_rate' => round($finalizedParticipationRate * 100, 1) . '%',
+                'bonus_applied' => '10%'
+            ]);
+        }
+        
+        // FINALIZED COMPLETION BONUS: Extra reward for completing finalized classes
+        if ($finalizedAssignments > 0 && $finalizedCompletionRate > 0.8) { // 80%+ completion on finalized
+            $reliabilityScore += 0.05; // 5% bonus for reliable finalized attendance
+            Log::debug('✅ FINALIZED COMPLETION BONUS', [
+                'tutor_username' => $tutor->tusername,
+                'finalized_completion_rate' => round($finalizedCompletionRate * 100, 1) . '%',
+                'bonus_applied' => '5%'
+            ]);
+        }
+        
+        // FINALIZED CANCELLATION PENALTY: Extra penalty for cancelling finalized classes
+        if ($finalizedAssignments > 0 && $finalizedCancellationRate > 0.2) { // 20%+ cancellation on finalized
+            $reliabilityScore -= 0.15; // 15% penalty for unreliable finalized attendance
+            Log::warning('⚠️ FINALIZED CANCELLATION PENALTY', [
+                'tutor_username' => $tutor->tusername,
+                'finalized_cancellation_rate' => round($finalizedCancellationRate * 100, 1) . '%',
+                'penalty_applied' => '15%'
+            ]);
+        }
         
         // Apply some scaling to ensure tutors with good track records get priority
         // Tutors with 90%+ attendance get boosted scores
@@ -862,18 +986,27 @@ class TutorAssignmentService
             $reliabilityScore = min(1.0, $reliabilityScore * 1.1); // Boost reliable tutors
         }
         
-        // Tutors with high cancellation rates (>30%) get penalized more
-        if ($cancellationRate > 0.3) {
-            $reliabilityScore = max(0.1, $reliabilityScore * 0.7); // Penalize unreliable tutors
+        // Tutors with moderate cancellation rates (15-30%) get penalized but still eligible
+        if ($cancellationRate > 0.15 && $cancellationRate <= self::CANCELLATION_RATE_THRESHOLD) {
+            $reliabilityScore = max(0.1, $reliabilityScore * 0.8); // Moderate penalty for less reliable tutors
         }
         
-        Log::debug('Tutor reliability calculated', [
+        Log::debug('✅ ENHANCED TUTOR RELIABILITY CALCULATED', [
             'tutor_id' => $tutor->tutorID,
             'tutor_username' => $tutor->tusername,
             'total_assignments' => $totalAssignments,
             'cancelled_assignments' => $cancelledAssignments,
-            'cancellation_rate' => round($cancellationRate, 3),
-            'reliability_score' => round($reliabilityScore, 3)
+            'finalized_assignments' => $finalizedAssignments,
+            'cancelled_finalized_assignments' => $cancelledFinalizedAssignments,
+            'completed_finalized_assignments' => $completedFinalizedAssignments,
+            'cancellation_rate' => round($cancellationRate * 100, 1) . '%',
+            'finalized_cancellation_rate' => round($finalizedCancellationRate * 100, 1) . '%',
+            'finalized_completion_rate' => round($finalizedCompletionRate * 100, 1) . '%',
+            'finalized_participation_rate' => round($finalizedParticipationRate * 100, 1) . '%',
+            'base_reliability_score' => round($baseReliabilityScore, 3),
+            'final_reliability_score' => round($reliabilityScore, 3),
+            'threshold_status' => 'eligible',
+            'evaluation_period' => self::EVALUATION_PERIOD_MONTHS . ' months'
         ]);
         
         return max(0.0, min(1.0, $reliabilityScore)); // Ensure score is between 0 and 1
@@ -892,5 +1025,162 @@ class TutorAssignmentService
         $combinedScore = ($similarity * $timeWeight) + ($reliabilityScore * $reliabilityWeight);
         
         return $combinedScore;
+    }
+
+    /**
+     * Generate comprehensive tutor performance verification report
+     * Shows which tutors are reliable (always on-time/agree) vs those who frequently cancel
+     */
+    public function generateTutorPerformanceReport($months = 3)
+    {
+        $evaluationPeriod = Carbon::now()->subMonths($months);
+        
+        // Get all active tutors with their assignment history
+        $tutors = Tutor::where('status', 'active')
+            ->with(['assignments' => function($query) use ($evaluationPeriod) {
+                $query->whereHas('dailyData', function($subQuery) use ($evaluationPeriod) {
+                    $subQuery->where('date', '>=', $evaluationPeriod->format('Y-m-d'));
+                });
+            }])
+            ->get();
+
+        $reliableTutors = [];
+        $unreliableTutors = [];
+        $newTutors = [];
+        
+        foreach ($tutors as $tutor) {
+            // Get assignment statistics
+            $totalAssignments = TutorAssignment::where('tutor_id', $tutor->tutorID)
+                ->whereHas('dailyData', function($query) use ($evaluationPeriod) {
+                    $query->where('date', '>=', $evaluationPeriod->format('Y-m-d'));
+                })
+                ->count();
+
+            $cancelledAssignments = TutorAssignment::where('tutor_id', $tutor->tutorID)
+                ->where('status', 'cancelled')
+                ->whereHas('dailyData', function($query) use ($evaluationPeriod) {
+                    $query->where('date', '>=', $evaluationPeriod->format('Y-m-d'));
+                })
+                ->count();
+
+            $completedAssignments = TutorAssignment::where('tutor_id', $tutor->tutorID)
+                ->where('status', 'completed')
+                ->whereHas('dailyData', function($query) use ($evaluationPeriod) {
+                    $query->where('date', '>=', $evaluationPeriod->format('Y-m-d'));
+                })
+                ->count();
+
+            // Calculate rates
+            $cancellationRate = $totalAssignments > 0 ? ($cancelledAssignments / $totalAssignments) : 0;
+            $completionRate = $totalAssignments > 0 ? ($completedAssignments / $totalAssignments) : 0;
+            $reliabilityScore = $this->calculateTutorReliabilityScore($tutor);
+
+            $tutorData = [
+                'tutor_id' => $tutor->tutorID,
+                'username' => $tutor->tusername,
+                'email' => $tutor->email,
+                'status' => $tutor->status,
+                'total_assignments' => $totalAssignments,
+                'completed_assignments' => $completedAssignments,
+                'cancelled_assignments' => $cancelledAssignments,
+                'cancellation_rate' => round($cancellationRate * 100, 1),
+                'completion_rate' => round($completionRate * 100, 1),
+                'reliability_score' => $reliabilityScore,
+                'threshold_status' => $reliabilityScore === null ? 'excluded' : 'eligible',
+                'evaluation_period' => $months . ' months'
+            ];
+
+            // Categorize tutors
+            if ($totalAssignments < self::MINIMUM_ASSIGNMENTS_FOR_THRESHOLD) {
+                $newTutors[] = $tutorData;
+            } elseif ($reliabilityScore === null || $cancellationRate > self::CANCELLATION_RATE_THRESHOLD) {
+                $unreliableTutors[] = $tutorData;
+            } else {
+                // Further categorize reliable tutors
+                if ($cancellationRate <= 0.05) { // 5% or less cancellation rate
+                    $tutorData['reliability_category'] = 'excellent';
+                } elseif ($cancellationRate <= 0.15) { // 15% or less cancellation rate
+                    $tutorData['reliability_category'] = 'good';
+                } else {
+                    $tutorData['reliability_category'] = 'fair';
+                }
+                $reliableTutors[] = $tutorData;
+            }
+        }
+
+        // Sort arrays by performance metrics
+        usort($reliableTutors, function($a, $b) {
+            // Sort by completion rate desc, then cancellation rate asc
+            $completionComparison = $b['completion_rate'] <=> $a['completion_rate'];
+            if ($completionComparison !== 0) {
+                return $completionComparison;
+            }
+            return $a['cancellation_rate'] <=> $b['cancellation_rate'];
+        });
+
+        usort($unreliableTutors, function($a, $b) {
+            // Sort by cancellation rate desc (worst first)
+            return $b['cancellation_rate'] <=> $a['cancellation_rate'];
+        });
+
+        // Calculate summary statistics
+        $totalActiveTutors = $tutors->count();
+        $reliableCount = count($reliableTutors);
+        $unreliableCount = count($unreliableTutors);
+        $newTutorCount = count($newTutors);
+
+        $summary = [
+            'total_active_tutors' => $totalActiveTutors,
+            'reliable_tutors_count' => $reliableCount,
+            'unreliable_tutors_count' => $unreliableCount,
+            'new_tutors_count' => $newTutorCount,
+            'reliable_percentage' => $totalActiveTutors > 0 ? round(($reliableCount / $totalActiveTutors) * 100, 1) : 0,
+            'unreliable_percentage' => $totalActiveTutors > 0 ? round(($unreliableCount / $totalActiveTutors) * 100, 1) : 0,
+            'threshold_config' => [
+                'cancellation_rate_threshold' => round(self::CANCELLATION_RATE_THRESHOLD * 100, 1) . '%',
+                'minimum_assignments_for_threshold' => self::MINIMUM_ASSIGNMENTS_FOR_THRESHOLD,
+                'evaluation_period_months' => self::EVALUATION_PERIOD_MONTHS
+            ],
+            'generated_at' => now()->format('Y-m-d H:i:s')
+        ];
+
+        Log::info('📊 TUTOR PERFORMANCE REPORT GENERATED', [
+            'summary' => $summary,
+            'reliable_tutors' => count($reliableTutors),
+            'unreliable_tutors' => count($unreliableTutors),
+            'new_tutors' => count($newTutors)
+        ]);
+
+        return [
+            'summary' => $summary,
+            'reliable_tutors' => $reliableTutors,
+            'unreliable_tutors' => $unreliableTutors,
+            'new_tutors' => $newTutors,
+            'threshold_settings' => [
+                'cancellation_rate_threshold' => self::CANCELLATION_RATE_THRESHOLD,
+                'minimum_assignments_for_threshold' => self::MINIMUM_ASSIGNMENTS_FOR_THRESHOLD,
+                'evaluation_period_months' => self::EVALUATION_PERIOD_MONTHS
+            ]
+        ];
+    }
+
+    /**
+     * Get top performing tutors (most reliable)
+     */
+    public function getTopPerformingTutors($limit = 10, $months = 3)
+    {
+        $performanceReport = $this->generateTutorPerformanceReport($months);
+        
+        return array_slice($performanceReport['reliable_tutors'], 0, $limit);
+    }
+
+    /**
+     * Get worst performing tutors (most unreliable)
+     */
+    public function getWorstPerformingTutors($limit = 10, $months = 3)
+    {
+        $performanceReport = $this->generateTutorPerformanceReport($months);
+        
+        return array_slice($performanceReport['unreliable_tutors'], 0, $limit);
     }
 }

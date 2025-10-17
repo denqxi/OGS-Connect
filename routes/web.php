@@ -220,6 +220,7 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
     Route::post('/api/dashboard-filtered-data', [DashboardController::class, 'getFilteredDashboardData'])->name('api.dashboard-filtered-data');
     Route::get('/api/dashboard-weekly-trends', [DashboardController::class, 'getWeeklyTrendsData'])->name('api.dashboard-weekly-trends');
     Route::post('/api/clear-old-history', [DashboardController::class, 'clearOldHistory'])->name('api.clear-old-history');
+    Route::get('/api/tutor-performance-report', [DashboardController::class, 'getTutorPerformanceReport'])->name('api.tutor-performance-report');
 });
 
 // Supervisor-only routes - require supervisor authentication

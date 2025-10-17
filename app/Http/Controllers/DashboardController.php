@@ -7,17 +7,45 @@ use App\Models\TutorAssignment;
 use App\Models\Tutor;
 use App\Models\Supervisor;
 use App\Models\ScheduleHistory;
+use App\Models\AuditLog;
+use App\Services\TutorAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
+    protected $tutorAssignmentService;
+
+    public function __construct(TutorAssignmentService $tutorAssignmentService)
+    {
+        $this->tutorAssignmentService = $tutorAssignmentService;
+    }
+
     /**
      * Display the dashboard with real data
      */
     public function index()
     {
+        // Log dashboard access
+        if (Auth::guard('supervisor')->check()) {
+            $user = Auth::guard('supervisor')->user();
+            AuditLog::logEvent(
+                'dashboard_access',
+                'supervisor',
+                $user->supID,
+                $user->semail,
+                $user->sfname . ' ' . $user->slname,
+                'Dashboard Access',
+                "Supervisor {$user->supID} ({$user->sfname} {$user->slname}) accessed the dashboard",
+                null,
+                'low',
+                false
+            );
+        }
+        
         $stats = $this->getDashboardStats();
         
         return view('dashboard.dashboard', compact('stats'));
@@ -56,6 +84,9 @@ class DashboardController extends Controller
             // Tutor statistics
             'active_tutors' => $this->getActiveTutorsCount(),
             'tutor_utilization' => $this->getTutorUtilization($currentWeek),
+            
+            // Tutor Performance Verification
+            'tutor_performance' => $this->getTutorPerformanceData(),
             
             // Schedule status breakdown
             'schedule_status_breakdown' => $this->getScheduleStatusBreakdown($currentWeek),
@@ -464,5 +495,71 @@ class DashboardController extends Controller
         return DailyData::whereBetween('date', [$startDate, $endDate])
                         ->where('assigned_tutors', 0)
                         ->count();
+    }
+
+    /**
+     * Get tutor performance verification data
+     * Shows reliable vs unreliable tutors with detailed statistics
+     */
+    private function getTutorPerformanceData()
+    {
+        try {
+            $performanceReport = $this->tutorAssignmentService->generateTutorPerformanceReport(3);
+            
+            // Get top 5 most reliable and most unreliable tutors for dashboard display
+            $topReliable = array_slice($performanceReport['reliable_tutors'], 0, 5);
+            $topUnreliable = array_slice($performanceReport['unreliable_tutors'], 0, 5);
+            
+            return [
+                'summary' => $performanceReport['summary'],
+                'top_reliable_tutors' => $topReliable,
+                'top_unreliable_tutors' => $topUnreliable,
+                'new_tutors_count' => count($performanceReport['new_tutors']),
+                'threshold_settings' => $performanceReport['threshold_settings'],
+                'last_updated' => now()->format('Y-m-d H:i:s')
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error generating tutor performance data: ' . $e->getMessage());
+            
+            // Return default data if error occurs
+            return [
+                'summary' => [
+                    'total_active_tutors' => 0,
+                    'reliable_tutors_count' => 0,
+                    'unreliable_tutors_count' => 0,
+                    'new_tutors_count' => 0,
+                    'reliable_percentage' => 0,
+                    'unreliable_percentage' => 0
+                ],
+                'top_reliable_tutors' => [],
+                'top_unreliable_tutors' => [],
+                'new_tutors_count' => 0,
+                'threshold_settings' => [],
+                'last_updated' => now()->format('Y-m-d H:i:s'),
+                'error' => 'Failed to load performance data'
+            ];
+        }
+    }
+
+    /**
+     * API endpoint to get detailed tutor performance report
+     */
+    public function getTutorPerformanceReport(Request $request)
+    {
+        $months = $request->get('months', 3);
+        
+        try {
+            $performanceReport = $this->tutorAssignmentService->generateTutorPerformanceReport($months);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $performanceReport
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to generate performance report: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
