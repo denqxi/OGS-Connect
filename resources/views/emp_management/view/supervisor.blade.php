@@ -152,27 +152,31 @@
                         <div class="flex flex-wrap gap-4">
                             @if($supervisor->status === 'active')
                                 <button class="px-4 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors text-sm font-medium"
-                                        onclick="toggleSupervisorStatus('{{ $supervisor->supID }}', 'inactive')" title="Deactivate">
+                                        onclick="toggleSupervisorStatus('{{ $supervisor->supID }}', 'inactive')" 
+                                        title="Deactivate supervisor - will remove access and permissions">
                                     <i class="fas fa-user-times mr-2"></i>
                                     Deactivate Supervisor
                                 </button>
                             @else
                                 <button class="px-4 py-2 bg-green-100 text-green-600 rounded-md hover:bg-green-200 transition-colors text-sm font-medium"
-                                        onclick="toggleSupervisorStatus('{{ $supervisor->supID }}', 'active')" title="Activate">
+                                        onclick="toggleSupervisorStatus('{{ $supervisor->supID }}', 'active')" 
+                                        title="Activate supervisor - will restore access and permissions">
                                     <i class="fas fa-user-check mr-2"></i>
                                     Activate Supervisor
                                 </button>
                             @endif
                             
                             <a href="mailto:{{ $supervisor->semail }}" 
-                               class="px-4 py-2 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium">
+                               class="px-4 py-2 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium"
+                               title="Send email to supervisor">
                                 <i class="fas fa-envelope mr-2"></i>
                                 Send Email
                             </a>
                             
                             @if($supervisor->sconNum)
                                 <a href="tel:{{ $supervisor->sconNum }}" 
-                                   class="px-4 py-2 bg-green-100 text-green-600 rounded-md hover:bg-green-200 transition-colors text-sm font-medium">
+                                   class="px-4 py-2 bg-green-100 text-green-600 rounded-md hover:bg-green-200 transition-colors text-sm font-medium"
+                                   title="Call supervisor">
                                     <i class="fas fa-phone mr-2"></i>
                                     Call
                                 </a>

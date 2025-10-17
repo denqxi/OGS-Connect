@@ -91,31 +91,6 @@
         </div>
     </div>
 
-    <hr class="border-gray-200 dark:border-gray-700">
-
-    <!-- Section 3: Authentication Questions -->
-    <h3 class="text-lg md:text-xl font-semibold text-gray-700 dark:text-gray-200">Authentication Questions</h3>
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 md:p-6 space-y-4 border border-gray-200 dark:border-gray-700">
-
-        <p class="text-sm text-gray-500 dark:text-gray-400">These questions are used to verify your identity when you need to recover your account or reset your password. Please choose questions and answers that only you would know.</p>
-
-        <div id="securityQuestionsContainer">
-            <!-- Security questions will be dynamically loaded here -->
-            <div class="text-center py-8">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto"></div>
-                <p class="text-gray-500 dark:text-gray-400 mt-2">Loading security questions...</p>
-            </div>
-        </div>
-
-        <!-- Update Security Questions Button -->
-        <div class="flex justify-center md:justify-end">
-            <button id="updateSecurityQuestionsBtn"
-                class="bg-gray-700 dark:bg-gray-600 text-white font-semibold px-6 py-2 rounded-full hover:bg-gray-800 dark:hover:bg-gray-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                Update Security Questions
-            </button>
-        </div>
-    </div>
-
 </div>
 
 <script src="{{ asset('js/tutor-account.js') }}"></script>

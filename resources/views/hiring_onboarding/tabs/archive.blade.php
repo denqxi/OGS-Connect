@@ -41,7 +41,7 @@
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
             <!-- Record 1 -->
-            <tr class="hover:bg-gray-50">
+            <tr class="hover:bg-gray-50 bg-red-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-09-27 09:15</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Michael Reyes</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09181234567</td>
@@ -53,14 +53,14 @@
                     </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                    <button class="w-8 h-8 bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors">
+                    <button class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors">
                         <i class="fas fa-eye text-xs"></i>
                     </button>
                 </td>
             </tr>
 
             <!-- Record 2 -->
-            <tr class="hover:bg-gray-50">
+            <tr class="hover:bg-gray-50 bg-red-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-09-27 10:45</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Angela Cruz</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09981239876</td>
@@ -72,7 +72,7 @@
                     </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                    <button class="w-8 h-8 bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors">
+                    <button class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors">
                         <i class="fas fa-eye text-xs"></i>
                     </button>
                 </td>
@@ -87,11 +87,11 @@
         Showing 1 to 2 of 2 results
     </div>
     <div class="flex items-center space-x-2">
-        <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
+        <button class="px-3 py-1 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
             <i class="fas fa-chevron-left"></i>
         </button>
         <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">1</button>
-        <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
+        <button class="px-3 py-1 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
             <i class="fas fa-chevron-right"></i>
         </button>
     </div>

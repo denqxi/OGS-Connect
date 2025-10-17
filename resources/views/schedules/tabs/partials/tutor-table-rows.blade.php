@@ -29,12 +29,14 @@
     <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
         @if($tutor->status === 'active')
             <button class="px-3 py-1 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors text-xs font-medium"
-                    onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'inactive')">
+                    onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'inactive')"
+                    title="Deactivate tutor - will remove from class assignments">
                 Deactivate
             </button>
         @else
             <button class="px-3 py-1 bg-green-100 text-green-600 rounded-md hover:bg-green-200 transition-colors text-xs font-medium"
-                    onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'active')">
+                    onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'active')"
+                    title="Activate tutor - will make available for class assignments">
                 Activate
             </button>
         @endif

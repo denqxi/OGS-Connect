@@ -116,18 +116,20 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                     <div class="flex space-x-2">
                         <button onclick="openEmployeeModal('tutor', '{{ $tutor->tutorID }}')" 
-                                class="w-8 h-8 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 inline-flex items-center justify-center transition-colors"
-                                title="View Details">
-                            <i class="fas fa-search text-xs"></i>
+                                class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 inline-flex items-center justify-center transition-colors"
+                                title="View detailed tutor information">
+                            <i class="fas fa-eye text-xs"></i>
                         </button>
                         @if($tutor->status === 'active')
                             <button class="px-3 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors text-xs font-medium"
-                                    onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'inactive')" title="Deactivate">
+                                    onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'inactive')" 
+                                    title="Deactivate tutor - will remove from class assignments">
                                 Deactivate
                             </button>
                         @else
                             <button class="px-3 py-1 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors text-xs font-medium"
-                                    onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'active')" title="Activate">
+                                    onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'active')" 
+                                    title="Activate tutor - will make available for class assignments">
                                 Activate
                             </button>
                         @endif
@@ -389,7 +391,7 @@
     function showNotification(message, type) {
         // Create notification element
         const notification = document.createElement('div');
-        notification.className = `fixed bottom-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg text-white font-medium transition-all duration-300 transform translate-x-full opacity-0 ${
+        notification.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg text-white font-medium transition-all duration-300 transform translate-x-full opacity-0 ${
             type === 'success' ? 'bg-green-500' : 'bg-red-500'
         }`;
         

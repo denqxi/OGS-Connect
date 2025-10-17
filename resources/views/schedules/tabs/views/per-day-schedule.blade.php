@@ -56,7 +56,7 @@
             class="inline-flex items-center space-x-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium 
                     hover:bg-gray-200 hover:text-gray-900 transform transition duration-200 hover:scale-105 border border-gray-300">
             <i class="fas fa-arrow-left text-xs"></i>
-            <span>Back to Class Scheduling</span>
+            <span>Back</span>
         </a>
     </div>
 
@@ -74,20 +74,20 @@
 
             <!-- Auto-Assign Button for this specific date -->
             @if($isFinalized)
-                <button class="flex items-center space-x-2 bg-gray-400 text-white px-4 py-2 rounded-full text-sm font-medium cursor-not-allowed opacity-60" disabled>
-                    <i class="fas fa-lock"></i>
+                <button class="inline-flex items-center space-x-2 px-3 py-2 bg-gray-400 text-white rounded-lg text-sm font-medium cursor-not-allowed border border-gray-300 opacity-60" disabled>
+                    <i class="fas fa-lock text-xs"></i>
                     <span>Schedule Locked</span>
                 </button>
             @elseif(!$scheduleOwnedByCurrentSupervisor)
-                <button class="flex items-center space-x-2 bg-gray-400 text-white px-4 py-2 rounded-full text-sm font-medium cursor-not-allowed opacity-60" disabled>
-                    <i class="fas fa-user-lock"></i>
+                <button class="inline-flex items-center space-x-2 px-3 py-2 bg-gray-400 text-white rounded-lg text-sm font-medium cursor-not-allowed border border-gray-300 opacity-60" disabled>
+                    <i class="fas fa-user-lock text-xs"></i>
                     <span>Owned by Another Supervisor</span>
                 </button>
             @else
                 <button onclick="autoAssignForThisDay('{{ $date }}')"
-                        class="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-full text-sm font-medium 
-                                hover:bg-green-700 transform transition duration-200 hover:scale-105">
-                    <i class="fas fa-magic"></i>
+                        class="inline-flex items-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium 
+                                hover:bg-green-700 transform transition duration-200 hover:scale-105 border border-green-300">
+                    <i class="fas fa-magic text-xs"></i>
                     <span>Auto Assign All</span>
                 </button>
             @endif
@@ -95,18 +95,18 @@
             <!-- Tentative Excel Export Button -->
             <button
                 onclick="exportSchedule('tentative', '{{ $date }}')"
-                class="flex items-center space-x-2 bg-[#0E335D] text-white px-4 py-2 rounded-full text-sm font-medium 
-                        hover:bg-[#184679] transform transition duration-200 hover:scale-105">
-                <i class="fas fa-file-excel"></i>
+                class="inline-flex items-center space-x-2 px-3 py-2 bg-[#0E335D] text-white rounded-lg text-sm font-medium 
+                        hover:bg-[#184679] transform transition duration-200 hover:scale-105 border border-[#0E335D]">
+                <i class="fas fa-file-excel text-xs"></i>
                 <span>Tentative Excel</span>
             </button>
 
             <!-- Final Excel Export Button -->
             <button
                 onclick="exportSchedule('final', '{{ $date }}')"
-                class="flex items-center space-x-2 bg-[#0E335D] text-white px-4 py-2 rounded-full text-sm font-medium 
-                        hover:bg-[#184679] transform transition duration-200 hover:scale-105">
-                <i class="fas fa-file-excel"></i>
+                class="inline-flex items-center space-x-2 px-3 py-2 bg-[#0E335D] text-white rounded-lg text-sm font-medium 
+                        hover:bg-[#184679] transform transition duration-200 hover:scale-105 border border-[#0E335D]">
+                <i class="fas fa-file-excel text-xs"></i>
                 <span>Final Excel</span>
             </button>
         </div>
@@ -422,9 +422,11 @@
             </div>
         @else
             <button onclick="saveScheduleAs('final', '{{ $date }}')"
-                class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-full font-medium 
-                        transform transition duration-200 hover:scale-105">
-                Save as Final
+                class="inline-flex items-center space-x-2 px-3 py-2 bg-green-500 text-white rounded-lg text-sm font-medium 
+                        hover:bg-green-600 transform transition duration-200 hover:scale-105 border border-green-300"
+                title="Finalize this schedule - cannot be modified after saving">
+                <i class="fas fa-save text-xs"></i>
+                <span>Save as Final</span>
             </button>
         @endif
     </div>
@@ -583,6 +585,124 @@
     </div>
 </div>
 
+<!-- Tutor Cancellation Reason Modal -->
+<div id="tutorCancellationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] hidden">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
+        <!-- Header -->
+        <div class="flex justify-between items-center bg-red-500 text-white px-4 py-3 rounded-t-lg">
+            <h2 class="text-lg font-bold">Remove Tutor Assignment</h2>
+            <button id="closeTutorCancellationModal" class="text-white font-bold text-xl">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6">
+            <div class="flex items-center mb-4">
+                <div class="flex-shrink-0">
+                    <svg class="h-8 w-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-lg font-medium text-gray-900">Confirm Tutor Removal</h3>
+                    <p class="text-sm text-gray-500 mt-1">
+                        You are about to remove <strong id="tutorNameToRemove">Tutor Name</strong> from <strong id="classNameToRemove">Class Name</strong>.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label for="tutorCancellationReason" class="block text-sm font-medium text-gray-700 mb-2">
+                    Reason for removal <span class="text-red-500">*</span>
+                </label>
+                <textarea 
+                    id="tutorCancellationReason" 
+                    rows="4" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                    placeholder="Please provide a reason for removing this tutor from the assignment..."
+                    required></textarea>
+                <div id="tutorCancellationReasonError" class="text-red-500 text-sm mt-1 hidden">
+                    Please provide a reason for the removal.
+                </div>
+            </div>
+
+            <div class="bg-yellow-50 rounded-lg p-3 mb-4">
+                <p class="text-sm text-yellow-800">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    This action will permanently remove the tutor from this class assignment. This cannot be undone.
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex justify-end items-center space-x-3 px-6 py-4 border-t">
+            <button id="cancelTutorCancellation"
+                class="px-4 py-2 rounded-md border border-gray-300 text-gray-600 
+                   hover:bg-gray-200 transform transition duration-200 hover:scale-105">
+                Cancel
+            </button>
+
+            <button id="confirmTutorCancellation"
+                class="px-4 py-2 rounded-md bg-red-500 text-white 
+                   hover:bg-red-600 transform transition duration-200 hover:scale-105">
+                <i class="fas fa-trash mr-2"></i>
+                Remove Tutor
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Cancellation Reason View Modal -->
+<div id="cancellationReasonModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] hidden">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
+        <!-- Header -->
+        <div class="flex justify-between items-center bg-blue-500 text-white px-4 py-3 rounded-t-lg">
+            <h2 class="text-lg font-bold">Cancellation Details</h2>
+            <button id="closeCancellationReasonModal" class="text-white font-bold text-xl">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tutor:</label>
+                    <p id="cancelledTutorName" class="text-lg font-semibold text-gray-900">-</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Role:</label>
+                    <p id="cancelledTutorRole" class="text-sm text-gray-600">-</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cancelled At:</label>
+                    <p id="cancelledAt" class="text-sm text-gray-600">-</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cancelled By:</label>
+                    <p id="cancelledBy" class="text-sm text-gray-600">-</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Reason for Cancellation:</label>
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                        <p id="cancellationReasonText" class="text-sm text-gray-800 whitespace-pre-wrap">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex justify-end items-center space-x-3 px-6 py-4 border-t">
+            <button id="closeCancellationReasonModalBtn"
+                class="px-4 py-2 rounded-md bg-blue-500 text-white 
+                   hover:bg-blue-600 transform transition duration-200 hover:scale-105">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Edit Schedule Modal -->
 <div id="editScheduleModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-lg shadow-lg w-full max-w-lg">
@@ -664,6 +784,18 @@
             </div>
 
             <hr class="my-3">
+
+            <!-- Cancelled Tutors Section -->
+            <div id="cancelledTutorsSection" class="hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-semibold text-red-600">Cancelled Tutors:</span>
+                    <span class="text-xs text-gray-500">Click to see cancellation reason</span>
+                </div>
+                <div id="cancelledTutorsGrid" class="space-y-2 max-h-32 overflow-y-auto">
+                    <!-- Cancelled tutors will be inserted here -->
+                </div>
+                <hr class="my-3">
+            </div>
         </div>
 
         <!-- Footer -->

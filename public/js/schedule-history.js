@@ -72,3 +72,11 @@ function exportSelectedSchedules() {
 document.addEventListener('DOMContentLoaded', function() {
     updateExportButton();
 });
+
+// Function to change rows per page
+function changeRowsPerPage(perPage) {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('per_page', perPage);
+    currentUrl.searchParams.delete('page'); // Reset to first page when changing per_page
+    window.location.href = currentUrl.toString();
+}

@@ -46,7 +46,7 @@
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
             <!-- Single Record -->
-            <tr class="hover:bg-gray-50">
+            <tr class="hover:bg-gray-50 bg-purple-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-09-27 14:30</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Jane Smith</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09123456789</td>
@@ -61,11 +61,13 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                     <!-- Edit Button -->
-                    <button class="w-8 h-8 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 transition-colors">
+                    <button class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                            title="Edit onboarding details">
                         <i class="fas fa-edit text-xs"></i>
                     </button>
                     <!-- View Button -->
-                    <button class="w-8 h-8 bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors">
+                    <button class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                            title="View onboarding details">
                         <i class="fas fa-eye text-xs"></i>
                     </button>
                 </td>
@@ -80,11 +82,11 @@
         Showing 1 of 1 result
     </div>
     <div class="flex items-center space-x-2">
-        <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
+        <button class="px-3 py-1 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
             <i class="fas fa-chevron-left"></i>
         </button>
         <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">1</button>
-        <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
+        <button class="px-3 py-1 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
             <i class="fas fa-chevron-right"></i>
         </button>
     </div>

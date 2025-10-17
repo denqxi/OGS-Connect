@@ -46,7 +46,7 @@
         </thead>
 <tbody class="bg-white divide-y divide-gray-200">
     <!-- Row 1 -->
-    <tr class="hover:bg-gray-50">
+    <tr class="hover:bg-gray-50 bg-green-50">
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-09-27 10:45</td>
         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Josh Daniel Collins</td>
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09477789871</td>
@@ -60,17 +60,19 @@
             </span>
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-            <button class="w-8 h-8 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 transition-colors">
+            <button class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                    title="Edit applicant information">
                 <i class="fas fa-edit text-xs"></i>
             </button>
-            <button class="w-8 h-8 bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors">
+            <button class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                    title="View applicant details">
                 <i class="fas fa-eye text-xs"></i>
             </button>
         </td>
     </tr>
 
     <!-- Row 2 -->
-    <tr class="hover:bg-gray-50">
+    <tr class="hover:bg-gray-50 bg-yellow-50">
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-09-27 11:15</td>
         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Nidal Kendrick</td>
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09789998767</td>
@@ -84,17 +86,20 @@
             </span>
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-            <button class="w-8 h-8 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 transition-colors">
+            <button class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                    title="Edit applicant information">
                 <i class="fas fa-edit text-xs"></i>
             </button>
-            <button class="w-8 h-8 bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors">
+            <button class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                    title="View applicant details">
                 <i class="fas fa-eye text-xs"></i>
             </button>
         </td>
     </tr>
 
     <!-- Row 3 -->
-    <tr class="hover:bg-gray-50">
+        <!-- Row 3 -->
+    <tr class="hover:bg-gray-50 bg-blue-50">
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-09-27 13:00</td>
         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Kageyam Lazola</td>
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09775456351</td>
@@ -108,10 +113,12 @@
             </span>
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-            <button class="w-8 h-8 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 transition-colors">
+            <button class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                    title="Edit applicant information">
                 <i class="fas fa-edit text-xs"></i>
             </button>
-            <button class="w-8 h-8 bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors">
+            <button class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                    title="View applicant details">
                 <i class="fas fa-eye text-xs"></i>
             </button>
         </td>

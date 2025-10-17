@@ -51,7 +51,7 @@
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-gray-50 bg-yellow-50">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-09-27 09:45 AM</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Josh Daniel Collins</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09477789871</td>
@@ -65,19 +65,21 @@
                         <div class="flex items-center space-x-2">
                             <!-- View Button -->
                             <a href="{{ route('hiring_onboarding.index', ['view' => 'details']) }}"
-                                class="w-8 h-8 flex items-center justify-center bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors">
+                                class="w-8 h-8 flex items-center justify-center text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                                title="View applicant details">
                                 <i class="fas fa-eye text-xs"></i>
                             </a>
                             <!-- Archive Button -->
                             <button
-                                class="w-8 h-8 bg-[#F29090] text-[#7A1F1F] rounded hover:bg-[#E67878] transition-colors">
+                                class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                                title="Archive this applicant">
                                 <i class="fas fa-archive text-xs"></i>
                             </button>
                         </div>
                     </td>
 
                 </tr>
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-gray-50 bg-orange-50">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-09-27 10:10 AM</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Nidal Kendrick</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09789998767</td>
@@ -90,16 +92,18 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                         <!-- View Button -->
-                        <button class="w-8 h-8 bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors">
+                        <button class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                                title="View applicant details">
                             <i class="fas fa-eye text-xs"></i>
                         </button>
                         <!-- Archive Button -->
-                        <button class="w-8 h-8 bg-[#F29090] text-[#7A1F1F] rounded hover:bg-[#E67878] transition-colors">
+                        <button class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                                title="Archive this applicant">
                             <i class="fas fa-archive text-xs"></i>
                         </button>
                     </td>
                 </tr>
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-gray-50 bg-purple-50">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-09-27 11:00 AM</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Kageyam Lazola</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09775456351</td>
@@ -112,16 +116,18 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                         <!-- View Button -->
-                        <button class="w-8 h-8 bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors">
+                        <button class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                                title="View applicant details">
                             <i class="fas fa-eye text-xs"></i>
                         </button>
                         <!-- Archive Button -->
-                        <button class="w-8 h-8 bg-[#F29090] text-[#7A1F1F] rounded hover:bg-[#E67878] transition-colors">
+                        <button class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                                title="Archive this applicant">
                             <i class="fas fa-archive text-xs"></i>
                         </button>
                     </td>
                 </tr>
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-gray-50 bg-yellow-50">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-09-27 11:45 AM</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">John Doe</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09886536455</td>
@@ -133,11 +139,13 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                         <!-- View Button -->
-                        <button class="w-8 h-8 bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors">
+                        <button class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                                title="View applicant details">
                             <i class="fas fa-eye text-xs"></i>
                         </button>
                         <!-- Archive Button -->
-                        <button class="w-8 h-8 bg-[#F29090] text-[#7A1F1F] rounded hover:bg-[#E67878] transition-colors">
+                        <button class="w-8 h-8 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                                title="Archive this applicant">
                             <i class="fas fa-archive text-xs"></i>
                         </button>
                     </td>

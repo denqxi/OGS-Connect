@@ -55,7 +55,7 @@
                             <div class="flex flex-col items-center">
                                 <label class="text-xs text-gray-500 mb-1">Start</label>
                         <select id="startTime" 
-                                class="border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-600 bg-white w-20"
+                                class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white"
                                 onchange="updateTimeRange(); updateEndTimeOptions();">
                             <option value="">--</option>
                             @for($hour = 7; $hour <= 15; $hour++)
@@ -74,7 +74,7 @@
                             <div class="flex flex-col items-center">
                                 <label class="text-xs text-gray-500 mb-1">End</label>
                         <select id="endTime" 
-                                class="border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-600 bg-white w-20"
+                                class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white"
                                 onchange="updateTimeRange()">
                             <option value="">--</option>
                             @for($hour = 7; $hour <= 15; $hour++)
@@ -94,6 +94,8 @@
                         
                         <span class="text-sm text-gray-400">+</span>
                 
+                        <div class="flex flex-col items-center">
+                            <label class="text-xs text-gray-500 mb-1">Day</label>
                 <select name="day" id="filterDay" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="handleTutorFilterChange('day')">
                     <option value="">All Days</option>
                     @if(isset($availableDays) && $availableDays->count() > 0)
@@ -134,6 +136,7 @@
                         <option value="fri" {{ request('day') == 'fri' ? 'selected' : '' }}>Friday</option>
                     @endif
                 </select>
+                        </div>
                     </div>
                 </div>
 
@@ -160,7 +163,7 @@
 </div>
 
 <!-- Tutor Table -->
-<div class="overflow-x-auto">
+<div class="overflow-x-auto mt-6">
     <table class="w-full" id="tutorTable">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -393,12 +396,14 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                     @if($tutor->status === 'active')
                         <button class="px-3 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors text-xs font-medium"
-                                onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'inactive')">
+                                onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'inactive')"
+                                title="Deactivate tutor - will remove from class assignments">
                             Deactivate
                         </button>
                     @else
                         <button class="px-3 py-1 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors text-xs font-medium"
-                                onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'active')">
+                                onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'active')"
+                                title="Activate tutor - will make available for class assignments">
                             Activate
                         </button>
                     @endif
@@ -429,8 +434,17 @@
     @include('schedules.tabs.partials.tutor-pagination', ['tutors' => $tutors])
 @else
 <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between h-16 w-full" id="paginationSection">
-    <div class="text-sm text-gray-500">
-        Showing 0 results
+    <div class="flex items-center space-x-4">
+        <div class="text-sm text-gray-500">
+            Showing 0 results
+        </div>
+        <div class="flex items-center space-x-2">
+            <span class="text-sm text-gray-600">Rows per page:</span>
+            <select onchange="changeRowsPerPage(this.value)" class="border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-600 bg-white">
+                <option value="5" {{ request('per_page', 5) == 5 ? 'selected' : '' }}>5</option>
+                <option value="10" {{ request('per_page') == 10 ? 'selected' : '' }}>10</option>
+            </select>
+        </div>
     </div>
     <div class="flex items-center justify-center space-x-2 w-[300px]">
         <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center" disabled>

@@ -62,9 +62,9 @@
     <div class="mb-4">
         <a href="{{ route('schedules.index', array_merge(request()->except(['view_date', 'search', 'school_filter']), ['tab' => 'history'])) }}"
             class="inline-flex items-center space-x-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium 
-                    hover:bg-gray-200 hover:text-gray-900 transform transition duration-200 hover:scale-105 border border-gray-300">
+                    hover:bg-gray-200 hover:text-gray-900 transform transition duration-200 hover:scale-105">
             <i class="fas fa-arrow-left text-xs"></i>
-            <span>Back to Schedule History</span>
+            <span>Back</span>
         </a>
     </div>
 
@@ -76,7 +76,7 @@
         <div class="flex items-center space-x-2">
 
             <button onclick="exportSingleSchedule('{{ $date }}')" 
-                    class="flex items-center space-x-2 bg-[#0E335D] text-white px-4 py-2 rounded-full text-sm font-medium 
+                    class="flex items-center space-x-2 bg-[#0E335D] text-white px-3 py-2 rounded-lg text-sm font-medium 
                            hover:bg-[#184679] transform transition duration-200 hover:scale-105">
                 <i class="fas fa-file-excel"></i>
                 <span>Export Excel</span>
@@ -351,7 +351,7 @@ function exportSingleSchedule(date) {
 function showNotification(message, type) {
     // Create notification element
     const notification = document.createElement('div');
-    notification.className = `fixed bottom-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg text-white font-medium transition-all duration-300 transform translate-x-full opacity-0 ${
+    notification.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg text-white font-medium transition-all duration-300 transform translate-x-full opacity-0 ${
         type === 'success' ? 'bg-green-500' : 'bg-red-500'
     }`;
     

@@ -23,8 +23,9 @@
                        class="hidden"
                        onchange="uploadExcelFile()">
                 <button onclick="document.getElementById('excelFileInput').click()"
-                        class="flex items-center space-x-2 bg-[#0E335D] text-white px-4 py-2 rounded-full text-sm font-medium 
-                              hover:bg-[#184679] transform transition duration-200 hover:scale-105">
+                        class="flex items-center space-x-2 bg-[#0E335D] text-white px-3 py-2 rounded-lg text-sm font-medium 
+                              hover:bg-[#184679] transform transition duration-200 hover:scale-105 border border-[#0E335D]"
+                        title="Upload Excel file with class schedule data">
                     <i class="fas fa-file-excel"></i>
                     <span>Upload Excel</span>
                 </button>

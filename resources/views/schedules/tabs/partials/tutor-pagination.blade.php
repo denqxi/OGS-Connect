@@ -13,8 +13,8 @@
     $currentPage = $tutors->currentPage();
     $lastPage = $tutors->lastPage();
     
-    // If there are too many pages (more than 7), use compact format
-    $useCompactPagination = $lastPage > 7;
+    // Always use compact format for consistent UI
+    $useCompactPagination = true;
     
     if ($useCompactPagination) {
         // For compact pagination, we'll show: < current page >
@@ -38,12 +38,21 @@
 
 @if($tutors->hasPages())
 <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between h-16 w-full" id="paginationSection">
-    <div class="text-sm text-gray-500">
-        @if($tutors->total() > 0)
-            Showing {{ $tutors->firstItem() }} to {{ $tutors->lastItem() }} of {{ $tutors->total() }} results
-        @else
-            Showing 0 results
-        @endif
+    <div class="flex items-center space-x-4">
+        <div class="text-sm text-gray-500">
+            @if($tutors->total() > 0)
+                Showing {{ $tutors->firstItem() }} to {{ $tutors->lastItem() }} of {{ $tutors->total() }} results
+            @else
+                Showing 0 results
+            @endif
+        </div>
+        <div class="flex items-center space-x-2">
+            <span class="text-sm text-gray-600">Rows per page:</span>
+            <select onchange="changeRowsPerPage(this.value)" class="border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-600 bg-white">
+                <option value="5" {{ request('per_page', 5) == 5 ? 'selected' : '' }}>5</option>
+                <option value="10" {{ request('per_page') == 10 ? 'selected' : '' }}>10</option>
+            </select>
+        </div>
     </div>
     <div class="flex items-center justify-center space-x-2 w-[300px]">
         {{-- Previous Button --}}

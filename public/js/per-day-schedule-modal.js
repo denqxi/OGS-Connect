@@ -1,4 +1,10 @@
 // Per Day Schedule Modal and Functionality
+// Global variables for tutor management
+let tutors = [];
+let backupTutor = null;
+let currentClassId = null;
+let currentClassInfo = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Per-day schedule modal script loaded');
     
@@ -31,10 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalRequired = document.getElementById("modalRequired");
 
     // Tutor grid & dropdown
-    let tutors = [];
-    let backupTutor = null; // Store selected backup tutor
-    let currentClassId = null; // Store current class ID for saving changes
-    let currentClassInfo = null; // Store current class information (date, day, time_slot)
     const tutorGrid = document.getElementById("tutorGrid");
     const addTutorSelect = document.getElementById("addTutorSelect");
     const backupTutorSelect = document.getElementById("backupTutorSelect");
@@ -179,6 +181,9 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error fetching tutors:', error);
         });
     }
+
+    // Make fetchAvailableTutors globally accessible
+    window.fetchAvailableTutors = fetchAvailableTutors;
 
     // Searchable dropdown functionality
     function selectMainTutor(tutor) {
@@ -524,24 +529,48 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function renderTutors() {
+        const tutorGrid = document.getElementById("tutorGrid");
+        const modalRequired = document.getElementById("modalRequired");
+        
+        console.log('renderTutors called');
+        console.log('tutors array:', tutors);
+        console.log('tutors length:', tutors.length);
+        
         if (tutorGrid) {
             tutorGrid.innerHTML = "";
-            const required = parseInt(modalRequired.textContent) || 0;
+            const required = parseInt(modalRequired?.textContent) || 0;
+            console.log('required tutors:', required);
+            
             if (tutors.length === 0) {
                 tutorGrid.innerHTML = '<div class="col-span-2 text-center text-gray-500 py-4">No tutors assigned</div>';
             } else {
                 // Only render tutors that are in the tutors array (main tutors), regardless of backup tutor
                 for (let i = 0; i < required; i++) {
                     const tutor = tutors[i];
+                    console.log(`Tutor ${i}:`, tutor);
                     const div = document.createElement('div');
                     if (tutor) {
-                        div.className = 'py-2 px-3 bg-green-50 border border-green-200 rounded text-green-700 text-center font-medium text-sm flex items-center justify-between';
-                        div.innerHTML = `
-                            <span>${tutor.fullName || tutor}</span>
-                            <button class="removeTutorBtn ml-2 text-red-500 hover:text-red-700" data-index="${i}" title="Remove Tutor">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        `;
+                        const displayName = tutor.fullName || tutor.full_name || tutor.username || tutor;
+                        console.log(`Display name for tutor ${i}:`, displayName);
+                        
+                        // Check if tutor is marked for removal
+                        if (tutor.pendingRemoval) {
+                            div.className = 'py-2 px-3 bg-red-50 border border-red-200 rounded text-red-700 text-center font-medium text-sm flex items-center justify-between opacity-75';
+                            div.innerHTML = `
+                                <span class="line-through">${displayName} (Pending Removal)</span>
+                                <button class="undoRemovalBtn ml-2 text-blue-500 hover:text-blue-700" data-index="${i}" title="Undo Removal">
+                                    <i class="fas fa-undo"></i>
+                                </button>
+                            `;
+                        } else {
+                            div.className = 'py-2 px-3 bg-green-50 border border-green-200 rounded text-green-700 text-center font-medium text-sm flex items-center justify-between';
+                            div.innerHTML = `
+                                <span>${displayName}</span>
+                                <button class="removeTutorBtn ml-2 text-red-500 hover:text-red-700" data-index="${i}" title="Remove Tutor">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            `;
+                        }
                     } else {
                         div.className = 'py-2 px-3 bg-gray-50 rounded text-gray-400 text-center text-sm';
                         div.textContent = 'Not Assigned';
@@ -552,15 +581,66 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Make renderTutors globally accessible
+    window.renderTutors = renderTutors;
+
+    // Function to render cancelled tutors
+    function renderCancelledTutors() {
+        const cancelledGrid = document.getElementById("cancelledTutorsGrid");
+        if (!cancelledGrid) return;
+        
+        const cancelledTutors = window.currentCancelledTutors || [];
+        
+        if (cancelledTutors.length === 0) {
+            cancelledGrid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-4 text-sm">No cancelled tutors</div>';
+            return;
+        }
+        
+        cancelledGrid.innerHTML = '';
+        cancelledTutors.forEach((tutor, index) => {
+            const div = document.createElement('div');
+            div.className = 'py-2 px-3 bg-red-50 border border-red-200 rounded text-red-700 text-center font-medium text-sm flex items-center justify-between cursor-pointer hover:bg-red-100 transition-colors';
+            div.innerHTML = `
+                <span>${tutor.full_name}</span>
+                <button class="viewCancellationBtn text-blue-500 hover:text-blue-700" data-index="${index}" title="View Cancellation Details">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+            `;
+            cancelledGrid.appendChild(div);
+        });
+    }
+
+    // Make renderCancelledTutors globally accessible
+    window.renderCancelledTutors = renderCancelledTutors;
+
     // Remove tutor event delegation (for dynamically rendered remove buttons)
     tutorGrid?.addEventListener('click', function(e) {
-        const btn = e.target.closest('.removeTutorBtn');
-        if (btn) {
-            const index = parseInt(btn.getAttribute('data-index'));
-            if (!isNaN(index)) {
-                tutors.splice(index, 1);
+        const removeBtn = e.target.closest('.removeTutorBtn');
+        const undoBtn = e.target.closest('.undoRemovalBtn');
+        
+        if (removeBtn) {
+            const index = parseInt(removeBtn.getAttribute('data-index'));
+            if (!isNaN(index) && tutors[index]) {
+                const tutorName = tutors[index].full_name || tutors[index].fullName || tutors[index].username || tutors[index];
+                const className = document.getElementById('modalClass')?.textContent || 'this class';
+                
+                // Show cancellation modal instead of immediately removing
+                showTutorCancellationModal(tutorName, className, index);
+            }
+        }
+        
+        if (undoBtn) {
+            const index = parseInt(undoBtn.getAttribute('data-index'));
+            if (!isNaN(index) && tutors[index] && tutors[index].pendingRemoval) {
+                // Remove the pending removal flag
+                delete tutors[index].pendingRemoval;
+                delete tutors[index].cancellationReason;
+                
+                // Re-render tutors
                 renderTutors();
-                fetchAvailableTutors();
+                
+                const tutorName = tutors[index].full_name || tutors[index].fullName || tutors[index].username || tutors[index];
+                showNotification(`${tutorName} removal cancelled.`, 'info');
             }
         }
     });
@@ -710,9 +790,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!backupTutor) return true;
                     return tutor.username !== backupTutor.username;
                 });
+                
+                // Store cancelled tutors
+                window.currentCancelledTutors = data.cancelled_tutors || [];
+                
                 console.log('Loaded main tutors:', tutors);
                 console.log('Loaded backup tutor:', backupTutor);
+                console.log('Loaded cancelled tutors:', window.currentCancelledTutors);
                 renderTutors();
+                renderCancelledTutors();
                 fetchAvailableTutors();
                 // Set backup tutor display after a short delay to ensure options are loaded
                 if (backupTutor) {
@@ -840,8 +926,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Close confirmation modal immediately when save starts
         hideConfirmationModal();
 
+        // Separate tutors into those to keep and those to remove
+        const tutorsToRemove = tutors.filter(tutor => tutor.pendingRemoval);
+        const tutorsToKeep = tutors.filter(tutor => !tutor.pendingRemoval);
+
         // Convert tutor objects to usernames for the API
-        const tutorUsernames = tutors.map(tutor => {
+        const tutorUsernames = tutorsToKeep.map(tutor => {
             if (typeof tutor === 'object' && tutor.username) {
                 return tutor.username;
             }
@@ -856,6 +946,12 @@ document.addEventListener('DOMContentLoaded', function() {
             full_name: backupTutor.fullName
         } : null;
 
+        // Prepare removal data
+        const removalData = tutorsToRemove.map(tutor => ({
+            tutor_username: tutor.username,
+            cancellation_reason: tutor.cancellationReason
+        }));
+
         fetch('/api/save-tutor-assignments', {
             method: 'POST',
             headers: {
@@ -866,7 +962,8 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({
                 class_id: currentClassId,
                 tutors: tutorUsernames,
-                backup_tutor: backupTutorData
+                backup_tutor: backupTutorData,
+                tutors_to_remove: removalData
             })
         })
         .then(response => {
@@ -1043,3 +1140,171 @@ function performSaveScheduleAs(status, date) {
         button.disabled = false;
     });
 }
+
+// Tutor Cancellation Modal Functionality
+let tutorToRemove = null;
+let tutorRemovalIndex = null;
+
+// Function to show tutor cancellation modal
+function showTutorCancellationModal(tutorName, className, index) {
+    tutorToRemove = tutorName;
+    tutorRemovalIndex = index;
+    
+    // Update modal content
+    document.getElementById('tutorNameToRemove').textContent = tutorName;
+    document.getElementById('classNameToRemove').textContent = className;
+    
+    // Clear previous reason text
+    document.getElementById('tutorCancellationReason').value = '';
+    document.getElementById('tutorCancellationReasonError').classList.add('hidden');
+    
+    // Show modal
+    document.getElementById('tutorCancellationModal').classList.remove('hidden');
+}
+
+// Function to hide tutor cancellation modal
+function hideTutorCancellationModal() {
+    document.getElementById('tutorCancellationModal').classList.add('hidden');
+    tutorToRemove = null;
+    tutorRemovalIndex = null;
+}
+
+// Event listeners for tutor cancellation modal
+document.addEventListener('DOMContentLoaded', function() {
+    const tutorCancellationModal = document.getElementById('tutorCancellationModal');
+    const closeTutorCancellationModal = document.getElementById('closeTutorCancellationModal');
+    const cancelTutorCancellation = document.getElementById('cancelTutorCancellation');
+    const confirmTutorCancellation = document.getElementById('confirmTutorCancellation');
+    const tutorCancellationReason = document.getElementById('tutorCancellationReason');
+    const tutorCancellationReasonError = document.getElementById('tutorCancellationReasonError');
+
+    // Close modal handlers
+    if (closeTutorCancellationModal) {
+        closeTutorCancellationModal.addEventListener('click', hideTutorCancellationModal);
+    }
+    
+    if (cancelTutorCancellation) {
+        cancelTutorCancellation.addEventListener('click', hideTutorCancellationModal);
+    }
+
+    // Close modal when clicking outside
+    if (tutorCancellationModal) {
+        tutorCancellationModal.addEventListener('click', function(e) {
+            if (e.target === tutorCancellationModal) {
+                hideTutorCancellationModal();
+            }
+        });
+    }
+
+    // Confirm tutor removal
+    if (confirmTutorCancellation) {
+        confirmTutorCancellation.addEventListener('click', function() {
+            const reason = tutorCancellationReason?.value?.trim();
+            
+            // Validate reason
+            if (!reason) {
+                tutorCancellationReasonError.classList.remove('hidden');
+                tutorCancellationReason.focus();
+                return;
+            }
+            
+            // Hide error if validation passes
+            tutorCancellationReasonError.classList.add('hidden');
+            
+            // Instead of making API call immediately, just mark tutor for removal
+            if (tutorRemovalIndex !== null && typeof tutorRemovalIndex === 'number') {
+                const tutorData = tutors[tutorRemovalIndex];
+                
+                // Mark tutor as pending removal with reason
+                if (tutorData) {
+                    tutorData.pendingRemoval = true;
+                    tutorData.cancellationReason = reason;
+                }
+                
+                console.log(`Marked tutor ${tutorToRemove} for removal - Reason: ${reason}`);
+                
+                // Re-render tutors to show the pending removal state
+                renderTutors();
+                
+                // Show success message
+                showNotification(`${tutorToRemove} marked for removal. Click "Save Changes" to confirm.`, 'info');
+                
+                // Hide modal
+                hideTutorCancellationModal();
+            }
+        });
+    }
+
+    // Clear error when user starts typing
+    if (tutorCancellationReason) {
+        tutorCancellationReason.addEventListener('input', function() {
+            if (this.value.trim()) {
+                tutorCancellationReasonError.classList.add('hidden');
+            }
+        });
+    }
+
+    // Cancellation Reason View Modal handlers
+    const cancellationReasonModal = document.getElementById('cancellationReasonModal');
+    const closeCancellationReasonModal = document.getElementById('closeCancellationReasonModal');
+    const closeCancellationReasonModalBtn = document.getElementById('closeCancellationReasonModalBtn');
+
+    // Event delegation for viewing cancellation details
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.viewCancellationBtn')) {
+            const btn = e.target.closest('.viewCancellationBtn');
+            const index = parseInt(btn.getAttribute('data-index'));
+            const cancelledTutors = window.currentCancelledTutors || [];
+            
+            if (!isNaN(index) && cancelledTutors[index]) {
+                showCancellationReasonModal(cancelledTutors[index]);
+            }
+        }
+    });
+
+    function showCancellationReasonModal(tutor) {
+        if (!cancellationReasonModal) return;
+        
+        // Populate modal with tutor data
+        const tutorNameEl = document.getElementById('cancelledTutorName');
+        const tutorRoleEl = document.getElementById('cancelledTutorRole');
+        const cancelledAtEl = document.getElementById('cancelledAt');
+        const cancelledByEl = document.getElementById('cancelledBy');
+        const reasonTextEl = document.getElementById('cancellationReasonText');
+        
+        if (tutorNameEl) tutorNameEl.textContent = tutor.full_name || '-';
+        if (tutorRoleEl) tutorRoleEl.textContent = tutor.role || '-';
+        if (cancelledAtEl) {
+            const cancelledAt = tutor.cancelled_at ? new Date(tutor.cancelled_at).toLocaleString() : '-';
+            cancelledAtEl.textContent = cancelledAt;
+        }
+        if (cancelledByEl) cancelledByEl.textContent = tutor.cancelled_by || '-';
+        if (reasonTextEl) reasonTextEl.textContent = tutor.cancellation_reason || 'No reason provided';
+        
+        cancellationReasonModal.classList.remove('hidden');
+    }
+
+    function hideCancellationReasonModal() {
+        if (cancellationReasonModal) {
+            cancellationReasonModal.classList.add('hidden');
+        }
+    }
+
+    // Close modal event listeners
+    if (closeCancellationReasonModal) {
+        closeCancellationReasonModal.addEventListener('click', hideCancellationReasonModal);
+    }
+    
+    if (closeCancellationReasonModalBtn) {
+        closeCancellationReasonModalBtn.addEventListener('click', hideCancellationReasonModal);
+    }
+
+    // Close modal when clicking outside
+    if (cancellationReasonModal) {
+        cancellationReasonModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideCancellationReasonModal();
+            }
+        });
+    }
+});

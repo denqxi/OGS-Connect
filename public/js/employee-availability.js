@@ -19,6 +19,9 @@ function handleTutorFilterChange(changed) {
             const timeRange = startTime + '-' + endTime;
             timeSlotInput.value = timeRange;
         }
+    } else if (changed === 'per_page') {
+        // For per_page changes, just submit the form without clearing other filters
+        // No need to clear anything
     }
     
     // Update clear button visibility
@@ -26,6 +29,14 @@ function handleTutorFilterChange(changed) {
     
     // Submit the form to apply filters
     document.getElementById('tutorFilterForm').submit();
+}
+
+// Function to change rows per page
+function changeRowsPerPage(perPage) {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('per_page', perPage);
+    currentUrl.searchParams.delete('page'); // Reset to first page when changing per_page
+    window.location.href = currentUrl.toString();
 }
 
 // Debounce timer for time range updates

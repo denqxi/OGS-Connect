@@ -13,8 +13,8 @@
             <button type="button"
                 id="exportButton"
                 onclick="exportSelectedSchedules()"
-                class="flex items-center space-x-2 bg-[#0E335D] text-white px-4 py-2 rounded-full text-sm font-medium 
-                        hover:bg-[#184679] transform transition duration-200 hover:scale-105 opacity-50 cursor-not-allowed"
+                class="flex items-center space-x-2 bg-[#0E335D] text-white px-3 py-2 rounded-lg text-sm font-medium 
+                        hover:bg-[#184679] transform transition duration-200 hover:scale-105 opacity-50 cursor-not-allowed border border-[#0E335D]"
                 disabled>
                 <i class="fas fa-file-export"></i>
                 <span id="exportButtonText">Export File (0 selected)</span>
@@ -39,7 +39,7 @@
               focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
               focus:ring-0 focus:shadow-xl">
             </div>
-            <select name="date" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
+            <select name="date" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
                 <option value="">Select Date</option>
                 @if(isset($availableDates))
                     @foreach($availableDates as $availableDate)
@@ -49,7 +49,7 @@
                     @endforeach
                 @endif
             </select>
-            <select name="day" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
+            <select name="day" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
                 <option value="">Select Day</option>
                 @if(isset($availableDays))
                     @foreach($availableDays as $availableDay)
@@ -61,17 +61,49 @@
             </select>
         </div>
 
-        <!-- Right Group: Search Button -->
+        <!-- Right Group: Search + Clear Buttons -->
         <div class="flex items-center space-x-2">
             <button type="submit"
-                class="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium 
-                        hover:bg-blue-700 transform transition duration-200 hover:scale-105">
+                class="flex items-center space-x-2 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium 
+                        hover:bg-blue-700 transform transition duration-200 hover:scale-105 border border-blue-600">
                 <i class="fas fa-search"></i>
                 <span>Search</span>
             </button>
+            <a href="{{ route('schedules.index', ['tab' => 'history']) }}"
+               class="flex items-center space-x-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium 
+                      hover:bg-gray-200 transform transition duration-200 hover:scale-105 border border-gray-300">
+                <i class="fas fa-times"></i>
+                <span>Clear</span>
+            </a>
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form[action="{{ route('schedules.index') }}"]');
+    const dateSelect = form?.querySelector('select[name="date"]');
+    const daySelect = form?.querySelector('select[name="day"]');
+
+    if (dateSelect && daySelect && form) {
+        dateSelect.addEventListener('change', function() {
+            if (this.value) {
+                // If date selected, clear day
+                daySelect.value = '';
+            }
+            form.submit();
+        });
+
+        daySelect.addEventListener('change', function() {
+            if (this.value) {
+                // If day selected, clear date
+                dateSelect.value = '';
+            }
+            form.submit();
+        });
+    }
+});
+</script>
 
 
 <!-- Schedule History Table -->
@@ -123,9 +155,9 @@
                     </td>
                     <td class="px-6 py-4 text-sm">
                         <a href="{{ route('schedules.index', ['tab' => 'history', 'view_date' => \Carbon\Carbon::parse($history->date)->format('Y-m-d')]) }}"
-                            class="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
+                            class="w-8 h-8 flex items-center justify-center rounded hover:bg-blue-200"
                             title="View Schedule">
-                            <i class="fas fa-search text-xs"></i>
+                            <i class="fas fa-eye text-xs"></i>
                         </a>
                     </td>
                 </tr>
@@ -146,8 +178,17 @@
 <!-- Pagination -->
 @if(isset($scheduleHistory) && method_exists($scheduleHistory, 'hasPages') && $scheduleHistory->hasPages())
 <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-    <div class="text-sm text-gray-500">
-        Showing {{ $scheduleHistory->count() }} of {{ $scheduleHistory->total() }} finalized schedules
+    <div class="flex items-center space-x-4">
+        <div class="text-sm text-gray-500">
+            Showing {{ $scheduleHistory->count() }} of {{ $scheduleHistory->total() }} finalized schedules
+        </div>
+        <div class="flex items-center space-x-2">
+            <span class="text-sm text-gray-600">Rows per page:</span>
+            <select onchange="changeRowsPerPage(this.value)" class="border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-600 bg-white">
+                <option value="5" {{ request('per_page', 5) == 5 ? 'selected' : '' }}>5</option>
+                <option value="10" {{ request('per_page') == 10 ? 'selected' : '' }}>10</option>
+            </select>
+        </div>
     </div>
     <div class="flex items-center space-x-2">
         @if ($scheduleHistory->onFirstPage())

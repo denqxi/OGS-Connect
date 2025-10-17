@@ -4,7 +4,8 @@
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
         <div class="flex items-center space-x-2">
-            <button id="bulkRestoreBtn" class="px-3 py-1 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors text-xs font-medium" disabled>
+            <button id="bulkRestoreBtn" class="px-3 py-1 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors text-xs font-medium" 
+                    disabled title="Restore selected archived employees">
                 Restore Selected
             </button>
         </div>
@@ -135,7 +136,8 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                         <button onclick="restoreEmployee('${employee.id}', '${employee.type}')" 
-                                class="px-3 py-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors text-xs font-medium">
+                                class="px-3 py-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors text-xs font-medium"
+                                title="Restore this employee and reactivate their account">
                             Restore
                         </button>
                     </td>
