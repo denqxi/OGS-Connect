@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 use Carbon\Carbon;
 
 class Tutor extends Authenticatable
 {
+    use Notifiable;
     protected $primaryKey = 'tutorID';
     public $incrementing = false; // Primary key is not auto-incrementing
     protected $keyType = 'string'; // Primary key is string type
@@ -33,6 +35,14 @@ class Tutor extends Authenticatable
     protected $casts = [
         'tpassword' => 'hashed',
     ];
+
+    /**
+     * Get the email address for notifications.
+     */
+    public function getEmailForNotifications()
+    {
+        return trim(str_replace(["\r", "\n"], '', $this->email));
+    }
 
     // Override getAuthPassword to use tpassword field
     public function getAuthPassword()
@@ -142,32 +152,6 @@ class Tutor extends Authenticatable
         
         // Fallback to username if no full name
         return $this->tusername ?? 'N/A';
-    }
-
-    /**
-     * Get the security question for this tutor
-     */
-    public function securityQuestion()
-    {
-        return $this->hasOne(SecurityQuestion::class, 'user_id', 'tutorID')
-                    ->where('user_type', 'tutor');
-    }
-
-    /**
-     * Get all security questions for this tutor
-     */
-    public function securityQuestions()
-    {
-        return $this->hasMany(SecurityQuestion::class, 'user_id', 'tutorID')
-                    ->where('user_type', 'tutor');
-    }
-
-    /**
-     * Check if tutor has a security question set up
-     */
-    public function hasSecurityQuestion()
-    {
-        return $this->securityQuestion()->exists();
     }
 
     /**

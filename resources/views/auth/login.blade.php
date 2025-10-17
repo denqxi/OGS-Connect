@@ -163,7 +163,8 @@
             <input type="password" name="password" id="password" placeholder="Password" required
                     class="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 lg:py-5 bg-white border border-stone-300 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all duration-200 text-sm sm:text-base @if(isset($errors) && $errors->has('password')) border-red-500 @endif">
             <div class="absolute inset-y-0 right-0 pr-3 sm:pr-4 flex items-center">
-              <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" onclick="togglePasswordField(this)">
+              <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" onclick="togglePasswordField(this)"
+                      title="Show/hide password">
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -175,7 +176,8 @@
           </div>
           
             <div class="text-right">
-              <button type="button" onclick="switchToResetMode()" class="text-ogs-navy font-semibold text-xs sm:text-sm hover:underline">
+              <button type="button" onclick="switchToResetMode()" class="text-ogs-navy font-semibold text-xs sm:text-sm hover:underline"
+                      title="Reset your password via email">
                 <i class="fas fa-key mr-1"></i>
                 Forgot Password?
               </button>

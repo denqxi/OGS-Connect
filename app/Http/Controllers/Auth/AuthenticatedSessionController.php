@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\AuditLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -65,12 +66,42 @@ class AuthenticatedSessionController extends Controller
                 // Clear progressive lockout count
                 ProgressiveLockout::clearLockoutCount($request, $loginId);
                 
+                // Log successful supervisor login
+                AuditLog::logEvent(
+                    'login',
+                    'supervisor',
+                    $supervisor->supID,
+                    $supervisor->semail,
+                    $supervisor->sfname . ' ' . $supervisor->slname,
+                    'Successful Supervisor Login',
+                    "Supervisor {$supervisor->supID} ({$supervisor->sfname} {$supervisor->slname}) logged in successfully",
+                    null,
+                    'low',
+                    true
+                );
+                
                 $request->session()->regenerate();
                 session(['supervisor_logged_in' => true, 'supervisor_id' => $loginId]);
                 // Clear any intended URL to ensure fresh start
                 $request->session()->forget('url.intended');
 
                 return redirect('/dashboard');
+            }
+            
+            // Log failed supervisor login attempt
+            if ($supervisor) {
+                AuditLog::logEvent(
+                    'login_failed',
+                    'supervisor',
+                    $supervisor->supID,
+                    $supervisor->semail,
+                    $supervisor->sfname . ' ' . $supervisor->slname,
+                    'Failed Supervisor Login',
+                    "Failed login attempt for supervisor {$supervisor->supID} ({$supervisor->sfname} {$supervisor->slname})",
+                    null,
+                    'medium',
+                    true
+                );
             }
             
             // Rate limiting already handled in ensureIsNotRateLimited
@@ -191,6 +222,42 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        // Log logout event before clearing authentication
+        $user = null;
+        $userType = null;
+        $userId = null;
+        $userEmail = null;
+        $userName = null;
+        
+        if (Auth::guard('supervisor')->check()) {
+            $user = Auth::guard('supervisor')->user();
+            $userType = 'supervisor';
+            $userId = $user->supID;
+            $userEmail = $user->semail;
+            $userName = $user->sfname . ' ' . $user->slname;
+        } elseif (Auth::guard('tutor')->check()) {
+            $user = Auth::guard('tutor')->user();
+            $userType = 'tutor';
+            $userId = $user->tutorID;
+            $userEmail = $user->email;
+            $userName = $user->fname . ' ' . $user->lname;
+        }
+        
+        if ($user) {
+            AuditLog::logEvent(
+                'logout',
+                $userType,
+                $userId,
+                $userEmail,
+                $userName,
+                'User Logout',
+                "{$userType} {$userId} ({$userName}) logged out successfully",
+                null,
+                'low',
+                false
+            );
+        }
+        
         // Logout from both guards to ensure complete logout
         Auth::guard('web')->logout();
         Auth::guard('supervisor')->logout();

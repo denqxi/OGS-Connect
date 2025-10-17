@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SecurityQuestion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -17,73 +16,10 @@ class SupervisorProfileController extends Controller
         $supervisor = Auth::user();
         
         
-        // Load payment information and security questions relationships
-        $supervisor->load(['paymentInformation', 'securityQuestions']);
+        // Load payment information relationship
+        $supervisor->load(['paymentInformation']);
         
         return view('profile_management.supervisor', compact('supervisor'));
-    }
-
-    /**
-     * Update security questions
-     */
-    public function updateSecurityQuestions(Request $request)
-    {
-        $supervisor = Auth::user();
-
-        $request->validate([
-            'security_question1' => 'required|string|max:255',
-            'security_answer1' => 'required|string|min:2',
-            'security_question2' => 'required|string|max:255',
-            'security_answer2' => 'required|string|min:2',
-        ], [
-            'security_question1.required' => 'First security question is required.',
-            'security_answer1.required' => 'Answer to first security question is required.',
-            'security_answer1.min' => 'Answer must be at least 2 characters.',
-            'security_question2.required' => 'Second security question is required.',
-            'security_answer2.required' => 'Answer to second security question is required.',
-            'security_answer2.min' => 'Answer must be at least 2 characters.',
-        ]);
-
-        try {
-            // Delete existing security questions for this supervisor
-            SecurityQuestion::where('user_type', 'supervisor')
-                           ->where('user_id', $supervisor->supID)
-                           ->delete();
-
-            // Create new security questions
-            SecurityQuestion::create([
-                'user_type' => 'supervisor',
-                'user_id' => $supervisor->supID,
-                'question' => $request->security_question1,
-                'answer_hash' => Hash::make(strtolower(trim($request->security_answer1))),
-            ]);
-
-            SecurityQuestion::create([
-                'user_type' => 'supervisor',
-                'user_id' => $supervisor->supID,
-                'question' => $request->security_question2,
-                'answer_hash' => Hash::make(strtolower(trim($request->security_answer2))),
-            ]);
-
-            if ($request->ajax()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Security questions updated successfully!'
-                ]);
-            }
-            
-            return redirect()->back()->with('success', 'Security questions updated successfully!');
-
-        } catch (\Exception $e) {
-            if ($request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to update security questions. Please try again.'
-                ], 500);
-            }
-            
-            return redirect()->back()->with('error', 'Failed to update security questions. Please try again.');
-        }
     }
 
     /**

@@ -56,7 +56,8 @@
 
                 <!-- Notifications -->
                 <button
-                    class="relative p-1 md:p-2 text-[#0E335D] dark:text-gray-200 rounded-lg transition-transform duration-200 hover:text-[#0B284A] hover:dark:text-white hover:scale-110">
+                    class="relative p-1 md:p-2 text-[#0E335D] dark:text-gray-200 rounded-lg transition-transform duration-200 hover:text-[#0B284A] hover:dark:text-white hover:scale-110"
+                    title="View notifications and updates">
                     <i class="fas fa-bell text-lg md:text-xl"></i>
                     <span class="absolute -top-1 -right-1 w-2 h-2 md:w-3 md:h-3 bg-red-500 rounded-full"></span>
                 </button>
@@ -64,7 +65,8 @@
                 <!-- Burger Menu -->
                 <div class="relative">
                     <button @click="open = !open"
-                        class="p-1 md:p-2 text-[#0E335D] dark:text-gray-200 rounded-lg transition-transform duration-200 hover:text-[#0B284A] hover:dark:text-white hover:scale-110">
+                        class="p-1 md:p-2 text-[#0E335D] dark:text-gray-200 rounded-lg transition-transform duration-200 hover:text-[#0B284A] hover:dark:text-white hover:scale-110"
+                        title="Open menu options">
                         <i class="fas fa-bars text-lg md:text-xl"></i>
                     </button>
 
@@ -78,7 +80,8 @@
 
                         <!-- Dark / Light Mode -->
                         <button @click="toggleDarkMode()"
-                            class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">
+                            class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                            title="Switch between dark and light theme">
                             <i :class="darkMode ? 'fas fa-sun mr-2' : 'fas fa-moon mr-2'"></i>
                             <span x-text="darkMode ? 'Light Mode' : 'Dark Mode'"></span>
                         </button>
@@ -89,7 +92,8 @@
                         <form method="POST" action="{{ route('tutor.logout') }}" class="w-full">
                             @csrf
                             <button type="submit"
-                                class="flex items-center w-full px-4 py-2 text-sm text-red-500 hover:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors duration-200">
+                                class="flex items-center w-full px-4 py-2 text-sm text-red-500 hover:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors duration-200"
+                                title="Sign out of your tutor account">
                                 <i class="fas fa-sign-out-alt mr-2"></i> Logout
                             </button>
 

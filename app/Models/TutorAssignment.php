@@ -15,12 +15,16 @@ class TutorAssignment extends Model
         'promoted_at',
         'assigned_at',
         'similarity_score',
-        'status'
+        'status',
+        'cancellation_reason',
+        'cancelled_at',
+        'cancelled_by'
     ];
 
     protected $casts = [
         'assigned_at' => 'datetime',
         'promoted_at' => 'datetime',
+        'cancelled_at' => 'datetime',
         'similarity_score' => 'float',
         'is_backup' => 'boolean',
         'was_promoted_from_backup' => 'boolean'

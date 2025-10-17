@@ -820,67 +820,6 @@ public function changePassword(Request $request)
     }
 }
 
-/**
- * Update tutor's security questions
- */
-public function updateSecurityQuestions(Request $request)
-{
-    try {
-        $tutor = Auth::guard('tutor')->user();
-        
-        if (!$tutor) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Tutor not authenticated'
-            ], 401);
-        }
-
-        // Validate the request
-        $validator = Validator::make($request->all(), [
-            'questions' => 'required|array|min:1',
-            'questions.*' => 'required|string|max:500',
-            'answers' => 'required|array|min:1',
-            'answers.*' => 'required|string|max:500',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        // Delete existing security questions
-        $tutor->securityQuestions()->delete();
-
-        // Create new security questions
-        foreach ($request->questions as $index => $question) {
-            if (isset($request->answers[$index])) {
-                $tutor->securityQuestions()->create([
-                    'user_type' => 'tutor',
-                    'user_id' => $tutor->tutorID,
-                    'question' => $question,
-                    'answer_hash' => Hash::make(strtolower(trim($request->answers[$index]))),
-                ]);
-            }
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Security questions updated successfully'
-        ]);
-
-    } catch (\Exception $e) {
-        Log::error('Error updating security questions: ' . $e->getMessage());
-        
-        return response()->json([
-            'success' => false,
-            'message' => 'An error occurred while updating your security questions. Please try again.'
-        ], 500);
-    }
-}
-
     /**
      * Convert time string to minutes
      */

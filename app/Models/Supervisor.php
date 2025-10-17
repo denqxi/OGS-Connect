@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 
 class Supervisor extends Authenticatable
 {
+    use Notifiable;
     protected $primaryKey = 'supID';
     public $incrementing = false; // Primary key is not auto-incrementing
     protected $keyType = 'string'; // Primary key is string type
@@ -36,6 +38,14 @@ class Supervisor extends Authenticatable
     protected $casts = [
         'password' => 'hashed',
     ];
+
+    /**
+     * Get the email address for notifications.
+     */
+    public function getEmailForNotifications()
+    {
+        return trim(str_replace(["\r", "\n"], '', $this->semail));
+    }
 
     // Automatically generate formatted ID when creating new supervisors
     protected static function boot()
@@ -152,32 +162,6 @@ class Supervisor extends Authenticatable
             });
         }
         return $query;
-    }
-
-    /**
-     * Get the security question for this supervisor
-     */
-    public function securityQuestion()
-    {
-        return $this->hasOne(SecurityQuestion::class, 'user_id', 'supID')
-                    ->where('user_type', 'supervisor');
-    }
-
-    /**
-     * Get all security questions for this supervisor
-     */
-    public function securityQuestions()
-    {
-        return $this->hasMany(SecurityQuestion::class, 'user_id', 'supID')
-                    ->where('user_type', 'supervisor');
-    }
-
-    /**
-     * Check if supervisor has a security question set up
-     */
-    public function hasSecurityQuestion()
-    {
-        return $this->securityQuestion()->exists();
     }
 
     /**

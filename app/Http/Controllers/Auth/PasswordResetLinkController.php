@@ -197,7 +197,6 @@ class PasswordResetLinkController extends Controller
                 'to' => $cleanUserEmail,
                 'reset_url' => $resetUrl,
                 'user_type' => $userType,
-                'user_id' => $user->supID ?? $user->tutorID
             ]);
             
             if ($request->expectsJson()) {
