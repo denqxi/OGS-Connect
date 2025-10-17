@@ -1356,7 +1356,43 @@
         });
       }
     });
+    
+    // Handle browser navigation and prevent back button issues
+    window.addEventListener('DOMContentLoaded', function() {
+      // Prevent browser back button caching
+      if (window.history && window.history.pushState) {
+        window.addEventListener('popstate', function(event) {
+          // Push a new state to prevent going back to cached login page
+          window.history.pushState(null, null, window.location.href);
+        });
+        
+        // Push initial state
+        window.history.pushState(null, null, window.location.href);
+      }
+      
+      // Clear any authentication-related localStorage/sessionStorage
+      try {
+        sessionStorage.removeItem('authToken');
+        localStorage.removeItem('authToken');
+      } catch(e) {
+        // Silent fail if storage not available
+      }
+    });
   </script>
+  
+  @auth('supervisor')
+  <script>
+    // Redirect authenticated supervisor
+    window.location.href = '{{ route("dashboard") }}';
+  </script>
+  @endauth
+  
+  @auth('tutor')
+  <script>
+    // Redirect authenticated tutor
+    window.location.href = '{{ route("tutor.portal") }}';
+  </script>
+  @endauth
 
 </body>
 </html>

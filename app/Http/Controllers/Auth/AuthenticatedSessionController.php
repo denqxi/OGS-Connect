@@ -26,12 +26,15 @@ class AuthenticatedSessionController extends Controller
     {
         // Check if user is already authenticated and redirect to appropriate dashboard
         if (Auth::guard('supervisor')->check()) {
-            return redirect('/dashboard');
+            return redirect('/dashboard')->with('status', 'Already logged in');
         }
         
         if (Auth::guard('tutor')->check()) {
-            return redirect('/tutor_portal');
+            return redirect('/tutor_portal')->with('status', 'Already logged in');
         }
+        
+        // Clear any previous session data that might interfere
+        session()->forget(['supervisor_logged_in', 'supervisor_id']);
         
         return view('auth.login');
     }

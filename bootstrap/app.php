@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
+            'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
             'prevent.back' => \App\Http\Middleware\PreventBackButton::class,
             'security.headers' => \App\Http\Middleware\SecurityHeaders::class,
             'input.validation' => \App\Http\Middleware\InputValidation::class,

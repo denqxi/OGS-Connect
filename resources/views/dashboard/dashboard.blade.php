@@ -1021,6 +1021,29 @@
             closePerformanceModal();
         }
     });
+    
+    // Browser navigation protection
+    window.addEventListener('DOMContentLoaded', function() {
+        // Prevent back button caching for authenticated pages
+        if (window.history && window.history.pushState) {
+            window.addEventListener('popstate', function(event) {
+                // Check authentication status and redirect if needed
+                fetch('{{ route("dashboard") }}', {
+                    method: 'HEAD',
+                    credentials: 'same-origin'
+                }).catch(function() {
+                    // If request fails, likely unauthenticated, redirect to login
+                    window.location.href = '{{ route("login") }}';
+                });
+            });
+        }
+        
+        // Set no-cache headers via JavaScript as fallback
+        if (window.performance && window.performance.navigation.type === 2) {
+            // User came here via back button, refresh the page
+            window.location.reload();
+        }
+    });
 
 </script>
 
