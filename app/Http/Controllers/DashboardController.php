@@ -29,23 +29,6 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        // Log dashboard access
-        if (Auth::guard('supervisor')->check()) {
-            $user = Auth::guard('supervisor')->user();
-            AuditLog::logEvent(
-                'dashboard_access',
-                'supervisor',
-                $user->supID,
-                $user->semail,
-                $user->sfname . ' ' . $user->slname,
-                'Dashboard Access',
-                "Supervisor {$user->supID} ({$user->sfname} {$user->slname}) accessed the dashboard",
-                null,
-                'low',
-                false
-            );
-        }
-        
         $stats = $this->getDashboardStats();
         
         return view('dashboard.dashboard', compact('stats'));
