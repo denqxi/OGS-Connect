@@ -1026,21 +1026,26 @@
     window.addEventListener('DOMContentLoaded', function() {
         // Prevent back button caching for authenticated pages
         if (window.history && window.history.pushState) {
+            // Replace the history entry to prevent going back to login
+            window.history.replaceState({page: 'dashboard'}, 'Dashboard', window.location.href);
+            
             window.addEventListener('popstate', function(event) {
-                // Check authentication status and redirect if needed
-                fetch('{{ route("dashboard") }}', {
-                    method: 'HEAD',
-                    credentials: 'same-origin'
-                }).catch(function() {
-                    // If request fails, likely unauthenticated, redirect to login
-                    window.location.href = '{{ route("login") }}';
-                });
+                // If user tries to go back, stay on dashboard
+                window.history.pushState({page: 'dashboard'}, 'Dashboard', window.location.href);
             });
         }
         
-        // Set no-cache headers via JavaScript as fallback
+        // Handle page show event (for browser back/forward)
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                // Page was restored from cache, reload to ensure fresh authentication
+                window.location.reload();
+            }
+        });
+        
+        // Prevent cache-related issues
         if (window.performance && window.performance.navigation.type === 2) {
-            // User came here via back button, refresh the page
+            // User came here via back button, refresh the page to ensure auth state
             window.location.reload();
         }
     });

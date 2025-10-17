@@ -24,8 +24,17 @@ Route::get('/', function () {
 })->name('landing');
 
 Route::get('/login', function () {
+    // Check if user is already authenticated and redirect appropriately
+    if (Auth::guard('supervisor')->check()) {
+        return redirect('/dashboard');
+    }
+    
+    if (Auth::guard('tutor')->check()) {
+        return redirect('/tutor_portal');
+    }
+    
     return view('auth.login');
-})->name('login');
+})->name('login')->middleware('guest');
 
 // API route for getting security questions (moved from api.php to avoid CSRF issues)
 Route::post('/api/get-security-question', [\App\Http\Controllers\Auth\SimplePasswordResetController::class, 'getSecurityQuestion']);

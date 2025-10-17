@@ -16,20 +16,17 @@ class RedirectIfAuthenticated
      */
     public function handle(Request $request, Closure $next, ...$guards): Response
     {
-        $guards = empty($guards) ? [null] : $guards;
-
-        foreach ($guards as $guard) {
-            if (Auth::guard($guard)->check()) {
-                // Determine redirect based on guard
-                if ($guard === 'supervisor' || Auth::guard('supervisor')->check()) {
-                    return redirect('/dashboard');
-                } elseif ($guard === 'tutor' || Auth::guard('tutor')->check()) {
-                    return redirect('/tutor_portal');
-                }
-                
-                // Default redirect for web guard
-                return redirect('/dashboard');
-            }
+        // Check all authentication guards
+        if (Auth::guard('supervisor')->check()) {
+            return redirect('/dashboard');
+        }
+        
+        if (Auth::guard('tutor')->check()) {
+            return redirect('/tutor_portal');
+        }
+        
+        if (Auth::guard('web')->check()) {
+            return redirect('/dashboard');
         }
 
         return $next($request);

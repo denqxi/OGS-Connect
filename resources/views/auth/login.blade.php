@@ -1361,14 +1361,22 @@
     window.addEventListener('DOMContentLoaded', function() {
       // Prevent browser back button caching
       if (window.history && window.history.pushState) {
-        window.addEventListener('popstate', function(event) {
-          // Push a new state to prevent going back to cached login page
-          window.history.pushState(null, null, window.location.href);
-        });
+        // Replace current state to prevent back navigation
+        window.history.replaceState(null, null, window.location.href);
         
-        // Push initial state
-        window.history.pushState(null, null, window.location.href);
+        window.addEventListener('popstate', function(event) {
+          // If user tries to go back, redirect to current page
+          window.location.href = window.location.href;
+        });
       }
+      
+      // Additional browser cache prevention
+      window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+          // Page was loaded from cache, reload it
+          window.location.reload();
+        }
+      });
       
       // Clear any authentication-related localStorage/sessionStorage
       try {
@@ -1382,15 +1390,15 @@
   
   @auth('supervisor')
   <script>
-    // Redirect authenticated supervisor
-    window.location.href = '{{ route("dashboard") }}';
+    // Redirect authenticated supervisor immediately
+    window.location.replace('{{ route("dashboard") }}');
   </script>
   @endauth
   
   @auth('tutor')
   <script>
-    // Redirect authenticated tutor
-    window.location.href = '{{ route("tutor.portal") }}';
+    // Redirect authenticated tutor immediately  
+    window.location.replace('{{ route("tutor.portal") }}');
   </script>
   @endauth
 
