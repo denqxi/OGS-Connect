@@ -58,7 +58,25 @@ class NewPasswordController extends Controller
         $request->validate([
             'token' => ['required'],
             'email' => ['required', 'email'],
-            'password' => ['required', 'confirmed', Password::min(8)],
+            'password' => [
+                'required', 
+                'confirmed', 
+                Password::min(8)
+                    ->mixedCase()
+                    ->letters()
+                    ->numbers()
+                    ->symbols()
+                    ->uncompromised()
+            ],
+        ], [
+            'password.required' => 'Password is required.',
+            'password.confirmed' => 'Password confirmation does not match.',
+            'password.min' => 'Password must be at least 8 characters.',
+            'password.mixed_case' => 'Password must contain both uppercase and lowercase letters.',
+            'password.letters' => 'Password must contain letters.',
+            'password.numbers' => 'Password must contain numbers.',
+            'password.symbols' => 'Password must contain symbols.',
+            'password.uncompromised' => 'Password has appeared in data breaches and cannot be used.',
         ]);
 
         // Check if the token exists and is valid

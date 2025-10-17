@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class SupervisorProfileController extends Controller
 {
@@ -98,15 +99,28 @@ class SupervisorProfileController extends Controller
 
         $request->validate([
             'current_password' => 'required|string',
-            'new_password' => 'required|string|min:8|confirmed',
-            'new_password_confirmation' => 'required|string|min:8',
+            'new_password' => [
+                'required', 
+                'confirmed', 
+                Password::min(8)
+                    ->mixedCase()
+                    ->letters()
+                    ->numbers()
+                    ->symbols()
+                    ->uncompromised()
+            ],
+            'new_password_confirmation' => 'required|string',
         ], [
             'current_password.required' => 'Current password is required.',
             'new_password.required' => 'New password is required.',
             'new_password.min' => 'New password must be at least 8 characters.',
+            'new_password.mixed_case' => 'New password must contain both uppercase and lowercase letters.',
+            'new_password.letters' => 'New password must contain letters.',
+            'new_password.numbers' => 'New password must contain numbers.',
+            'new_password.symbols' => 'New password must contain symbols.',
+            'new_password.uncompromised' => 'New password has appeared in data breaches and cannot be used.',
             'new_password.confirmed' => 'New password confirmation does not match.',
             'new_password_confirmation.required' => 'Password confirmation is required.',
-            'new_password_confirmation.min' => 'Password confirmation must be at least 8 characters.',
         ]);
 
         // Verify current password

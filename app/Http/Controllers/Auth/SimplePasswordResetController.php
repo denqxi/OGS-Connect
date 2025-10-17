@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\ProgressiveLockout;
 use App\Models\Tutor;
 use App\Models\Supervisor;
 use App\Models\SecurityQuestion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
 class SimplePasswordResetController extends Controller
@@ -183,13 +186,27 @@ class SimplePasswordResetController extends Controller
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'password' => ['required', 'confirmed', Password::min(8)],
+            'password' => [
+                'required', 
+                'confirmed', 
+                Password::min(8)
+                    ->mixedCase()
+                    ->letters()
+                    ->numbers()
+                    ->symbols()
+                    ->uncompromised()
+            ],
             'username' => 'required|string',
             'user_type' => 'required|in:tutor,supervisor',
         ], [
             'password.required' => 'Password is required.',
             'password.confirmed' => 'Password confirmation does not match.',
             'password.min' => 'Password must be at least 8 characters.',
+            'password.mixed_case' => 'Password must contain both uppercase and lowercase letters.',
+            'password.letters' => 'Password must contain letters.',
+            'password.numbers' => 'Password must contain numbers.',
+            'password.symbols' => 'Password must contain symbols.',
+            'password.uncompromised' => 'Password has appeared in data breaches and cannot be used.',
         ]);
 
         $username = $request->username;
@@ -218,6 +235,22 @@ class SimplePasswordResetController extends Controller
             $user->update(['tpassword' => Hash::make($request->password)]);
         } else {
             $user->update(['password' => Hash::make($request->password)]);
+        }
+
+        // Clear login rate limiting and progressive lockout for this account (current IP)
+        $identifiers = [];
+        if ($userType === 'tutor') {
+            // Tutor logins can use tutorID or email
+            $identifiers = array_filter([$user->tutorID ?? null, $user->email ?? null]);
+        } else {
+            // Supervisor logins can use supID or semail
+            $identifiers = array_filter([$user->supID ?? null, $user->semail ?? null]);
+        }
+
+        foreach ($identifiers as $loginId) {
+            $throttleKey = Str::transliterate(Str::lower($loginId) . '|' . $request->ip());
+            RateLimiter::clear($throttleKey);
+            ProgressiveLockout::clearLockoutCount($request, $loginId);
         }
 
         return redirect()->route('login')

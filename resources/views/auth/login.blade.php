@@ -289,7 +289,7 @@
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent"
                        placeholder="Enter your new password"
                        minlength="8"
-                       oninput="validateNewPassword()"
+                       oninput="validatePasswordStrength(this.value); validatePasswordMatch()"
                        required>
                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
                   <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" onclick="togglePasswordField(this)">
@@ -302,7 +302,15 @@
                   </button>
                 </div>
               </div>
-              <div id="password-strength" class="mt-1 text-xs"></div>
+              <div id="passwordStrengthIndicator1" class="mt-2 hidden">
+                <div class="flex items-center space-x-2">
+                  <div class="text-xs font-medium">Password Strength:</div>
+                  <div id="strengthBar1" class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div id="strengthFill1" class="h-full transition-all duration-300 ease-in-out"></div>
+                  </div>
+                  <div id="strengthText1" class="text-xs font-medium"></div>
+                </div>
+              </div>
             </div>
 
             <!-- Confirm Password Field -->
@@ -381,7 +389,16 @@
                        name="new_password" 
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent"
                        placeholder="Enter your new password"
-                       oninput="validatePasswordMatch()">
+                       oninput="validatePasswordStrength(this.value); validatePasswordMatch()">
+                <div id="passwordStrengthIndicator" class="mt-2 hidden">
+                  <div class="flex items-center space-x-2">
+                    <div class="text-xs font-medium">Password Strength:</div>
+                    <div id="strengthBar" class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div id="strengthFill" class="h-full transition-all duration-300 ease-in-out"></div>
+                    </div>
+                    <div id="strengthText" class="text-xs font-medium"></div>
+                  </div>
+                </div>
                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
                   <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" onclick="togglePasswordField(this)">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -633,7 +650,7 @@
       // Show new password fields
       if (newPasswordFields) {
         newPasswordFields.classList.remove('hidden');
-        // Add required attributes to the fields
+        // Add required attributes to the fields - this is for email-based reset
         const newPasswordField = document.getElementById('new_password_field');
         const confirmPasswordField = document.getElementById('password_confirmation');
         if (newPasswordField) newPasswordField.setAttribute('required', 'required');
@@ -671,11 +688,16 @@
         debugLog('Submit button changed to update password mode');
       }
       
-      // Focus on new password field
+      // Focus on new password field (email-based reset uses 'new_password_field' ID)
       const newPasswordField = document.getElementById('new_password_field');
       if (newPasswordField) {
         newPasswordField.focus();
         debugLog('Focus set to new password field');
+        
+        // Initialize password strength validation
+        if (newPasswordField.value) {
+          validatePasswordStrength(newPasswordField.value);
+        }
       }
       
       // Update form action
@@ -902,54 +924,132 @@
       form.submit();
     }
 
-    function validatePasswordMatch() {
-      const newPassword = document.getElementById('new_password').value;
-      const confirmPassword = document.getElementById('confirm_password').value;
-      const passwordStrengthDiv = document.getElementById('password-strength');
-      const passwordMatchDiv = document.getElementById('password-match');
+    function validatePasswordStrength(password) {
+      // Check which form section is currently visible to determine which elements to use
+      const newPasswordFields = document.getElementById('newPasswordFields');
+      const passwordResetFields = document.getElementById('passwordResetFields');
       
-      // Password strength validation
-      if (newPassword.length > 0) {
-        let strengthMessage = '';
-        let strengthColor = '';
+      let indicator, strengthFill, strengthText;
+      
+      // If newPasswordFields (email reset) is visible, use the "1" suffix elements
+      if (newPasswordFields && !newPasswordFields.classList.contains('hidden')) {
+        indicator = document.getElementById('passwordStrengthIndicator1');
+        strengthFill = document.getElementById('strengthFill1');
+        strengthText = document.getElementById('strengthText1');
+      }
+      // If passwordResetFields (security question reset) is visible, use the regular elements
+      else if (passwordResetFields && !passwordResetFields.classList.contains('hidden')) {
+        indicator = document.getElementById('passwordStrengthIndicator');
+        strengthFill = document.getElementById('strengthFill');
+        strengthText = document.getElementById('strengthText');
+      }
+      // Fallback: try both sets if we can't determine which form is active
+      else {
+        indicator = document.getElementById('passwordStrengthIndicator');
+        strengthFill = document.getElementById('strengthFill');
+        strengthText = document.getElementById('strengthText');
         
-        if (newPassword.length < 8) {
-          strengthMessage = 'Password must be at least 8 characters';
-          strengthColor = 'text-red-600';
-        } else if (newPassword.length < 12) {
-          strengthMessage = 'Good password length';
-          strengthColor = 'text-yellow-600';
-        } else {
-          strengthMessage = 'Strong password length';
-          strengthColor = 'text-green-600';
+        if (!indicator || !strengthFill || !strengthText) {
+          indicator = document.getElementById('passwordStrengthIndicator1');
+          strengthFill = document.getElementById('strengthFill1');
+          strengthText = document.getElementById('strengthText1');
         }
-        
-        passwordStrengthDiv.innerHTML = `<span class="${strengthColor}">${strengthMessage}</span>`;
-      } else {
-        passwordStrengthDiv.innerHTML = '';
       }
       
-      // Password match validation
-      if (confirmPassword.length > 0) {
+      // Check if all required elements exist
+      if (!indicator || !strengthFill || !strengthText) {
+        return;
+      }
+      
+      if (!password || password.length === 0) {
+        indicator.classList.add('hidden');
+        return;
+      }
+      
+      indicator.classList.remove('hidden');
+      
+      // Check password requirements
+      const checks = {
+        length: password.length >= 8,
+        uppercase: /[A-Z]/.test(password),
+        lowercase: /[a-z]/.test(password),
+        numbers: /\d/.test(password),
+        symbols: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+      };
+      
+      const passedChecks = Object.values(checks).filter(Boolean).length;
+      
+      // Calculate strength
+      let strength = 0;
+      let strengthLabel = '';
+      let colorClass = '';
+      
+      if (passedChecks <= 2) {
+        strength = 25;
+        strengthLabel = 'Weak';
+        colorClass = 'bg-red-500';
+      } else if (passedChecks === 3) {
+        strength = 50;
+        strengthLabel = 'Fair';
+        colorClass = 'bg-yellow-500';
+      } else if (passedChecks === 4) {
+        strength = 75;
+        strengthLabel = 'Good';
+        colorClass = 'bg-blue-500';
+      } else if (passedChecks === 5) {
+        strength = 100;
+        strengthLabel = 'Strong';
+        colorClass = 'bg-green-500';
+      }
+      
+      // Update UI - only show strength level
+      strengthFill.style.width = strength + '%';
+      strengthFill.className = `h-full transition-all duration-300 ease-in-out ${colorClass}`;
+      strengthText.textContent = strengthLabel;
+      strengthText.className = `text-xs font-medium ${colorClass.replace('bg-', 'text-')}`;
+    }
+
+    function validatePasswordMatch() {
+      // Try to find which form is active
+      let newPasswordField = document.getElementById('new_password');
+      let confirmPasswordField = document.getElementById('password_confirmation');
+      let passwordMatchDiv = document.getElementById('password-match');
+      
+      // If first form fields not found, try the second form
+      if (!newPasswordField) {
+        newPasswordField = document.getElementById('new_password_field');
+      }
+      if (!confirmPasswordField) {
+        confirmPasswordField = document.getElementById('confirm_password');
+      }
+      
+      if (!newPasswordField || !confirmPasswordField) {
+        return;
+      }
+      
+      const newPassword = newPasswordField.value;
+      const confirmPassword = confirmPasswordField.value;
+      
+      // Only handle password matching - password strength is handled by validatePasswordStrength()
+      if (confirmPassword.length > 0 && newPassword.length > 0) {
         let matchMessage = '';
         let matchColor = '';
         
         if (newPassword === confirmPassword) {
-          if (newPassword.length >= 8) {
-            matchMessage = '✓ Passwords match';
-            matchColor = 'text-green-600';
-          } else {
-            matchMessage = '✓ Passwords match (but too short)';
-            matchColor = 'text-yellow-600';
-          }
+          matchMessage = '✓ Passwords match';
+          matchColor = 'text-green-600';
         } else {
           matchMessage = '✗ Passwords do not match';
           matchColor = 'text-red-600';
         }
         
-        passwordMatchDiv.innerHTML = `<span class="${matchColor}">${matchMessage}</span>`;
+        if (passwordMatchDiv) {
+          passwordMatchDiv.innerHTML = `<span class="${matchColor}">${matchMessage}</span>`;
+        }
       } else {
-        passwordMatchDiv.innerHTML = '';
+        if (passwordMatchDiv) {
+          passwordMatchDiv.innerHTML = '';
+        }
       }
     }
 
@@ -1190,79 +1290,7 @@
       form.submit();
     }
 
-    // Validation functions for new password form
-    function validateNewPassword() {
-      const passwordField = document.getElementById('new_password_field');
-      const strengthDiv = document.getElementById('password-strength');
-      
-      if (!passwordField || !strengthDiv) return;
-      
-      const password = passwordField.value;
-      
-      // Clear previous validation
-      passwordField.classList.remove('border-red-500', 'border-green-500');
-      strengthDiv.innerHTML = '';
-      
-      if (password.length === 0) return;
-      
-      let strength = 0;
-      let messages = [];
-      
-      // Length check
-      if (password.length >= 8) {
-        strength++;
-        messages.push('<span class="text-green-600">✓ At least 8 characters</span>');
-      } else {
-        messages.push('<span class="text-red-600">✗ At least 8 characters required</span>');
-      }
-      
-      // Uppercase check
-      if (/[A-Z]/.test(password)) {
-        strength++;
-        messages.push('<span class="text-green-600">✓ Contains uppercase letter</span>');
-      } else {
-        messages.push('<span class="text-yellow-600">• Add uppercase letter for stronger password</span>');
-      }
-      
-      // Lowercase check
-      if (/[a-z]/.test(password)) {
-        strength++;
-        messages.push('<span class="text-green-600">✓ Contains lowercase letter</span>');
-      } else {
-        messages.push('<span class="text-yellow-600">• Add lowercase letter for stronger password</span>');
-      }
-      
-      // Number check
-      if (/\d/.test(password)) {
-        strength++;
-        messages.push('<span class="text-green-600">✓ Contains number</span>');
-      } else {
-        messages.push('<span class="text-yellow-600">• Add number for stronger password</span>');
-      }
-      
-      // Special character check
-      if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-        strength++;
-        messages.push('<span class="text-green-600">✓ Contains special character</span>');
-      } else {
-        messages.push('<span class="text-yellow-600">• Add special character for stronger password</span>');
-      }
-      
-      // Update strength indicator
-      strengthDiv.innerHTML = messages.join('<br>');
-      
-      // Update field border based on minimum requirements
-      if (password.length >= 8) {
-        passwordField.classList.add('border-green-500');
-        passwordField.classList.remove('border-red-500');
-      } else {
-        passwordField.classList.add('border-red-500');
-        passwordField.classList.remove('border-green-500');
-      }
-      
-      // Also validate password match when password changes
-      validatePasswordMatch();
-    }
+    // Validation functions for new password form - use simple strength indicator
 
     function validatePasswordMatch() {
       const passwordField = document.getElementById('new_password_field');
@@ -1330,7 +1358,7 @@
           else if (newPasswordFields && !newPasswordFields.classList.contains('hidden')) {
             debugLog('Form submitting in new password mode');
             
-            // Ensure new password fields are enabled and properly named
+            // Ensure new password fields are enabled and properly named for email-based reset
             const newPasswordField = document.getElementById('new_password_field');
             const confirmPasswordField = document.getElementById('password_confirmation');
             

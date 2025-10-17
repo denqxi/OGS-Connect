@@ -113,15 +113,16 @@
                 <!-- Date From -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">From Date</label>
-                    <input type="date" name="date_from" value="{{ request('date_from') }}" 
+                    <input type="date" name="date_from" id="auditDateFrom" value="{{ request('date_from') }}" 
                            class="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0E335D] focus:border-[#0E335D]">
                 </div>
 
                 <!-- Date To -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">To Date</label>
-                    <input type="date" name="date_to" value="{{ request('date_to') }}" 
+                    <input type="date" name="date_to" id="auditDateTo" value="{{ request('date_to') }}" 
                            class="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0E335D] focus:border-[#0E335D]">
+                    <div id="auditDateValidationMessage" class="mt-1 p-2 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded text-sm" style="display: none;"></div>
                 </div>
 
                 <!-- Important Only -->
@@ -240,4 +241,65 @@
         @endif
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const auditDateFrom = document.getElementById('auditDateFrom');
+    const auditDateTo = document.getElementById('auditDateTo');
+    const messageDiv = document.getElementById('auditDateValidationMessage');
+    
+    // Date validation for audit logs
+    function validateAuditDateRange() {
+        const fromDateValue = new Date(auditDateFrom.value);
+        const toDateValue = new Date(auditDateTo.value);
+        
+        if (auditDateFrom.value && auditDateTo.value && fromDateValue > toDateValue) {
+            // If start date is after end date, adjust end date
+            auditDateTo.value = auditDateFrom.value;
+            showAuditDateValidationMessage('End date cannot be earlier than start date. End date has been adjusted.');
+        }
+    }
+    
+    function showAuditDateValidationMessage(message) {
+        if (messageDiv) {
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+            
+            // Hide message after 3 seconds
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 3000);
+        }
+    }
+    
+    // Add event listeners for date validation
+    if (auditDateFrom) {
+        auditDateFrom.addEventListener('change', function() {
+            // Set minimum date for end date
+            if (auditDateTo) {
+                auditDateTo.min = this.value;
+            }
+            validateAuditDateRange();
+        });
+    }
+    
+    if (auditDateTo) {
+        auditDateTo.addEventListener('change', function() {
+            // Set maximum date for start date
+            if (auditDateFrom) {
+                auditDateFrom.max = this.value;
+            }
+            validateAuditDateRange();
+        });
+    }
+    
+    // Initialize date constraints
+    if (auditDateFrom && auditDateFrom.value && auditDateTo) {
+        auditDateTo.min = auditDateFrom.value;
+    }
+    if (auditDateTo && auditDateTo.value && auditDateFrom) {
+        auditDateFrom.max = auditDateTo.value;
+    }
+});
+</script>
 @endsection

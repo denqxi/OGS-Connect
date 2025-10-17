@@ -508,7 +508,8 @@
                             <div class="relative">
                                 <input type="password" name="new_password" id="newPassword" required
                                     class="w-full border border-gray-300 rounded-lg p-2 pr-10 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D]"
-                                placeholder="Enter your new password">
+                                    placeholder="Enter your new password"
+                                    oninput="validateSupervisorPasswordStrength(this.value)">
                                 <button type="button" id="toggleNewPassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
                                     <i class="fas fa-eye" id="newPasswordIcon"></i>
                                 </button>
@@ -516,6 +517,15 @@
                             @error('new_password')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                             @enderror
+                            <div id="passwordStrengthIndicator" class="mt-2 hidden">
+                                <div class="flex items-center space-x-2">
+                                    <div class="text-xs font-medium">Password Strength:</div>
+                                    <div id="strengthBar" class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                        <div id="strengthFill" class="h-full transition-all duration-300 ease-in-out"></div>
+                                    </div>
+                                    <div id="strengthText" class="text-xs font-medium"></div>
+                                </div>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-xs sm:text-sm text-[#0E335D] mb-2">Confirm New Password *</label>
@@ -553,5 +563,59 @@
 
     </div>
 
+    <script>
+    function validateSupervisorPasswordStrength(password) {
+        const indicator = document.getElementById('passwordStrengthIndicator');
+        const strengthFill = document.getElementById('strengthFill');
+        const strengthText = document.getElementById('strengthText');
+        
+        if (!password) {
+            indicator.classList.add('hidden');
+            return;
+        }
+        
+        indicator.classList.remove('hidden');
+        
+        // Check password requirements
+        const checks = {
+            length: password.length >= 8,
+            uppercase: /[A-Z]/.test(password),
+            lowercase: /[a-z]/.test(password),
+            numbers: /\d/.test(password),
+            symbols: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+        };
+        
+        const passedChecks = Object.values(checks).filter(Boolean).length;
+        
+        // Calculate strength
+        let strength = 0;
+        let strengthLabel = '';
+        let colorClass = '';
+        
+        if (passedChecks <= 2) {
+            strength = 25;
+            strengthLabel = 'Weak';
+            colorClass = 'bg-red-500';
+        } else if (passedChecks === 3) {
+            strength = 50;
+            strengthLabel = 'Fair';
+            colorClass = 'bg-yellow-500';
+        } else if (passedChecks === 4) {
+            strength = 75;
+            strengthLabel = 'Good';
+            colorClass = 'bg-blue-500';
+        } else if (passedChecks === 5) {
+            strength = 100;
+            strengthLabel = 'Strong';
+            colorClass = 'bg-green-500';
+        }
+        
+        // Update UI - only show strength level
+        strengthFill.style.width = strength + '%';
+        strengthFill.className = `h-full transition-all duration-300 ease-in-out ${colorClass}`;
+        strengthText.textContent = strengthLabel;
+        strengthText.className = `text-xs font-medium ${colorClass.replace('bg-', 'text-')}`;
+    }
+    </script>
     <script src="{{ asset('js/supervisor-profile.js') }}"></script>
 @endsection

@@ -904,6 +904,57 @@
             console.log('Chart data updated:', chartData);
         }
         
+        // Date validation to prevent end date being earlier than start date
+        function validateDateRange() {
+            const fromDateValue = new Date(fromDate.value);
+            const toDateValue = new Date(toDate.value);
+            
+            if (fromDateValue && toDateValue && fromDateValue > toDateValue) {
+                // If start date is after end date, adjust end date
+                toDate.value = fromDate.value;
+                showDateValidationMessage('End date cannot be earlier than start date. End date has been adjusted.');
+            }
+        }
+        
+        function showDateValidationMessage(message) {
+            // Create or update validation message
+            let messageDiv = document.getElementById('dateValidationMessage');
+            if (!messageDiv) {
+                messageDiv = document.createElement('div');
+                messageDiv.id = 'dateValidationMessage';
+                messageDiv.className = 'mt-2 p-2 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded text-sm';
+                toDate.parentNode.appendChild(messageDiv);
+            }
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+            
+            // Hide message after 3 seconds
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Add event listeners for date validation
+        fromDate.addEventListener('change', function() {
+            // Set minimum date for end date
+            toDate.min = this.value;
+            validateDateRange();
+        });
+        
+        toDate.addEventListener('change', function() {
+            // Set maximum date for start date
+            fromDate.max = this.value;
+            validateDateRange();
+        });
+        
+        // Initialize date constraints
+        if (fromDate.value) {
+            toDate.min = fromDate.value;
+        }
+        if (toDate.value) {
+            fromDate.max = toDate.value;
+        }
+        
         // Initialize filter display
         updateFilterDisplay();
     });
