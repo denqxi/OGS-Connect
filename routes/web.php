@@ -1,167 +1,277 @@
 <?php
 
-use App\Http\Controllers\ScheduleController;
-use App\Http\Controllers\TutorAssignmentController;
-use App\Http\Controllers\ScheduleExportController;
-use App\Http\Controllers\ImportController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\PaymentInformationController;
-use App\Http\Controllers\SupervisorProfileController;
-
-use App\Http\Controllers\ApplicationFormController;
-use App\Http\Controllers\ApplicationController;
-
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 
-Route::get('/', function () {
-    return view('landing.index');
-})->name('landing');
+// ============================================================================
+// CONTROLLERS
+// ============================================================================
+use App\Http\Controllers\ApplicationController;
+use App\Http\Controllers\ApplicationFormController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ImportController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PaymentInformationController;
+use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\ScheduleExportController;
+use App\Http\Controllers\SupervisorProfileController;
+use App\Http\Controllers\TutorAssignmentController;
+use App\Http\Controllers\EmployeeManagementController;
+use App\Http\Controllers\TutorAvailabilityController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\SimplePasswordResetController;
 
-Route::get('/login', function () {
-    return view('auth.login');
-})->name('login');
+// ============================================================================
+// PUBLIC ROUTES
+// ============================================================================
 
-// API route for getting security questions (moved from api.php to avoid CSRF issues)
-Route::post('/api/get-security-question', [\App\Http\Controllers\Auth\SimplePasswordResetController::class, 'getSecurityQuestion']);
+// Landing Page
+Route::get('/', fn() => view('landing.index'))->name('landing');
 
+// ============================================================================
+// APPLICATION FORM ROUTES (Public)
+// ============================================================================
+Route::prefix('application-form')->name('application.form.')->group(function () {
+    Route::get('/', fn() => view('application_form.application'))->name('index');
+    Route::get('/cancel', fn() => view('application_form.cancel'))->name('cancel');
+    Route::get('/success', fn() => view('application_form.submit'))->name('success');
+    Route::post('/submit', [ApplicationFormController::class, 'store'])->name('submit');
+});
 
-//APPLICATION FORM ROUTES START
+// ============================================================================
+// PUBLIC API ROUTES
+// ============================================================================
+Route::post('/api/get-security-question', [SimplePasswordResetController::class, 'getSecurityQuestion']);
 
-Route::get('/application-form', function () {
-    return view('application_form.application');
-})->name('application.form');
-
-Route::get('/application-form/cancel', function () {
-    return view('application_form.cancel'); // cancel.blade.php
-})->name('application.form.cancel');
-
-Route::get('/application-form/success', function () {
-    return view('application_form.submit'); // submit.blade.php
-})->name('application.form.success');
-
-Route::post('/application-form/submit', [ApplicationFormController::class, 'store'])->name('application.form.submit');
-
-//APPLICATION FORM ROUTES END
-
-// Protected routes - require authentication
+// ============================================================================
+// AUTHENTICATED ROUTES (Supervisor & Web Users)
+// ============================================================================
 Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
+    
+    // ------------------------------------------------------------------------
+    // DASHBOARD
+    // ------------------------------------------------------------------------
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/scheduling', [ScheduleController::class, 'index'])->name('schedules.index');
-    Route::get('/class-scheduling', function () {
-        return view('schedules.class-scheduling');
-    })->name('class-scheduling');
-    Route::get('/employees', [\App\Http\Controllers\EmployeeManagementController::class, 'index'])->name('employees.index');
-    Route::get('/employees/tutor/{tutor}', [\App\Http\Controllers\EmployeeManagementController::class, 'viewTutor'])->name('employees.tutor.view');
-    Route::get('/employees/supervisor/{supervisor}', [\App\Http\Controllers\EmployeeManagementController::class, 'viewSupervisor'])->name('employees.supervisor.view');
+    
+    // ------------------------------------------------------------------------
+    // SCHEDULING
+    // ------------------------------------------------------------------------
+    Route::prefix('scheduling')->name('schedules.')->group(function () {
+        Route::get('/', [ScheduleController::class, 'index'])->name('index');
+    });
+    Route::get('/class-scheduling', fn() => view('schedules.class-scheduling'))->name('class-scheduling');
+    
+    // ------------------------------------------------------------------------
+    // EMPLOYEE MANAGEMENT
+    // ------------------------------------------------------------------------
+    Route::prefix('employees')->name('employees.')->group(function () {
+        Route::get('/', [EmployeeManagementController::class, 'index'])->name('index');
+        Route::get('/tutor/{tutor}', [EmployeeManagementController::class, 'viewTutor'])->name('tutor.view');
+        Route::get('/supervisor/{supervisor}', [EmployeeManagementController::class, 'viewSupervisor'])->name('supervisor.view');
+    });
+    
+    // ------------------------------------------------------------------------
+    // SUPERVISOR PROFILE
+    // ------------------------------------------------------------------------
+    Route::prefix('supervisor/profile')->name('supervisor.')->group(function () {
+        Route::get('/', [SupervisorProfileController::class, 'index'])->name('profile');
+        Route::post('/security-questions', [SupervisorProfileController::class, 'updateSecurityQuestions'])->name('security-questions.update');
+        Route::post('/role', [SupervisorProfileController::class, 'updateRole'])->name('role.update');
+        Route::post('/personal-info', [SupervisorProfileController::class, 'updatePersonalInfo'])->name('personal-info.update');
+        Route::post('/password', [SupervisorProfileController::class, 'updatePassword'])->name('password.update');
+    });
+    
+    // ------------------------------------------------------------------------
+    // IMPORT
+    // ------------------------------------------------------------------------
     Route::post('/import/upload', [ImportController::class, 'upload'])->name('import.upload');
-    Route::get('/supervisor/profile', [SupervisorProfileController::class, 'index'])->name('supervisor.profile');
-    Route::post('/supervisor/profile/security-questions', [SupervisorProfileController::class, 'updateSecurityQuestions'])->name('supervisor.security-questions.update');
-    Route::post('/supervisor/profile/role', [SupervisorProfileController::class, 'updateRole'])->name('supervisor.role.update');
-    Route::post('/supervisor/profile/personal-info', [SupervisorProfileController::class, 'updatePersonalInfo'])->name('supervisor.personal-info.update');
-    Route::post('/supervisor/profile/password', [SupervisorProfileController::class, 'updatePassword'])->name('supervisor.password.update');
-
-
-    //------------------------------
-    // For Hiring & Onboarding - New Applicants Information to Table
-    Route::get('/hiring-onboarding', [ApplicationFormController::class, 'viewTable'])->name('hiring_onboarding.index');
-    Route::patch('/hiring-onboarding/{id}', [ApplicationFormController::class, 'update'])->name('hiring-onboarding.update');
-
-    // View Details of each Applicant
-    Route::get('/hiring-onboarding/applicant/{application}', [ApplicationFormController::class, 'show'])
-        ->name('hiring_onboarding.applicant.show')
-        ->where('application', '[0-9]+');
-
-
-    // View Details of each Applicant - Uneditable
-    Route::get('/hiring-onboarding/applicant/{demo}/uneditable', [ApplicationFormController::class, 'showUneditable'])
-        ->name('hiring_onboarding.applicant.showUneditable');
-
-    // View Details of Archived Applicant
-    Route::get('/hiring-onboarding/archived/{archivedApplication}', [ApplicationFormController::class, 'showArchived'])
-        ->name('hiring_onboarding.archived.show');
-
-    // Handle fail modal submission
-    Route::patch('/hiring-onboarding/applicant/{application}/fail', [ApplicationFormController::class, 'handleFail'])->name('hiring_onboarding.applicant.fail');
-
-    // Handle pass modal submission
-    Route::patch('/hiring-onboarding/applicant/{application}/pass', [ApplicationFormController::class, 'handlePass'])->name('hiring_onboarding.applicant.pass');
-
-    Route::post('/demos/{id}/register-tutor', [ApplicationController::class, 'registerTutor'])->name('demo.register.tutor');
-    Route::get('/demo/{id}/generate-username', [ApplicationController::class, 'generateUsername'])->name('demo.generate.username');
-    Route::patch('/demo/{id}/fail', [ApplicationController::class, 'handleFail'])->name('demo.fail');
-    // Demo edit routes
-    Route::get('/demo/{id}/edit-data', [ApplicationFormController::class, 'getDemoEditData'])->name('demo.edit.data');
-    Route::patch('/demo/{demo}', [ApplicationFormController::class, 'updateDemo'])->name('demo.update');
-    Route::patch('/demo/{demo}/status', [ApplicationController::class, 'updateDemoStatus'])->name('demo.update.status');
+    
+    // ------------------------------------------------------------------------
+    // HIRING & ONBOARDING
+    // ------------------------------------------------------------------------
+    Route::prefix('hiring-onboarding')->name('hiring_onboarding.')->group(function () {
+        // Main index
+        Route::get('/', [ApplicationFormController::class, 'viewTable'])->name('index');
+        Route::patch('/{id}', [ApplicationFormController::class, 'update'])->name('update');
+        
+        // Applicant routes
+        Route::prefix('applicant')->name('applicant.')->group(function () {
+            // View editable applicant (from applications table)
+            Route::get('/{application}', [ApplicationFormController::class, 'show'])
+                ->name('show')
+                ->where('application', '[0-9]+');
+            
+            // View uneditable applicant (from screening/demo table)
+            Route::get('/{demo}/uneditable', [ApplicationFormController::class, 'showUneditable'])
+                ->name('showUneditable')
+                ->where('demo', '[0-9]+');
+            
+            // Pass/Fail actions
+            Route::patch('/{application}/pass', [ApplicationFormController::class, 'handlePass'])->name('pass');
+            Route::patch('/{application}/fail', [ApplicationFormController::class, 'handleFail'])->name('fail');
+            Route::patch('/{application}/archive-reschedule', [ApplicationFormController::class, 'archiveReschedule'])->name('archive_reschedule');
+        });
+        
+        // Archive routes
+        Route::get('/archived/{archive}', [ApplicationFormController::class, 'showArchived'])->name('archived.show');
+        Route::get('/archive', [ApplicationFormController::class, 'viewArchive'])->name('archive');
+        
+        // Onboarding
+        Route::get('/onboarding', [ApplicationFormController::class, 'viewOnboarding'])->name('onboarding');
+    });
+    
+    // ------------------------------------------------------------------------
+    // DEMO MANAGEMENT
+    // ------------------------------------------------------------------------
+    Route::prefix('demo')->name('demo.')->group(function () {
+        Route::get('/{id}/edit-data', [ApplicationFormController::class, 'getDemoEditData'])->name('edit.data');
+        Route::get('/{id}/generate-username', [ApplicationController::class, 'generateUsername'])->name('generate.username');
+        Route::patch('/{demo}', [ApplicationFormController::class, 'updateDemo'])->name('update');
+        Route::patch('/{demo}/status', [ApplicationController::class, 'updateDemoStatus'])->name('update.status');
+        Route::patch('/{id}/fail', [ApplicationController::class, 'handleFail'])->name('fail');
+        Route::post('/{demo}/finalize', [ApplicationFormController::class, 'finalizeDemo'])->name('finalize');
+    });
+    
+    Route::prefix('demos')->name('demo.')->group(function () {
+        Route::post('/{id}/register-tutor', [ApplicationController::class, 'registerTutor'])->name('register.tutor');
+    });
+    
+    // Legacy route compatibility
     Route::post('/demo/{demo}/finalize', [ApplicationFormController::class, 'finalizeDemo'])->name('applicants.finalize');
-
-    // Onboarding Applicants
-    Route::get('/hiring-onboarding/onboarding', [ApplicationFormController::class, 'viewOnboarding'])
-        ->name('hiring_onboarding.onboarding');
-
-    // Archive applications
-    Route::get('/hiring-onboarding/archive', [ApplicationFormController::class, 'viewArchive'])->name('hiring_onboarding.archive');
-
-    // Archive re-scheduled application
-    Route::patch('/hiring-onboarding/applicant/{application}/archive-reschedule', [ApplicationFormController::class, 'archiveReschedule'])->name('hiring_onboarding.applicant.archive_reschedule');
-
-    // Notification Routes
-    Route::get('/notifications', [App\Http\Controllers\NotificationController::class, 'viewAll'])->name('notifications.index');
-    Route::get('/notifications/api', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.api');
-    Route::post('/notifications/{id}/read', [App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.read');
-    Route::post('/notifications/read-all', [App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
-    Route::post('/notifications', [App\Http\Controllers\NotificationController::class, 'store'])->name('notifications.store');
-
-    //------------------------------
-
-
-
-    // Payment Information Routes
-    Route::get('/payment-information', [PaymentInformationController::class, 'index'])->name('payment-information.index');
-    Route::post('/payment-information', [PaymentInformationController::class, 'store'])->name('payment-information.store');
-    Route::get('/payment-information/{employeeType}/{employeeId}', [PaymentInformationController::class, 'show'])->name('payment-information.show');
+    
+    // ------------------------------------------------------------------------
+    // NOTIFICATIONS
+    // ------------------------------------------------------------------------
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'viewAll'])->name('index');
+        Route::get('/api', [NotificationController::class, 'index'])->name('api');
+        Route::post('/', [NotificationController::class, 'store'])->name('store');
+        Route::post('/{id}/read', [NotificationController::class, 'markAsRead'])->name('read');
+        Route::post('/read-all', [NotificationController::class, 'markAllAsRead'])->name('read-all');
+    });
+    
+    // ------------------------------------------------------------------------
+    // PAYMENT INFORMATION
+    // ------------------------------------------------------------------------
+    Route::prefix('payment-information')->name('payment-information.')->group(function () {
+        Route::get('/', [PaymentInformationController::class, 'index'])->name('index');
+        Route::post('/', [PaymentInformationController::class, 'store'])->name('store');
+        Route::get('/{employeeType}/{employeeId}', [PaymentInformationController::class, 'show'])->name('show');
+    });
     Route::get('/payment-information-all', [PaymentInformationController::class, 'getAll'])->name('payment-information.all');
 });
 
 
+// ============================================================================
+// TUTOR ROUTES
+// ============================================================================
 Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
+    
+    // ------------------------------------------------------------------------
+    // TUTOR PORTAL
+    // ------------------------------------------------------------------------
     Route::get('/tutor_portal', function () {
         $tutor = Auth::guard('tutor')->user();
-        $tutor->load(['tutorDetails', 'paymentInformation', 'securityQuestions']); // Load the tutorDetails, paymentInformation, and securityQuestions relationships
+        $tutor->load(['tutorDetails', 'paymentInformation', 'securityQuestions']);
         return view('tutor.tutor_portal', compact('tutor'));
     })->name('tutor.portal');
-
-
-    // Tutor availability management routes
+    
+    // ------------------------------------------------------------------------
+    // TUTOR AVAILABILITY
+    // ------------------------------------------------------------------------
     Route::prefix('tutor/availability')->name('tutor.availability.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\TutorAvailabilityController::class, 'getAvailability'])->name('get');
-        Route::post('/update', [\App\Http\Controllers\TutorAvailabilityController::class, 'updateAvailability'])->name('update');
-        Route::post('/update-multiple', [\App\Http\Controllers\TutorAvailabilityController::class, 'updateMultipleAccounts'])->name('update.multiple');
-        Route::get('/time-slots', [\App\Http\Controllers\TutorAvailabilityController::class, 'getTimeSlots'])->name('time.slots');
+        Route::get('/', [TutorAvailabilityController::class, 'getAvailability'])->name('get');
+        Route::post('/update', [TutorAvailabilityController::class, 'updateAvailability'])->name('update');
+        Route::post('/update-multiple', [TutorAvailabilityController::class, 'updateMultipleAccounts'])->name('update.multiple');
+        Route::get('/time-slots', [TutorAvailabilityController::class, 'getTimeSlots'])->name('time.slots');
     });
-
-    // Tutor payment setup route
-    Route::post('/tutor/setup-payment', [\App\Http\Controllers\TutorAvailabilityController::class, 'setupPayment'])->name('tutor.setup-payment');
-
-    // Tutor payment method management routes
-    Route::put('/tutor/payment-method/{paymentId}', [\App\Http\Controllers\TutorAvailabilityController::class, 'updatePaymentMethod'])->name('tutor.update-payment-method');
-    Route::delete('/tutor/payment-method/{paymentId}', [\App\Http\Controllers\TutorAvailabilityController::class, 'deletePaymentMethod'])->name('tutor.delete-payment-method');
-
-    // Tutor personal information and security routes
-    Route::post('/tutor/update-personal-info', [\App\Http\Controllers\TutorAvailabilityController::class, 'updatePersonalInfo'])->name('tutor.update-personal-info');
-    Route::post('/tutor/change-password', [\App\Http\Controllers\TutorAvailabilityController::class, 'changePassword'])->name('tutor.change-password');
-    Route::post('/tutor/update-security-questions', [\App\Http\Controllers\TutorAvailabilityController::class, 'updateSecurityQuestions'])->name('tutor.update-security-questions');
+    
+    // ------------------------------------------------------------------------
+    // TUTOR PAYMENTS
+    // ------------------------------------------------------------------------
+    Route::prefix('tutor')->name('tutor.')->group(function () {
+        Route::post('/setup-payment', [TutorAvailabilityController::class, 'setupPayment'])->name('setup-payment');
+        Route::put('/payment-method/{paymentId}', [TutorAvailabilityController::class, 'updatePaymentMethod'])->name('update-payment-method');
+        Route::delete('/payment-method/{paymentId}', [TutorAvailabilityController::class, 'deletePaymentMethod'])->name('delete-payment-method');
+    });
+    
+    // ------------------------------------------------------------------------
+    // TUTOR PROFILE
+    // ------------------------------------------------------------------------
+    Route::prefix('tutor')->name('tutor.')->group(function () {
+        Route::post('/update-personal-info', [TutorAvailabilityController::class, 'updatePersonalInfo'])->name('update-personal-info');
+        Route::post('/change-password', [TutorAvailabilityController::class, 'changePassword'])->name('change-password');
+        Route::post('/update-security-questions', [TutorAvailabilityController::class, 'updateSecurityQuestions'])->name('update-security-questions');
+    });
 });
 
-// Custom logout route for supervisors (doesn't require auth middleware)
-Route::post('/supervisor-logout', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])->name('supervisor.logout');
+// ============================================================================
+// LOGOUT ROUTES
+// ============================================================================
+Route::post('/supervisor-logout', [AuthenticatedSessionController::class, 'destroy'])->name('supervisor.logout');
+Route::post('/tutor-logout', [AuthenticatedSessionController::class, 'destroy'])->name('tutor.logout');
 
-// Custom logout route for tutors (doesn't require auth middleware)
-Route::post('/tutor-logout', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])->name('tutor.logout');
+// ============================================================================
+// AUTHENTICATED API ROUTES (Supervisor & Web Users)
+// ============================================================================
+Route::middleware(['auth:supervisor,web', 'prevent.back'])->prefix('api')->name('api.')->group(function () {
+    
+    // ------------------------------------------------------------------------
+    // ASSIGNMENT API
+    // ------------------------------------------------------------------------
+    Route::get('/available-tutors', [ScheduleController::class, 'getAvailableTutors'])->name('available-tutors');
+    Route::get('/class-tutors/{classId}', [TutorAssignmentController::class, 'getClassTutors'])->name('class-tutors');
+    Route::post('/save-tutor-assignments', [TutorAssignmentController::class, 'saveAssignments'])->name('save-tutor-assignments');
+    Route::post('/check-tutor-time-conflict', [ScheduleController::class, 'checkTutorTimeConflict'])->name('check-tutor-time-conflict');
+    
+    // ------------------------------------------------------------------------
+    // SEARCH API
+    // ------------------------------------------------------------------------
+    Route::get('/search-schedules', [ScheduleController::class, 'searchSchedules'])->name('search-schedules');
+    Route::get('/search-tutors', [ScheduleController::class, 'searchTutors'])->name('search-tutors');
+    
+    // ------------------------------------------------------------------------
+    // DASHBOARD API
+    // ------------------------------------------------------------------------
+    Route::get('/dashboard-data', [DashboardController::class, 'getDashboardData'])->name('dashboard-data');
+    Route::get('/dashboard-weekly-trends', [DashboardController::class, 'getWeeklyTrendsData'])->name('dashboard-weekly-trends');
+    
+    // ------------------------------------------------------------------------
+    // DEBUG/UTILITY API
+    // ------------------------------------------------------------------------
+    Route::get('/debug-tutors', function () {
+        $tutors = \App\Models\Tutor::with(['accounts' => function ($query) {
+            $query->where('account_name', 'GLS')->where('status', 'active');
+        }])
+            ->whereHas('accounts', function ($query) {
+                $query->where('account_name', 'GLS')->where('status', 'active');
+            })
+            ->where('status', 'active')
+            ->take(3)
+            ->get();
 
-// Protected API routes - require authentication
+        $result = $tutors->map(function ($tutor) {
+            return [
+                'id' => $tutor->tutorID,
+                'username' => $tutor->tusername,
+                'full_name' => $tutor->full_name,
+                'status' => $tutor->status,
+                'accounts' => $tutor->accounts->map(function ($account) {
+                    return [
+                        'account_name' => $account->account_name,
+                        'status' => $account->status,
+                        'available_times' => $account->available_times
+                    ];
+                })
+            ];
+        });
+
+        return response()->json($result);
+    })->name('debug-tutors');
+});
+
+// Assignment status check (separate route with optional parameter)
 Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
-    // Check assignment status route
     Route::get('/check-assignments/{date?}', function ($date = null) {
         $date = $date ?: \App\Models\DailyData::select('date')->distinct()->orderBy('date')->first()?->date;
 
@@ -199,87 +309,51 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
                 'empty' => count(array_filter($status, fn($s) => $s['status'] === 'empty'))
             ]
         ]);
-    });
-
-    // API route to get available tutors
-    Route::get('/api/available-tutors', [ScheduleController::class, 'getAvailableTutors'])->name('api.available-tutors');
-
-    // Debug route to check tutor data
-    Route::get('/api/debug-tutors', function () {
-        $tutors = \App\Models\Tutor::with(['accounts' => function ($query) {
-            $query->where('account_name', 'GLS')->where('status', 'active');
-        }])
-            ->whereHas('accounts', function ($query) {
-                $query->where('account_name', 'GLS')->where('status', 'active');
-            })
-            ->where('status', 'active')
-            ->take(3)
-            ->get();
-
-        $result = $tutors->map(function ($tutor) {
-            return [
-                'id' => $tutor->tutorID,
-                'username' => $tutor->tusername,
-                'full_name' => $tutor->full_name,
-                'status' => $tutor->status,
-                'accounts' => $tutor->accounts->map(function ($account) {
-                    return [
-                        'account_name' => $account->account_name,
-                        'status' => $account->status,
-                        'available_times' => $account->available_times
-                    ];
-                })
-            ];
-        });
-
-        return response()->json($result);
-    });
-
-    // API route to get class tutors (main and backup)
-    Route::get('/api/class-tutors/{classId}', [TutorAssignmentController::class, 'getClassTutors'])->name('api.class-tutors');
-
-    // API route to save tutor assignments
-    Route::post('/api/save-tutor-assignments', [TutorAssignmentController::class, 'saveAssignments'])->name('api.save-tutor-assignments');
-
-    // API route for real-time search
-    Route::get('/api/search-schedules', [ScheduleController::class, 'searchSchedules'])->name('api.search-schedules');
-    Route::get('/api/search-tutors', [ScheduleController::class, 'searchTutors'])->name('api.search-tutors');
-
-    // API route to check tutor time conflicts
-    Route::post('/api/check-tutor-time-conflict', [ScheduleController::class, 'checkTutorTimeConflict'])->name('api.check-tutor-time-conflict');
-
-    // Dashboard API routes
-    Route::get('/api/dashboard-data', [DashboardController::class, 'getDashboardData'])->name('api.dashboard-data');
-    Route::get('/api/dashboard-weekly-trends', [DashboardController::class, 'getWeeklyTrendsData'])->name('api.dashboard-weekly-trends');
+    })->name('check-assignments');
 });
 
-// Supervisor-only routes - require supervisor authentication
+// ============================================================================
+// SUPERVISOR-ONLY ROUTES
+// ============================================================================
 Route::middleware(['auth:supervisor', 'prevent.back'])->group(function () {
-    // Auto-assign routes
-    Route::post('/schedules/auto-assign', [TutorAssignmentController::class, 'autoAssign'])->name('schedules.auto-assign');
-    Route::post('/schedules/auto-assign/{date}', [TutorAssignmentController::class, 'autoAssignForDate'])->name('schedules.auto-assign.date');
-    Route::post('/schedules/auto-assign/{date}/{day}', [TutorAssignmentController::class, 'autoAssignForSpecific'])->name('schedules.auto-assign.specific');
-    Route::post('/schedules/auto-assign-class/{class}', [TutorAssignmentController::class, 'autoAssignForClass'])->name('schedules.auto-assign.class');
-    Route::delete('/schedules/remove-assignment/{assignment}', [TutorAssignmentController::class, 'removeAssignment'])->name('schedules.remove-assignment');
-
-    // Class cancellation routes
-    Route::post('/schedules/cancel-class/{classId}', [ScheduleController::class, 'cancelClass'])->name('schedules.cancel-class');
-
-    // Schedule saving routes
-    Route::post('/schedules/save-schedule', [ScheduleController::class, 'saveSchedule'])->name('schedules.save-schedule');
-
-    // Schedule history routes
-    Route::get('/schedules/history', [ScheduleController::class, 'showScheduleHistory'])->name('schedules.history');
-    Route::get('/schedules/export-history', [ScheduleExportController::class, 'exportHistory'])->name('schedules.export-history');
-
-    // Export routes
-    Route::get('/schedules/export-tentative', [ScheduleExportController::class, 'exportTentative'])->name('schedules.export-tentative');
-    Route::get('/schedules/export-final', [ScheduleExportController::class, 'exportFinal'])->name('schedules.export-final');
-    Route::post('/schedules/export-selected', [ScheduleExportController::class, 'exportSelected'])->name('schedules.export-selected');
-
-    // Tutor management routes
+    
+    // ------------------------------------------------------------------------
+    // SCHEDULE AUTO-ASSIGNMENT
+    // ------------------------------------------------------------------------
+    Route::prefix('schedules')->name('schedules.')->group(function () {
+        Route::post('/auto-assign', [TutorAssignmentController::class, 'autoAssign'])->name('auto-assign');
+        Route::post('/auto-assign/{date}', [TutorAssignmentController::class, 'autoAssignForDate'])->name('auto-assign.date');
+        Route::post('/auto-assign/{date}/{day}', [TutorAssignmentController::class, 'autoAssignForSpecific'])->name('auto-assign.specific');
+        Route::post('/auto-assign-class/{class}', [TutorAssignmentController::class, 'autoAssignForClass'])->name('auto-assign.class');
+        Route::delete('/remove-assignment/{assignment}', [TutorAssignmentController::class, 'removeAssignment'])->name('remove-assignment');
+    });
+    
+    // ------------------------------------------------------------------------
+    // SCHEDULE MANAGEMENT
+    // ------------------------------------------------------------------------
+    Route::prefix('schedules')->name('schedules.')->group(function () {
+        Route::post('/cancel-class/{classId}', [ScheduleController::class, 'cancelClass'])->name('cancel-class');
+        Route::post('/save-schedule', [ScheduleController::class, 'saveSchedule'])->name('save-schedule');
+        Route::get('/history', [ScheduleController::class, 'showScheduleHistory'])->name('history');
+    });
+    
+    // ------------------------------------------------------------------------
+    // SCHEDULE EXPORTS
+    // ------------------------------------------------------------------------
+    Route::prefix('schedules')->name('schedules.')->group(function () {
+        Route::get('/export-history', [ScheduleExportController::class, 'exportHistory'])->name('export-history');
+        Route::get('/export-tentative', [ScheduleExportController::class, 'exportTentative'])->name('export-tentative');
+        Route::get('/export-final', [ScheduleExportController::class, 'exportFinal'])->name('export-final');
+        Route::post('/export-selected', [ScheduleExportController::class, 'exportSelected'])->name('export-selected');
+    });
+    
+    // ------------------------------------------------------------------------
+    // TUTOR MANAGEMENT
+    // ------------------------------------------------------------------------
     Route::post('/tutors/{tutor}/toggle-status', [ScheduleController::class, 'toggleTutorStatus'])->name('tutors.toggle-status');
 });
 
-
+// ============================================================================
+// AUTHENTICATION ROUTES
+// ============================================================================
 require __DIR__ . '/auth.php';

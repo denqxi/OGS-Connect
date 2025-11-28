@@ -8,21 +8,22 @@ use Carbon\Carbon;
 
 class Tutor extends Authenticatable
 {
-    protected $primaryKey = 'tutorID';
-    public $incrementing = false; // Primary key is not auto-incrementing
-    protected $keyType = 'string'; // Primary key is string type
+    protected $table = 'tutor';
+    protected $primaryKey = 'tutor_id';
     
     protected $fillable = [
+        'tutor_id',
+        'applicant_id',
+        'account_id',
         'tutorID',
         'tusername',
-        'first_name',
-        'last_name',
         'email',
         'tpassword',
         'phone_number',
         'sex',
         'date_of_birth',
-        'status'
+        'status',
+        'hired_date_time',
     ];
 
     protected $hidden = [
@@ -58,7 +59,11 @@ class Tutor extends Authenticatable
     public static function generateFormattedId(): string
     {
         // Get the last tutor by extracting the number from tutorID
-        $lastTutor = self::orderByRaw('CAST(SUBSTRING(tutorID, 6) AS UNSIGNED) DESC')->first();
+        $lastTutor = self::whereNotNull('tutorID')
+            ->where('tutorID', 'LIKE', 'OGS-T%')
+            ->orderByRaw('CAST(SUBSTRING(tutorID, 6) AS UNSIGNED) DESC')
+            ->first();
+            
         if ($lastTutor && preg_match('/OGS-T(\d+)/', $lastTutor->tutorID, $matches)) {
             $nextId = ((int) $matches[1]) + 1;
         } else {
@@ -88,7 +93,24 @@ class Tutor extends Authenticatable
         return $username;
     }
 
+    /**
+     * Get the applicant that owns this tutor record.
+     */
+    public function applicant()
+    {
+        return $this->belongsTo(Applicant::class, 'applicant_id', 'applicant_id');
+    }
+
+    /**
+     * Get the account for this tutor.
+     */
+    public function account()
+    {
+        return $this->belongsTo(Account::class, 'account_id', 'account_id');
+    }
+
     // Relationship to tutor accounts (new multi-account system)
+    // tutor_id in tutor_accounts references tutorID (formatted string)
     public function accounts()
     {
         return $this->hasMany(TutorAccount::class, 'tutor_id', 'tutorID');
@@ -113,11 +135,16 @@ class Tutor extends Authenticatable
     {
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
-                $q->where('tutorID', 'LIKE', "%{$search}%") // tutorID now contains formatted ID
-                  ->orWhere('first_name', 'LIKE', "%{$search}%")
-                  ->orWhere('last_name', 'LIKE', "%{$search}%")
+                $q->where('tutorID', 'LIKE', "%{$search}%")
+                  ->orWhere('tusername', 'LIKE', "%{$search}%")
                   ->orWhere('email', 'LIKE', "%{$search}%")
-                  ->orWhere('phone_number', 'LIKE', "%{$search}%");
+                  ->orWhere('phone_number', 'LIKE', "%{$search}%")
+                  ->orWhereHas('applicant', function($applicantQuery) use ($search) {
+                      $applicantQuery->where('first_name', 'LIKE', "%{$search}%")
+                                     ->orWhere('last_name', 'LIKE', "%{$search}%")
+                                     ->orWhere('email', 'LIKE', "%{$search}%")
+                                     ->orWhere('contact_number', 'LIKE', "%{$search}%");
+                  });
             });
         }
         return $query;
@@ -153,15 +180,26 @@ class Tutor extends Authenticatable
     }
 
 
-    // Full name accessor
+    // Full name accessor - get from applicant relationship
     public function getFullNameAttribute()
     {
-        if ($this->first_name && $this->last_name) {
-            return trim($this->first_name . ' ' . $this->last_name);
+        if ($this->applicant) {
+            return trim(($this->applicant->first_name ?? '') . ' ' . ($this->applicant->last_name ?? ''));
         }
         
-        // Fallback to username if no full name
+        // Fallback to username if no applicant
         return $this->tusername ?? 'N/A';
+    }
+
+    // Accessors for backward compatibility
+    public function getFirstNameAttribute()
+    {
+        return $this->applicant?->first_name;
+    }
+
+    public function getLastNameAttribute()
+    {
+        return $this->applicant?->last_name;
     }
 
     /**
@@ -214,5 +252,53 @@ class Tutor extends Authenticatable
     public function tutorDetails()
     {
         return $this->hasOne(TutorDetails::class, 'tutor_id', 'tutorID');
+    }
+
+    /**
+     * Get the email address for password reset.
+     */
+    public function getEmailForPasswordReset()
+    {
+        return $this->email ?? $this->applicant?->email;
+    }
+
+    /**
+     * Get the name of the unique identifier for the user.
+     */
+    public function getAuthIdentifierName()
+    {
+        return 'tutorID';
+    }
+
+    /**
+     * Get the unique identifier for the user.
+     */
+    public function getAuthIdentifier()
+    {
+        return $this->tutorID;
+    }
+
+    /**
+     * Get the token value for the "remember me" session.
+     */
+    public function getRememberToken()
+    {
+        return $this->remember_token;
+    }
+
+    /**
+     * Set the token value for the "remember me" session.
+     */
+    public function setRememberToken($value)
+    {
+        $this->remember_token = $value;
+    }
+
+    /**
+     * Get the column name for the "remember me" token.
+     */
+    public function getRememberTokenName()
+    {
+        return 'remember_token';
     }
 }

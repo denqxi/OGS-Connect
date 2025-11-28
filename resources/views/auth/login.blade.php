@@ -21,7 +21,7 @@
     }
   </script>
 </head>
-<body class="min-h-screen bg-gradient-to-b from-emerald-300 to-[#7CA6D7]">
+<body class="h-screen overflow-hidden bg-gradient-to-b from-emerald-300 to-[#7CA6D7]">
 
   <!-- Home page button fixed top-left -->
   <div class="fixed top-4 left-4 z-50">
@@ -36,39 +36,49 @@
   </div>
 
   <!-- Main Container -->
-  <div class="min-h-screen flex flex-col lg:flex-row">
+  <div class="h-screen flex flex-col lg:flex-row">
     
-    <!-- Left Section - Welcome Content -->
-    <div class="flex-1 flex flex-col items-center justify-center px-4 py-8 lg:px-12 lg:pt-28 relative">
+    <!-- Left Section - Welcome Content (Hidden on mobile) -->
+    <div class="hidden lg:flex flex-1 flex-col items-center justify-center px-8 relative">
       <!-- Welcome Text -->
-      <div class="text-center lg:text-left mb-8 lg:mb-12">
-        <div class="text-blue-950 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight">
+      <div class="text-center lg:text-left mb-4">
+        <div class="text-blue-950 text-3xl font-extrabold leading-tight">
           WELCOME TO<br/>OGS CONNECT
         </div>
-        <div class="text-green-900 text-lg sm:text-xl md:text-2xl font-medium mt-4">
+        <div class="text-green-900 text-lg font-medium mt-2">
           A Centralized Management System
         </div>
       </div>
       
       <!-- Image -->
-      <div class="w-full max-w-md lg:max-w-lg xl:max-w-xl">
+      <div class="w-full max-w-[300px]">
         <img class="w-full h-auto" src="{{ asset('images/login-image.png') }}" alt="OGS Connect" />
       </div>
     </div>
 
     <!-- Right Section - Login Form -->
-    <div class="flex-1 flex items-center justify-center px-4 py-8 lg:px-8 relative">
+    <div class="flex-1 flex items-center justify-center px-4 py-4 lg:py-6 lg:px-8 relative overflow-y-auto">
       <!-- Login Card -->
-      <div class="w-full max-w-md lg:max-w-lg xl:max-w-xl bg-white/95 backdrop-blur-md rounded-2xl lg:rounded-3xl shadow-2xl p-6 sm:p-8 lg:p-12 xl:p-16 lg:relative lg:z-10 -mt-80 sm:-mt-82 md:-mt-86 lg:mt-0">
+      <div class="w-full max-w-md bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-5 lg:p-8 my-4">
         <!-- Logo and Header -->
-        <div class="w-full flex flex-col items-center mb-8 lg:mb-12">
-          <div class="text-center flex flex-col sm:flex-row items-center gap-4 mb-6">
-            <img class="w-16 h-16 sm:w-20 sm:h-20" src="{{ asset('images/logo.png') }}" alt="Logo" />
+        <div class="w-full flex flex-col items-center mb-6">
+          <!-- Mobile: Show welcome text with logo -->
+          <div class="lg:hidden text-center mb-4">
+            <div class="text-blue-950 text-2xl font-extrabold leading-tight mb-2">
+              WELCOME TO<br/>OGS CONNECT
+            </div>
+            <div class="text-green-900 text-sm font-medium">
+              A Centralized Management System
+            </div>
+          </div>
+          
+          <div class="text-center flex flex-col sm:flex-row items-center gap-3 mb-4">
+            <img class="w-12 h-12 sm:w-16 sm:h-16" src="{{ asset('images/logo.png') }}" alt="Logo" />
             <div class="text-center sm:text-left">
-              <span class="text-blue-950 text-xl sm:text-2xl font-bold block">
+              <span class="text-blue-950 text-lg sm:text-xl font-bold block">
                 OUTSOURCING
               </span>
-              <span class="text-blue-950 text-sm sm:text-base font-bold block">
+              <span class="text-blue-950 text-xs sm:text-sm font-bold block">
                 GLOBAL SOLUTIONS
               </span>
             </div>
@@ -76,33 +86,33 @@
         </div>
 
         <!-- Title and Description -->
-        <div class="w-full text-center lg:text-left mb-6 lg:mb-8">
-          <h1 class="text-blue-950 text-2xl sm:text-3xl lg:text-4xl font-bold mb-3" id="mainTitle">
+        <div class="w-full text-center mb-5">
+          <h1 class="text-blue-950 text-xl sm:text-2xl font-bold mb-2" id="mainTitle">
             Log in to your Account
           </h1>
-          <p class="text-neutral-800 text-sm sm:text-base font-medium leading-relaxed" id="mainDescription">
-            Provide your login details below to securely access your OGS Connect account.
+          <p class="text-neutral-800 text-xs sm:text-sm font-medium" id="mainDescription">
+            Enter your credentials to access OGS Connect
           </p>
         </div>
 
         <!-- Dynamic Form Container -->
-        <form method="POST" action="{{ route('login') }}" class="space-y-4 sm:space-y-5">
+        <form method="POST" action="{{ route('login') }}" class="space-y-3">
           @csrf
           
           <!-- Error Messages -->
           @if ($errors->any())
-            <div id="loginErrorAlert" class="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+            <div id="loginErrorAlert" class="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
               <div class="flex items-start">
                 <div class="flex-shrink-0">
-                  <svg class="h-5 w-5 text-red-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="h-4 w-4 text-red-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                   </svg>
                 </div>
-                <div class="ml-3">
-                  <h3 class="text-sm font-medium text-red-800">
+                <div class="ml-2">
+                  <h3 class="text-xs font-medium text-red-800">
                     Login Failed
                   </h3>
-                  <div class="mt-1 text-sm text-red-700">
+                  <div class="mt-1 text-xs text-red-700">
                     <p>Invalid credentials.</p>
                   </div>
                 </div>
@@ -111,36 +121,36 @@
           @endif
           
           <!-- Login Mode Fields -->
-          <div id="loginFields" class="space-y-4">
+          <div id="loginFields" class="space-y-3">
           <!-- Unified ID/Email Field -->
           <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 sm:h-6 sm:w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M3 8l7.89 7.89a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
               </svg>
             </div>
-            <input type="text" name="login_id" id="login_id" placeholder="Supervisor/Tutor ID or Email" required
-                    class="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-4 lg:py-5 bg-white border border-stone-300 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all duration-200 text-sm sm:text-base @error('login_id') border-red-500 @enderror"
+            <input type="text" name="login_id" id="login_id" placeholder="ID (OGS-S####/OGS-T####) or Email" required
+                    class="w-full pl-10 pr-4 py-2.5 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all duration-200 text-sm @error('login_id') border-red-500 @enderror"
                     value="{{ old('login_id') }}"
                     pattern="^(OGS-[ST]\d{4}|[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})$"
                     title="Please enter a valid ID or email address.">
-            <div id="login_id_validation" class="mt-1 text-sm text-red-600 hidden">
+            <div id="login_id_validation" class="mt-1 text-xs text-red-600 hidden">
               Please enter a valid ID or email address.
             </div>
           </div>
           
           <!-- Password -->
           <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 sm:h-6 sm:w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
               </svg>
             </div>
             <input type="password" name="password" id="password" placeholder="Password" required
-                    class="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 lg:py-5 bg-white border border-stone-300 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all duration-200 text-sm sm:text-base @error('password') border-red-500 @enderror">
-            <div class="absolute inset-y-0 right-0 pr-3 sm:pr-4 flex items-center">
+                    class="w-full pl-10 pr-10 py-2.5 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all duration-200 text-sm @error('password') border-red-500 @enderror">
+            <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
               <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" onclick="togglePasswordField(this)">
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -152,8 +162,15 @@
             </div>
           </div>
           
-            <div class="text-right">
-              <button type="button" onclick="switchToResetMode()" class="text-ogs-navy font-semibold text-xs sm:text-sm hover:underline">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center">
+                <input type="checkbox" name="remember" id="remember" 
+                       class="w-3.5 h-3.5 text-mint bg-gray-100 border-gray-300 rounded focus:ring-mint focus:ring-2">
+                <label for="remember" class="ml-2 text-xs text-gray-700">
+                  Remember me
+                </label>
+              </div>
+              <button type="button" onclick="switchToResetMode()" class="text-ogs-navy font-semibold text-xs hover:underline">
                 <i class="fas fa-key mr-1"></i>
                 Forgot Password?
               </button>
@@ -161,9 +178,9 @@
           </div>
 
           <!-- Reset Mode Fields (Hidden by default) -->
-          <div id="resetFields" class="hidden space-y-4">
+          <div id="resetFields" class="hidden space-y-3">
             <div>
-              <label for="reset_username" class="block text-sm font-medium text-gray-700 mb-2">
+              <label for="reset_username" class="block text-xs font-medium text-gray-700 mb-1">
                 Email or ID <span class="text-red-500">*</span>
               </label>
               <div class="relative">
@@ -171,42 +188,42 @@
                      id="reset_username" 
                      name="username" 
                      value="{{ old('username') }}"
-                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @error('username') border-red-500 @enderror"
+                     class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @error('username') border-red-500 @enderror"
                      placeholder="Enter your email or ID">
                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <i class="fas fa-user text-gray-400"></i>
+                  <i class="fas fa-user text-xs text-gray-400"></i>
                 </div>
               </div>
               @error('username')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
               @enderror
             </div>
 
             <div>
-              <label for="user_type" class="block text-sm font-medium text-gray-700 mb-2">
+              <label for="user_type" class="block text-xs font-medium text-gray-700 mb-1">
                 Account Type <span class="text-red-500">*</span>
               </label>
-              <div id="user_type_display" class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-700 mb-2">
-                <span class="text-sm">Account type will be detected automatically</span>
+              <div id="user_type_display" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs text-gray-700">
+                <span class="text-xs">Account type will be detected automatically</span>
               </div>
               <input type="hidden" id="user_type" name="user_type" value="">
             </div>
 
             <div>
-              <label for="security_question" class="block text-sm font-medium text-gray-700 mb-2">
+              <label for="security_question" class="block text-xs font-medium text-gray-700 mb-1">
                 Security Question <span class="text-red-500">*</span>
               </label>
-              <div id="security_question_display" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700">
-                <span class="text-sm">Please enter your username and account type first</span>
+              <div id="security_question_display" class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700">
+                <span class="text-xs">Please enter your username first</span>
               </div>
               <input type="hidden" id="security_question" name="security_question" value="">
               @error('security_question')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
               @enderror
             </div>
 
             <div>
-              <label for="security_answer1" class="block text-sm font-medium text-gray-700 mb-2">
+              <label for="security_answer1" class="block text-xs font-medium text-gray-700 mb-1">
                 Your Answer <span class="text-red-500">*</span>
               </label>
               <div class="relative">
@@ -214,32 +231,32 @@
                        id="security_answer1" 
                        name="security_answer1" 
                        value="{{ old('security_answer1') }}"
-                       class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @error('security_answer1') border-red-500 @enderror"
+                       class="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @error('security_answer1') border-red-500 @enderror"
                        placeholder="Enter your answer">
                 <button type="button" onclick="togglePasswordField(this)" class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <svg class="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                   </svg>
                 </button>
               </div>
               @error('security_answer1')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
               @enderror
             </div>
 
             <div>
-              <label for="security_question2" class="block text-sm font-medium text-gray-700 mb-2">
+              <label for="security_question2" class="block text-xs font-medium text-gray-700 mb-1">
                 Second Security Question <span class="text-red-500">*</span>
               </label>
-              <div id="security_question_display2" class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-700 mb-2">
-                <span class="text-sm">Please enter your email/ID and account type first</span>
+              <div id="security_question_display2" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs text-gray-700">
+                <span class="text-xs">Please enter your email/ID first</span>
               </div>
               <input type="hidden" id="security_question2" name="security_question2" value="">
             </div>
 
             <div>
-              <label for="security_answer2" class="block text-sm font-medium text-gray-700 mb-2">
+              <label for="security_answer2" class="block text-xs font-medium text-gray-700 mb-1">
                 Your Answer <span class="text-red-500">*</span>
               </label>
               <div class="relative">
@@ -247,22 +264,22 @@
                        id="security_answer2" 
                        name="security_answer2" 
                        value="{{ old('security_answer2') }}"
-                       class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @error('security_answer2') border-red-500 @enderror"
+                       class="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @error('security_answer2') border-red-500 @enderror"
                        placeholder="Enter your answer">
                 <button type="button" onclick="togglePasswordField(this)" class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <svg class="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                   </svg>
                 </button>
               </div>
               @error('security_answer2')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
               @enderror
             </div>
 
-            <div class="text-right">
-              <button type="button" onclick="switchToLoginMode()" class="text-ogs-navy font-semibold text-xs sm:text-sm hover:underline">
+            <div class="text-right pt-2">
+              <button type="button" onclick="switchToLoginMode()" class="text-ogs-navy font-semibold text-xs hover:underline">
                 <i class="fas fa-arrow-left mr-1"></i>
                 Back to Login
               </button>
@@ -270,28 +287,28 @@
           </div>
 
           <!-- Password Reset Fields (Hidden by default) -->
-          <div id="passwordResetFields" class="hidden space-y-4">
+          <div id="passwordResetFields" class="hidden space-y-3">
             <!-- User Info Display -->
-            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div class="bg-green-50 border border-green-200 rounded-lg p-2">
               <div class="flex items-center">
                 <div class="flex-shrink-0">
-                  <i class="fas fa-check-circle text-green-400"></i>
+                  <i class="fas fa-check-circle text-xs text-green-400"></i>
                 </div>
-                <div class="ml-3">
-                  <p class="text-sm font-medium text-green-800">
-                    Security question verified! Please set your new password.
+                <div class="ml-2">
+                  <p class="text-xs font-medium text-green-800">
+                    Security verified! Set new password.
                   </p>
                 </div>
               </div>
             </div>
 
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-2">
               <div class="flex items-center">
                 <div class="flex-shrink-0">
-                  <i class="fas fa-user text-blue-400"></i>
+                  <i class="fas fa-user text-xs text-blue-400"></i>
                 </div>
-                <div class="ml-3">
-                  <p class="text-sm font-medium text-blue-800" id="userInfoDisplay">
+                <div class="ml-2">
+                  <p class="text-xs font-medium text-blue-800" id="userInfoDisplay">
                     <!-- User info will be populated here -->
                   </p>
                 </div>
@@ -300,19 +317,19 @@
 
             <!-- New Password Field -->
             <div>
-              <label for="new_password" class="block text-sm font-medium text-gray-700 mb-2">
+              <label for="new_password" class="block text-xs font-medium text-gray-700 mb-1">
                 New Password <span class="text-red-500">*</span>
               </label>
               <div class="relative">
                 <input type="password" 
                        id="new_password" 
                        name="new_password" 
-                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent"
+                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent"
                        placeholder="Enter your new password"
                        oninput="validatePasswordMatch()">
                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
                   <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" onclick="togglePasswordField(this)">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -326,19 +343,19 @@
 
             <!-- Confirm Password Field -->
             <div>
-              <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-2">
+              <label for="confirm_password" class="block text-xs font-medium text-gray-700 mb-1">
                 Confirm New Password <span class="text-red-500">*</span>
               </label>
               <div class="relative">
                 <input type="password" 
                        id="confirm_password" 
                        name="confirm_password" 
-                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent"
+                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent"
                        placeholder="Confirm your new password"
                        oninput="validatePasswordMatch()">
                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
                   <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" onclick="togglePasswordField(this)">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -350,18 +367,18 @@
               <div id="password-match" class="mt-1 text-xs"></div>
             </div>
 
-            <div class="text-right">
-              <button type="button" onclick="switchToLoginMode()" class="text-ogs-navy font-semibold text-xs sm:text-sm hover:underline">
+            <div class="text-right pt-2">
+              <button type="button" onclick="switchToLoginMode()" class="text-ogs-navy font-semibold text-xs hover:underline">
                 <i class="fas fa-arrow-left mr-1"></i>
                 Back to Login
               </button>
             </div>
           </div>
-          
+
           <!-- Dynamic Submit Button -->
           <button type="submit" id="submitButton"
-                  class="w-full py-3 sm:py-4 lg:py-5 rounded-lg sm:rounded-xl bg-mint hover:bg-teal text-ogs-navy font-bold text-base sm:text-lg lg:text-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]">
-            LOG IN
+                  class="w-full py-2.5 rounded-lg bg-mint hover:bg-teal text-ogs-navy font-bold text-sm shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]">
+            <i class="fas fa-sign-in-alt mr-2"></i>LOG IN
           </button>
         </form>
       </div>
@@ -417,14 +434,16 @@
         return; // Don't show error for empty field (required attribute will handle it)
       }
       
-      // Validate ID format (OGS-S1001, OGS-T1001, etc.)
+      // Accept both supervisor (OGS-S####) and tutor (OGS-T####) IDs
       const idPattern = /^OGS-[ST]\d{4}$/;
+      
       // Validate email format
       const emailPattern = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
       
       if (idPattern.test(value) || emailPattern.test(value)) {
         // Valid input
         loginIdField.classList.add('border-green-500');
+        validationDiv.classList.add('hidden');
       } else {
         // Invalid input
         loginIdField.classList.add('border-red-500');

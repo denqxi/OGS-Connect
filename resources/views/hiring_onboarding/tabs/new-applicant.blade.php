@@ -3,14 +3,10 @@
     @include('hiring_onboarding.tabs.partials.applicant-details')
 @else
 
-    <!-- Page Title -->
-    <div class="p-4 border-b border-gray-200">
-        <h2 class="text-xl font-bold text-gray-800">New Applicants</h2>
-    </div>
     <!-- Search Filters -->
-    <div class="p-6 border-b border-gray-200">
+    <div class="pb-3 border-b border-gray-200">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
+            <h3 class="text-sm font-medium text-gray-500">Search Filters</h3>
         </div>
         <form method="GET" action="{{ route('hiring_onboarding.index') }}" id="searchForm" class="flex justify-between items-center space-x-4">
             <!-- Left side -->
@@ -25,11 +21,12 @@
                 </div>
                 <select name="status" id="statusSelect" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
                     <option value="">Select Status</option>
-                    @foreach($statuses as $status)
-                        <option value="{{ $status }}" {{ request('status') == $status ? 'selected' : '' }}>
-                            {{ ucwords(str_replace('_', ' ', $status)) }}
-                        </option>
-                    @endforeach
+                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                    <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
+                    <option value="no_answer" {{ request('status') == 'no_answer' ? 'selected' : '' }}>No Answer</option>
+                    <option value="re_schedule" {{ request('status') == 're_schedule' ? 'selected' : '' }}>Re-schedule</option>
+                    <option value="declined" {{ request('status') == 'declined' ? 'selected' : '' }}>Declined</option>
+                    <option value="not_recommended" {{ request('status') == 'not_recommended' ? 'selected' : '' }}>Not Recommended</option>
                 </select>
                 <select name="source" id="sourceSelect" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
                     <option value="">Select Source</option>
@@ -118,16 +115,16 @@
     
     <!-- Employee Table -->
     <div class="overflow-x-auto">
-        <table class="w-full" style="table-layout: fixed; min-width: 1200px;">
+        <table class="w-full" style="table-layout: fixed;">
             <thead class="bg-gray-50 border-b border-gray-200">
           
                 <tr>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 12%;">Timestamp</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 15%;">Name</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 12%;">Phone</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 18%;">Email</th>
-                    <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 16%;">Available Time</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 12%;">Notes</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 12%;">Date Applied</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 12%;">Applicant Name</th>
+                    {{-- <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 12%;">Phone</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 18%;">Email</th> --}}
+                    <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 16%;">Work Availability</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 12%;">Scheduled Interview</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 8%;">Status</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 7%;">Actions</th>
                 </tr>
@@ -143,8 +140,8 @@
                         <td class="px-4 py-4 text-sm font-medium text-gray-900">
                             {{ $applicant->first_name }} {{ $applicant->last_name }}
                         </td>
-                        <td class="px-4 py-4 text-sm text-gray-500">{{ $applicant->contact_number }}</td>
-                        <td class="px-4 py-4 text-sm text-gray-600" style="word-wrap: break-word;">{{ $applicant->email }}</td>
+                        {{-- <td class="px-4 py-4 text-sm text-gray-500">{{ $applicant->contact_number }}</td>
+                        <td class="px-4 py-4 text-sm text-gray-600" style="word-wrap: break-word;">{{ $applicant->email }}</td> --}}
                         <td class="px-3 py-4 text-sm text-gray-500" style="max-width: 200px; word-wrap: break-word;">
                             @php
                                 // Normalize days: accept array or JSON string
@@ -175,7 +172,10 @@
                                     })->join(', ');
                                 @endphp
                                 <div title="{{ collect($days)->map(function($d){ return \Illuminate\Support\Str::title(str_replace(['_','-'], ' ', $d)); })->join(', ') }} | {{ $applicant->start_time }} - {{ $applicant->end_time }}">
-                                    {{ $abbreviatedDays }} | {{ $applicant->start_time }} - {{ $applicant->end_time }}
+                                    {{ $abbreviatedDays }} | 
+                                    {{ \Carbon\Carbon::parse($applicant->start_time)->format('g:i A') }}
+                                    -
+                                    {{ \Carbon\Carbon::parse($applicant->end_time)->format('g:i A') }}
                                 </div>
                             @elseif($hasTimes)
                                 {{ $applicant->start_time }} - {{ $applicant->end_time }}
@@ -185,53 +185,59 @@
                                 —
                             @endif
                         </td>
+
                         <td class="px-4 py-4 text-sm text-gray-500" style="word-wrap: break-word;">
-                            @php
-                                // Notes logic: if notes is blank or status is pending, show interview time and date
-                                // if status is no_answer, show blank (no interview time to display)
-                                // if it has new values or meeting up with requested information, it must be blank
-                                $showInterviewTime = (empty($applicant->notes) || $applicant->status === 'pending') && $applicant->status !== 'no_answer';
-                            @endphp
-                            
-                            @if($showInterviewTime && !empty($applicant->interview_time))
+                            @if(!empty($applicant->interview_time))
                                 {{ \Carbon\Carbon::parse($applicant->interview_time)->format('M d, Y h:i A') }}
-                            @elseif(!empty($applicant->notes))
-                                {{ \Illuminate\Support\Str::limit($applicant->notes, 50) }}
                             @else
                                 —
                             @endif
                         </td>
                         <td class="px-4 py-4">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $applicant->statusColor() }}">
-                                @switch($applicant->status)
-                                    @case('no_answer')
-                                        No Answer
-                                        @break
-                                    @case('re_schedule')
-                                        Re-schedule
-                                        @break
-                                    @case('declined')
-                                        Declined
-                                        @break
-                                    @case('not_recommended')
-                                        Not Recommended
-                                        @break
-                                    @default
-                                        {{ ucwords(str_replace('_', ' ', $applicant->status)) }}
-                                @endswitch
-                            </span>
+                            <div class="flex items-center gap-2">
+                                @php
+                                    $statusColors = [
+                                        'pending' => 'bg-yellow-400',
+                                        'rejected' => 'bg-red-500',
+                                        'no_answer' => 'bg-orange-500',
+                                        're_schedule' => 'bg-purple-400',
+                                        'declined' => 'bg-red-600',
+                                        'not_recommended' => 'bg-red-700',
+                                    ];
+                                    $circleColor = $statusColors[$applicant->status] ?? 'bg-gray-500';
+                                @endphp
+                                <span class="w-2.5 h-2.5 rounded-full {{ $circleColor }}"></span>
+                                <span class="text-xs font-medium text-gray-500">
+                                    @switch($applicant->status)
+                                        @case('no_answer')
+                                            No Answer
+                                            @break
+                                        @case('re_schedule')
+                                            Re-schedule
+                                            @break
+                                        @case('declined')
+                                            Declined
+                                            @break
+                                        @case('not_recommended')
+                                            Not Recommended
+                                            @break
+                                        @default
+                                            {{ ucwords(str_replace('_', ' ', $applicant->status)) }}
+                                    @endswitch
+                                </span>
+                            </div>
                         </td>
                         <td class="px-4 py-4 text-sm">
                             <div class="flex items-center space-x-2">
                                 <!-- View Button -->
-                                <a href="{{ route('hiring_onboarding.applicant.show', $applicant->id) }}"
-                                    class="w-8 h-8 flex items-center justify-center bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors">
+                                <a href="{{ route('hiring_onboarding.applicant.show', $applicant->application_id) }}"
+                                    class="w-8 h-8 flex items-center justify-center bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors">
                                     <i class="fas fa-eye text-xs"></i>
                                 </a>
                                 <!-- Archive Button -->
                                 <button
-                                    onclick="openArchiveModal({{ $applicant->id }})"
-                                    class="w-8 h-8 bg-[#F29090] text-[#7A1F1F] rounded hover:bg-[#E67878] transition-colors"
+                                    onclick="openArchiveModal({{ $applicant->application_id }})"
+                                    class="w-8 h-8 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
                                     title="Archive Applicant">
                                     <i class="fas fa-archive text-xs"></i>
                                 </button>
@@ -241,7 +247,7 @@
                 @empty
                     <tr>
                         <td colspan="8" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                            No Applicants Found!
+                            No New Applicants as of the Moment.
                         </td>
                     </tr>
                 @endforelse
@@ -263,23 +269,23 @@
                     <i class="fas fa-chevron-left"></i>
                 </button>
             @else
-                <a href="{{ $applicants->previousPageUrl() }}&tab=new" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
+                <a href="{{ $applicants->appends(['tab' => 'new', 'search' => request('search'), 'status' => request('status'), 'source' => request('source')])->previousPageUrl() }}" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
                     <i class="fas fa-chevron-left"></i>
                 </a>
             @endif
 
             {{-- Pagination Elements --}}
-            @foreach ($applicants->getUrlRange(1, $applicants->lastPage()) as $page => $url)
+            @foreach ($applicants->appends(['tab' => 'new', 'search' => request('search'), 'status' => request('status'), 'source' => request('source')])->getUrlRange(1, $applicants->lastPage()) as $page => $url)
                 @if ($page == $applicants->currentPage())
                     <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">{{ $page }}</button>
                 @else
-                    <a href="{{ $url }}&tab=new" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">{{ $page }}</a>
+                    <a href="{{ $url }}" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">{{ $page }}</a>
                 @endif
             @endforeach
 
             {{-- Next Page Link --}}
             @if ($applicants->hasMorePages())
-                <a href="{{ $applicants->nextPageUrl() }}&tab=new" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
+                <a href="{{ $applicants->appends(['tab' => 'new', 'search' => request('search'), 'status' => request('status'), 'source' => request('source')])->nextPageUrl() }}" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
                     <i class="fas fa-chevron-right"></i>
                 </a>
             @else

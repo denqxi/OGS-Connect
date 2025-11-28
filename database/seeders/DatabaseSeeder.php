@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
 
         // Seed core data in proper order
         $this->call([
+            AccountSeeder::class,
             SupervisorSeeder::class,
             TutorSeeder::class,
             TutorDetailsSeeder::class,
@@ -30,6 +31,7 @@ class DatabaseSeeder extends Seeder
             PaymentInformationSeeder::class,
             TutorAssignmentSeeder::class,
             SecurityQuestionsSeeder::class,
+            ApplicantSeeder::class,
         ]);
     }
 }

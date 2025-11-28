@@ -24,11 +24,14 @@
             </div>
             <select name="status" id="statusSelect" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
                 <option value="">Select Status</option>
-                @foreach($statuses as $status)
-                    <option value="{{ $status }}" {{ request('status') == $status ? 'selected' : '' }}>
-                        {{ ucwords(str_replace('_', ' ', $status)) }}
-                    </option>
-                @endforeach
+                <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                <option value="passed" {{ request('status') == 'passed' ? 'selected' : '' }}>Passed</option>
+                <option value="failed" {{ request('status') == 'failed' ? 'selected' : '' }}>Failed</option>
+                <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
+                <option value="no_answer" {{ request('status') == 'no_answer' ? 'selected' : '' }}>No Answer</option>
+                <option value="re_schedule" {{ request('status') == 're_schedule' ? 'selected' : '' }}>Re-schedule</option>
+                <option value="declined" {{ request('status') == 'declined' ? 'selected' : '' }}>Declined</option>
+                <option value="not_recommended" {{ request('status') == 'not_recommended' ? 'selected' : '' }}>Not Recommended</option>
             </select>
             <select name="account" id="accountSelect" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
                 <option value="">Select Account</option>
@@ -59,59 +62,75 @@
             </tr>
         </thead>
     <tbody class="bg-white divide-y divide-gray-200">
-        @forelse($demos as $demo)
+        @forelse($screenings as $screening)
         <tr class="hover:bg-gray-50">
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ $demo->moved_to_demo_at ? $demo->moved_to_demo_at->format('Y-m-d H:i') : 'N/A' }}
+                {{ $screening->screening_date_time ? $screening->screening_date_time->format('M d, Y h:i A') : 'N/A' }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {{ $demo->first_name }} {{ $demo->last_name }}
+                {{ $screening->first_name }} {{ $screening->last_name }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ $demo->contact_number }}
+                {{ $screening->contact_number }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ $demo->email }}
+                {{ $screening->email }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ ucwords(str_replace('_', ' ', $demo->assigned_account ?? 'N/A')) }}
+                {{ ucwords(str_replace('_', ' ', $screening->assigned_account ?? 'N/A')) }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                @if($demo->demo_schedule)
-                    {{ $demo->demo_schedule->format('M d, Y H:i') }}
+                @if($screening->screening_date_time)
+                    {{ $screening->screening_date_time->format('M d, Y H:i') }}
                 @else
-                    {{ $demo->start_time }} - {{ $demo->end_time }}
+                    {{ $screening->start_time }} - {{ $screening->end_time }}
                 @endif
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ Str::limit($demo->notes ?? 'No notes', 20) }}
+                {{ Str::limit($screening->notes ?? 'No notes', 20) }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $demo->statusColor() }}">
-                    {{ ucwords(str_replace('_', ' ', $demo->status)) }}
-                </span>
+                <div class="flex items-center gap-2">
+                    @php
+                        $statusColors = [
+                            'pending' => 'bg-yellow-400',
+                            'rejected' => 'bg-red-500',
+                            'no_answer' => 'bg-orange-500',
+                            're_schedule' => 'bg-purple-400',
+                            'declined' => 'bg-red-600',
+                            'not_recommended' => 'bg-red-700',
+                            'passed' => 'bg-green-500',
+                            'failed' => 'bg-red-500',
+                        ];
+                        $circleColor = $statusColors[$screening->status] ?? 'bg-gray-500';
+                    @endphp
+                    <span class="w-2.5 h-2.5 rounded-full {{ $circleColor }}"></span>
+                    <span class="text-xs font-medium text-gray-700">
+                        {{ ucwords(str_replace('_', ' ', $screening->status)) }}
+                    </span>
+                </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
                 <div class="flex items-center space-x-2">
                     <!-- View Detail Applicant Button -->
-                    <a href="{{ route('hiring_onboarding.applicant.showUneditable', $demo->id) }}"
-                        class="w-8 h-8 flex items-center justify-center bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors" title="View Details">
+                    <a href="{{ route('hiring_onboarding.applicant.showUneditable', $screening->id) }}"
+                        class="w-8 h-8 flex items-center justify-center bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors" title="View Details">
                         <i class="fas fa-eye text-xs"></i>
                     </a>
                     <!-- Edit Button -->
-                    @if($demo->status === 'onboarding')
+                    @if($screening->status === 'onboarding')
                         <button 
                             type="button"
-                            onclick="showOnboardingConfirmationModal({{ $demo->id }}, '{{ $demo->first_name }} {{ $demo->last_name }}')"
+                            onclick="showOnboardingConfirmationModal({{ $screening->id }}, '{{ $screening->first_name }} {{ $screening->last_name }}')"
                             class="w-8 h-8 flex items-center justify-center bg-purple-100 text-purple-600 rounded hover:bg-purple-200 transition-colors"
                             title="Review Onboarding"
                         >
                             <i class="fas fa-clipboard-check text-xs"></i>
                         </button>
-                    @elseif($demo->status === 'demo')
+                    @elseif($screening->status === 'demo')
                         <button 
                             type="button"
-                            onclick="showDemoDetailsConfirmation({{ $demo->id }}, '{{ $demo->first_name }} {{ $demo->last_name }}')"
+                            onclick="showDemoDetailsConfirmation({{ $screening->id }}, '{{ $screening->first_name }} {{ $screening->last_name }}')"
                             class="w-8 h-8 flex items-center justify-center bg-violet-100 text-violet-600 rounded hover:bg-violet-200 transition-colors"
                             title="Review Demo & Confirm Decision"
                         >
@@ -120,7 +139,7 @@
                     @else
                         <button 
                             type="button"
-                            onclick="loadEditModalData({{ $demo->id }})"
+                            onclick="loadEditModalData({{ $screening->id }})"
                             class="w-8 h-8 flex items-center justify-center bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 transition-colors"
                             title="Edit"
                         >
@@ -147,24 +166,24 @@
 <!-- Pagination -->
 <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
     <div class="text-sm text-gray-500">
-        Showing {{ $demos->firstItem() ?? 0 }} to {{ $demos->lastItem() ?? 0 }} of {{ $demos->total() }} results
+        Showing {{ $screenings->firstItem() ?? 0 }} to {{ $screenings->lastItem() ?? 0 }} of {{ $screenings->total() }} results
     </div>
-    @if($demos->hasPages())
+    @if($screenings->hasPages())
     <div class="flex items-center space-x-2">
         {{-- Previous Page Link --}}
-        @if ($demos->onFirstPage())
+        @if ($screenings->onFirstPage())
             <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
                 <i class="fas fa-chevron-left"></i>
             </button>
         @else
-            <a href="{{ $demos->previousPageUrl() }}&tab=demo" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
+            <a href="{{ $screenings->previousPageUrl() }}&tab=demo" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
                 <i class="fas fa-chevron-left"></i>
             </a>
         @endif
 
         {{-- Pagination Elements --}}
-        @foreach ($demos->getUrlRange(1, $demos->lastPage()) as $page => $url)
-            @if ($page == $demos->currentPage())
+        @foreach ($screenings->getUrlRange(1, $screenings->lastPage()) as $page => $url)
+            @if ($page == $screenings->currentPage())
                 <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">{{ $page }}</button>
             @else
                 <a href="{{ $url }}&tab=demo" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">{{ $page }}</a>
@@ -172,8 +191,8 @@
         @endforeach
 
         {{-- Next Page Link --}}
-        @if ($demos->hasMorePages())
-            <a href="{{ $demos->nextPageUrl() }}&tab=demo" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
+        @if ($screenings->hasMorePages())
+            <a href="{{ $screenings->nextPageUrl() }}&tab=demo" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
                 <i class="fas fa-chevron-right"></i>
             </a>
         @else

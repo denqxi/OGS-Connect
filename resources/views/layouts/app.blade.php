@@ -67,14 +67,28 @@
             const sidebar = document.querySelector('.group');
             const mainContent = document.querySelector('main');
             
-            // Handle sidebar hover to adjust main content margin
+            // Handle sidebar hover to adjust main content margin, header position, and backdrop
+            const mainHeader = document.getElementById('mainHeader');
+            const headerBackdrop = document.getElementById('headerBackdrop');
             if (sidebar && mainContent) {
                 sidebar.addEventListener('mouseenter', function() {
                     mainContent.style.marginLeft = 'calc(18rem - 30px)';
+                    if (mainHeader) {
+                        mainHeader.style.marginLeft = 'calc(18rem - 30px)'; // Adjust header margin to match content
+                    }
+                    if (headerBackdrop) {
+                        headerBackdrop.style.left = 'calc(18rem - 30px)'; // Adjust backdrop left position
+                    }
                 });
                 
                 sidebar.addEventListener('mouseleave', function() {
                     mainContent.style.marginLeft = '5rem'; // 80px
+                    if (mainHeader) {
+                        mainHeader.style.marginLeft = '5rem'; // Match content margin
+                    }
+                    if (headerBackdrop) {
+                        headerBackdrop.style.left = '5rem'; // 80px (left-20)
+                    }
                 });
             }
             

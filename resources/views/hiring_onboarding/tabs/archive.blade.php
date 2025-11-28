@@ -1,10 +1,5 @@
-<!-- Page Title -->
-<div class="p-4 border-b border-gray-200">
-    <h2 class="text-xl font-bold text-gray-800">Archive</h2>
-</div>
-
 <!-- Search Filters -->
-<div class="p-6 border-b border-gray-200">
+<div class="pt-0 p-2 border-b border-gray-200">
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
     </div>
@@ -22,11 +17,11 @@
             </div>
             <select name="status" id="statusSelect" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
                 <option value="">Select Status</option>
-                @if(isset($statuses))
-                    @foreach($statuses as $status)
-                        <option value="{{ $status }}" {{ request('status') == $status ? 'selected' : '' }}>{{ ucwords(str_replace('_', ' ', $status)) }}</option>
-                    @endforeach
-                @endif
+                <option value="declined" {{ request('status') == 'declined' ? 'selected' : '' }}>Declined</option>
+                <option value="not_recommended" {{ request('status') == 'not_recommended' ? 'selected' : '' }}>Not Recommended</option>
+                <option value="no_answer_3_attempts" {{ request('status') == 'no_answer_3_attempts' ? 'selected' : '' }}>No Answer 3 Attempts</option>
+                <option value="re_schedule" {{ request('status') == 're_schedule' ? 'selected' : '' }}>Re-schedule</option>
+                <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
             </select>
         </div>
     </form>
@@ -42,7 +37,7 @@
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Final Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interview Time</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
             </tr>
@@ -51,7 +46,7 @@
             @forelse($archivedApplicants ?? [] as $applicant)
                 <tr class="hover:bg-gray-50">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $applicant->archived_at ? $applicant->archived_at->format('Y-m-d H:i') : 'N/A' }}
+                        {{ $applicant->archived_at ? $applicant->archived_at->format('M d, Y h:i A') : 'N/A' }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {{ $applicant->first_name }} {{ $applicant->last_name }}
@@ -62,29 +57,33 @@
                         {{ Str::limit($applicant->notes ?? 'No notes', 50) }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        @php
-                            $statusColors = [
-                                'declined' => 'bg-red-500',
-                                'not_recommended' => 'bg-orange-500',
-                                'no_answer_3_attempts' => 'bg-gray-500',
-                                're_schedule' => 'bg-blue-500'
-                            ];
-                            $statusColor = $statusColors[$applicant->final_status] ?? 'bg-gray-500';
-                        @endphp
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColor }} text-white">
-                            {{ ucwords(str_replace('_', ' ', $applicant->final_status)) }}
-                        </span>
+                        <div class="flex items-center gap-2">
+                            @php
+                                $statusColors = [
+                                    'declined' => 'bg-red-600',
+                                    'not_recommended' => 'bg-red-700',
+                                    'no_answer_3_attempts' => 'bg-gray-500',
+                                    're_schedule' => 'bg-purple-400',
+                                    'rejected' => 'bg-red-500',
+                                ];
+                                $circleColor = $statusColors[$applicant->status] ?? 'bg-gray-500';
+                            @endphp
+                            <span class="w-2.5 h-2.5 rounded-full {{ $circleColor }}"></span>
+                            <span class="text-xs font-medium text-gray-500">
+                                {{ ucwords(str_replace('_', ' ', $applicant->status)) }}
+                            </span>
+                        </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         @if($applicant->interview_time)
-                            {{ $applicant->interview_time->format('Y-m-d H:i') }}
+                            {{ $applicant->interview_time->format('M d, Y h:i A') }}
                         @else
                             N/A
                         @endif
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                         <a href="{{ route('hiring_onboarding.archived.show', $applicant->id) }}"
-                           class="w-8 h-8 flex items-center justify-center bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors"
+                           class="w-8 h-8 flex items-center justify-center bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
                            title="View Details">
                             <i class="fas fa-eye text-xs"></i>
                         </a>

@@ -3,7 +3,7 @@
     class="flex justify-center items-center w-full h-full bg-black bg-opacity-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto relative">
         <!-- Header -->
-        <div class="flex justify-between items-center px-6 py-3 bg-[#F65353] rounded-t-xl">
+        <div class="flex justify-between items-center px-6 py-3 bg-[#1E40AF] rounded-t-xl">
             <h2 class="text-white text-lg font-bold">Archive Applicant</h2>
             <button type="button"
                 onclick="closeArchiveModal()"
@@ -22,8 +22,9 @@
                 <input type="text" 
                     name="interviewer"
                     id="archive_interviewer"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F29090] focus:border-transparent"
-                    placeholder="Enter interviewer name"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 bg-gray-50"
+                    value="{{ Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : '' }}"
+                    readonly
                     required>
             </div>
             
@@ -33,7 +34,7 @@
                 <div class="relative">
                     <select name="special_status" 
                         id="archive_special_status"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F29090] focus:border-transparent appearance-none bg-white"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent appearance-none bg-white"
                         required>
                         <option value="" disabled selected>-Select Reason-</option>
                         <option value="declined">Declined</option>
@@ -51,14 +52,14 @@
             <div class="mb-6">
                 <label class="block text-gray-700 text-sm font-medium mb-2">Notes:</label>
                 <textarea name="notes" rows="4"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F29090] focus:border-transparent resize-none"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent resize-none"
                     placeholder="Enter reason for archiving this applicant..."></textarea>
             </div>
             
             <!-- Confirm Archive Button -->
             <div class="flex justify-center">
                 <button type="button" onclick="showArchiveConfirmation()"
-                    class="bg-[#F65353] text-white px-8 py-2 rounded-full font-bold hover:opacity-90 transition-opacity">
+                    class="bg-[#1E40AF] text-white px-8 py-2 rounded-full font-bold hover:opacity-90 transition-opacity">
                     Confirm Archive
                 </button>
             </div>
@@ -69,39 +70,51 @@
 <!-- Archive Confirmation Modal -->
 <div id="archiveConfirmationModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 70;"
     class="flex justify-center items-center w-full h-full bg-black bg-opacity-50">
-    <div class="bg-white rounded-lg shadow-lg w-96">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4">
+        <!-- Header -->
+        <div class="bg-[#1E40AF] rounded-t-xl px-6 py-4">
+            <h3 class="text-white text-xl font-bold text-center" id="archiveConfirmationTitle">Confirm Archive</h3>
+        </div>
+        
         <!-- Body -->
-        <div class="p-6 text-center">
-            <div class="flex justify-center mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-orange-500" fill="none"
+        <div class="p-6">
+            <!-- Icon -->
+            <div class="flex justify-center mb-4" id="archiveConfirmationIcon">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 text-blue-500" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-6 4h8" />
                 </svg>
             </div>
             
-            <h3 class="font-bold text-lg" id="archiveConfirmationTitle">Confirm Archive</h3>
-            <p class="text-gray-600 mt-2" id="archiveConfirmationMessage">
-                Please confirm your action.
-            </p>
-            <div class="flex justify-center mb-4" id="archiveConfirmationIcon">
-                <!-- Default icon, will be replaced by JS -->
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-orange-500" fill="none"
-                    viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-6 4h8" />
-                </svg>
+            <!-- Message -->
+            <div class="text-center mb-4">
+                <p class="text-gray-700 text-sm leading-relaxed" id="archiveConfirmationMessage">
+                    Please confirm your action.
+                </p>
+            </div>
+            
+            <!-- Warning Message -->
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+                <div class="flex items-start">
+                    <svg class="w-5 h-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    <p class="text-sm text-red-700 font-medium">
+                        Warning: This action cannot be undone. The applicant cannot be restored once archived.
+                    </p>
+                </div>
             </div>
         </div>
 
         <!-- Footer Buttons -->
-        <div class="flex justify-center gap-4 pb-6">
+        <div class="flex justify-center gap-4 px-6 pb-6">
             <button onclick="hideArchiveConfirmation()"
-                class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">
+                class="bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg font-semibold hover:bg-gray-300 transition-colors">
                 Cancel
             </button>
             <button onclick="submitArchiveForm()"
-                class="bg-[#F29090] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">
+                class="bg-[#1E40AF] text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-[#1E3A8A] transition-colors">
                 Confirm
             </button>
         </div>
@@ -139,30 +152,28 @@ function updateArchiveConfirmationModal(reason, interviewer, notes) {
     
     switch(reason) {
         case 'declined':
-            titleElement.textContent = 'Applicant Declined';
+            titleElement.textContent = 'Archive Applicant - Declined';
             messageElement.innerHTML = `
-                This applicant has been <span class="font-bold text-red-600">declined</span> and will be moved to the Archive.
+                This applicant has been marked as <span class="font-bold text-blue-700">declined</span> and will be permanently moved to the Archive.
                 <br><br>
-                <strong>Interviewer:</strong> ${interviewer}
-                ${notes ? `<br><strong>Notes:</strong> ${notes}` : ''}
+                ${notes ? `<br><strong class="text-gray-800">Notes:</strong> <span class="text-gray-700">${notes}</span>` : ''}
             `;
             iconElement.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             `;
             break;
             
         case 'not_recommended':
-            titleElement.textContent = 'Applicant Not Recommended';
+            titleElement.textContent = 'Archive Applicant - Not Recommended';
             messageElement.innerHTML = `
-                This applicant has been marked as <span class="font-bold text-red-600">not recommended</span> and will be moved to the Archive.
+                This applicant has been marked as <span class="font-bold text-blue-700">not recommended</span> and will be permanently moved to the Archive.
                 <br><br>
-                <strong>Interviewer:</strong> ${interviewer}
-                ${notes ? `<br><strong>Notes:</strong> ${notes}` : ''}
+                ${notes ? `<br><strong class="text-gray-800">Notes:</strong> <span class="text-gray-700">${notes}</span>` : ''}
             `;
             iconElement.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
             `;
@@ -171,13 +182,12 @@ function updateArchiveConfirmationModal(reason, interviewer, notes) {
         default:
             titleElement.textContent = 'Confirm Archive';
             messageElement.innerHTML = `
-                This applicant will be archived and moved to the Archive section.
+                This applicant will be permanently archived and moved to the Archive section.
                 <br><br>
-                <strong>Interviewer:</strong> ${interviewer}
-                ${notes ? `<br><strong>Notes:</strong> ${notes}` : ''}
+                ${notes ? `<br><strong class="text-gray-800">Notes:</strong> <span class="text-gray-700">${notes}</span>` : ''}
             `;
             iconElement.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-orange-500" fill="none"
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 text-blue-500" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-6 4h8" />

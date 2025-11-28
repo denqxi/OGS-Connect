@@ -11,6 +11,7 @@ use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class ApplicationController extends Controller
@@ -355,7 +356,7 @@ class ApplicationController extends Controller
                 [
                     'demo_id' => $demo->id,
                     'applicant_name' => $demo->first_name . ' ' . $demo->last_name,
-                    'final_status' => $newStatus,
+                    'status' => $newStatus,
                     'assigned_account' => $demo->assigned_account,
                     'finalized_at' => now()->toISOString()
                 ]
@@ -431,7 +432,7 @@ class ApplicationController extends Controller
                             'demo_id' => $demo->id,
                             'applicant_name' => $demo->first_name . ' ' . $demo->last_name,
                             'fail_reason' => $failReason,
-                            'final_status' => $failReason,
+                            'status' => $failReason,
                             'interviewer' => $interviewer,
                             'archived_at' => now()->toISOString()
                         ]
@@ -444,15 +445,30 @@ class ApplicationController extends Controller
                     // Transfer to different account with new status
                     // Note: start_time and end_time are applicant's preferred schedule, should not be changed
                     $transferData = $request->input('transfer_data');
+                    
+                    // Find the account by account_name to get account_id
+                    $account = \App\Models\Account::where('account_name', $transferData['assigned_account'])->first();
+                    
+                    if (!$account) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Invalid account name: ' . $transferData['assigned_account']
+                        ], 400);
+                    }
+                    
+                    // Store old account before update
+                    $oldAccountName = $demo->assigned_account;
+                    
                     $demo->update([
-                        'assigned_account' => $transferData['assigned_account'],
-                        'status' => $transferData['new_status'],
-                        // Keep original start_time and end_time (applicant's preferred schedule)
-                        'interview_time' => $transferData['schedule'],
-                        'demo_schedule' => $transferData['schedule'], // Also update demo_schedule for table display
-                        'interviewer' => $interviewer,
+                        'account_id' => $account->account_id,
+                        'phase' => $transferData['new_status'],
+                        'screening_date_time' => $transferData['schedule'],
                         'notes' => $notes
                     ]);
+                    
+                    // Refresh the model to load the new account relationship
+                    $demo->refresh();
+                    $demo->load('account');
                     
                     // Create notification for account transfer
                     $this->createNotification(
@@ -464,7 +480,7 @@ class ApplicationController extends Controller
                         [
                             'demo_id' => $demo->id,
                             'applicant_name' => $demo->first_name . ' ' . $demo->last_name,
-                            'old_account' => $demo->assigned_account,
+                            'old_account' => $oldAccountName,
                             'new_account' => $transferData['assigned_account'],
                             'new_status' => $transferData['new_status'],
                             'schedule' => $transferData['schedule'],
@@ -500,28 +516,25 @@ class ApplicationController extends Controller
      */
     private function archiveDemo(Demo $demo, string $finalStatus, string $interviewer, ?string $notes = null)
     {
-        $archivedData = $demo->toArray();
-        $archivedData['final_status'] = $finalStatus;
-        $archivedData['archived_at'] = now();
-        $archivedData['interviewer'] = $interviewer;
-        $archivedData['notes'] = $notes ?? '';
-        
-        // Remove the id to avoid conflicts
-        unset($archivedData['id']);
-        
-        // Remove fields that don't exist in ArchivedApplication
-        unset($archivedData['demo_schedule']);
-        unset($archivedData['training_schedule']);
-        unset($archivedData['moved_to_demo_at']);
-        unset($archivedData['moved_to_training_at']);
-        unset($archivedData['moved_to_onboarding_at']);
-        unset($archivedData['hired_at']);
-        unset($archivedData['finalized_at']);
-        // Keep assigned_account - it's now in ArchivedApplication
-        
-        // You might need to create an ArchivedDemo model or use the existing ArchivedApplication
-        // For now, I'll assume you want to use ArchivedApplication
-        \App\Models\ArchivedApplication::create($archivedData);
+        $payload = $demo->toArray();
+        $payload['final_status'] = $finalStatus;
+        $payload['interviewer'] = $interviewer;
+        $payload['notes'] = $notes ?? '';
+
+        // Determine archive_by (supervisor)
+        $archiveBy = auth()->guard('supervisor')->check() 
+            ? auth()->guard('supervisor')->user()->supervisor_id 
+            : session('supervisor_id');
+
+        \App\Models\Archive::create([
+            'applicant_id' => $demo->applicant_id ?? null,
+            'archive_by' => $archiveBy,
+            'notes' => $notes ?? '',
+            'archive_date_time' => now(),
+            'category' => 'demo',
+            'status' => $finalStatus,
+            'payload' => $payload,
+        ]);
     }
 
     /**

@@ -3,11 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
+use App\Models\Applicant;
+use App\Models\Qualification;
+use App\Models\Requirement;
+use App\Models\Referral;
+use App\Models\WorkPreference;
 use App\Models\ArchivedApplication;
 use App\Models\Demo;
+use App\Models\Screening;
+use App\Models\Account;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class ApplicationFormController extends Controller
 {
@@ -20,22 +28,27 @@ class ApplicationFormController extends Controller
         // Basic validation rules
         $rules = [
             'first_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
-            'birth_date' => 'required|date',
+            'birth_date' => 'required|date|before:-18 years|after:-70 years',
             'address' => 'required|string|max:500',
             'contact_number' => 'required|string|regex:/^09\d{9}$/',
-            'email' => 'required|email|max:255',
+            // Ensure unique applicant email to avoid duplicate insert errors
+            'email' => 'required|email|max:255|unique:applicants,email',
+            'ms_teams' => 'nullable|string|max:255',
             'education' => 'required|string|in:shs,college_undergrad,bachelor,master,doctorate',
             'esl_experience' => 'required|string|in:na,1-2,3-4,5plus',
             'resume_link' => 'required|url|max:500',
             'intro_video' => 'required|url|max:500',
             'work_type' => 'required|string|in:work_from_home,work_at_site',
+            'source' => 'required|string|in:fb_boosting,referral',
             'start_time' => 'required|string',
             'end_time' => 'required|string',
+            'interview_time' => 'required|date|after:now',
             'days' => 'required|array|min:1',
             'platforms' => 'required|array|min:1',
             'can_teach' => 'required|array|min:1',
-            'terms_agreement' => 'required',
+            'terms_agreement' => 'required|accepted',
         ];
 
         // Conditional validation for referral
@@ -56,9 +69,21 @@ class ApplicationFormController extends Controller
             'rules' => $rules
         ]);
 
+        // Custom validation messages
+        $messages = [
+            'birth_date.before' => 'You must be at least 18 years old to apply.',
+            'birth_date.after' => 'Birth date must be within the last 70 years.',
+            'birth_date.date' => 'Please enter a valid birth date.',
+            'interview_time.after' => 'Interview time must be in the future.',
+            'interview_time.required' => 'Please select your preferred interview time.',
+            'contact_number.regex' => 'Contact number must be a valid Philippine mobile number (e.g., 09123456789).',
+            'email.unique' => 'This email address has already been used for an application.',
+            'terms_agreement.accepted' => 'You must agree to the Terms and Conditions to submit your application.',
+        ];
+
         // Validate the request
         try {
-            $validatedData = $request->validate($rules);
+            $validatedData = $request->validate($rules, $messages);
             Log::info('Validation passed', ['validated_data' => $validatedData]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error('Validation failed', [
@@ -71,41 +96,138 @@ class ApplicationFormController extends Controller
                 ->withInput();
         }
 
-        // Convert arrays to JSON
-        $validatedData['days'] = $request->input('days', []);
-        $validatedData['platforms'] = $request->input('platforms', []);
-        $validatedData['can_teach'] = $request->input('can_teach', []);
-        $validatedData['ms_teams'] = $request->input('ms_teams');
-        $validatedData['source'] = $request->input('source');
-        $validatedData['referrer_name'] = $request->input('referrer_name');
-        $validatedData['interview_time'] = $request->input('interview_time');
-        $validatedData['status'] = 'pending'; // Set default status
-        
         // Convert terms_agreement from "on" to boolean
-        $validatedData['terms_agreement'] = $request->has('terms_agreement') ? true : false;
+        $termsAgreement = $request->has('terms_agreement') ? true : false;
         
         // Additional validation for terms agreement
-        if (!$validatedData['terms_agreement']) {
+        if (!$termsAgreement) {
             return redirect()->back()
                 ->withErrors(['terms_agreement' => 'You must agree to the Terms and Conditions.'])
                 ->withInput();
         }
 
         try {
-            $application = Application::create($validatedData);
-            Log::info('Application created successfully', ['application_id' => $application->id]);
+            // Use database transaction to ensure data integrity
+            $application = DB::transaction(function () use ($request, $validatedData, $termsAgreement) {
+                // 1. Create Applicant
+                $applicant = Applicant::create([
+                    'first_name' => $validatedData['first_name'],
+                    'last_name' => $validatedData['last_name'],
+                    'middle_name' => $request->input('middle_name'),
+                    'birth_date' => $validatedData['birth_date'],
+                    'address' => $validatedData['address'],
+                    'contact_number' => $validatedData['contact_number'],
+                    'email' => $validatedData['email'],
+                    'ms_teams' => $request->input('ms_teams') ?: '',
+                    'interview_time' => $validatedData['interview_time'],
+                ]);
+
+                // 2. Create Qualification
+                Qualification::create([
+                    'applicant_id' => $applicant->applicant_id,
+                    'education' => $validatedData['education'],
+                    'esl_experience' => $validatedData['esl_experience'],
+                ]);
+
+                // 3. Create Requirement
+                Requirement::create([
+                    'applicant_id' => $applicant->applicant_id,
+                    'resume_link' => $validatedData['resume_link'],
+                    'intro_video' => $validatedData['intro_video'],
+                    'work_type' => $validatedData['work_type'],
+                    'speedtest' => $request->input('speedtest'),
+                    'main_devices' => $request->input('main_device'),
+                    'backup_devices' => $request->input('backup_device'),
+                ]);
+
+                // 4. Create Referral
+                Referral::create([
+                    'applicant_id' => $applicant->applicant_id,
+                    'source' => $request->input('source', 'other'),
+                    'referrer_name' => $request->input('referrer_name'),
+                ]);
+
+                // 5. Create WorkPreference
+                // Convert time strings to proper time format (HH:MM:SS)
+                $startTime = $validatedData['start_time'];
+                $endTime = $validatedData['end_time'];
+                
+                // Parse and format time properly for database time column.
+                // Accept inputs like '16:00', '16:00:00', '4:00 PM', or full datetimes.
+                $parseTime = function ($time, $fallback) {
+                    if (empty($time)) {
+                        return $fallback;
+                    }
+
+                    $formats = [
+                        'H:i:s',
+                        'H:i',
+                        'g:i A',
+                        'h:i A',
+                        'Y-m-d H:i:s',
+                        'Y-m-d g:i A',
+                        'Y-m-d H:i',
+                    ];
+
+                    foreach ($formats as $fmt) {
+                        try {
+                            $dt = \Carbon\Carbon::createFromFormat($fmt, $time);
+                            return $dt->format('H:i:s');
+                        } catch (\Exception $e) {
+                            // continue trying other formats
+                        }
+                    }
+
+                    // Last resort: try generic parse
+                    try {
+                        return \Carbon\Carbon::parse($time)->format('H:i:s');
+                    } catch (\Exception $e) {
+                        Log::warning('Error parsing time value: ' . $e->getMessage(), ['time' => $time]);
+                        return $fallback;
+                    }
+                };
+
+                $startTime = $parseTime($startTime, '00:00:00');
+                $endTime = $parseTime($endTime, '23:59:59');
+                
+                WorkPreference::create([
+                    'applicant_id' => $applicant->applicant_id,
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                    'days_available' => $request->input('days', []),
+                    'platform' => $request->input('platforms', []),
+                    'can_teach' => $request->input('can_teach', []),
+                ]);
+
+                // 6. Create Application
+                $application = Application::create([
+                    'applicant_id' => $applicant->applicant_id,
+                    'attempt_count' => 0,
+                    'status' => 'pending',
+                    // Use correct column name: term_agreement (singular)
+                    'term_agreement' => $termsAgreement ? 1 : 0,
+                    'application_date_time' => now(),
+                ]);
+
+                return $application;
+            });
+
+            Log::info('Application created successfully', ['application_id' => $application->application_id]);
             
             // Create notification for new application submission
             try {
+                $middleName = !empty($validatedData['middle_name']) ? $validatedData['middle_name'] . ' ' : '';
+                $fullName = $validatedData['first_name'] . ' ' . $middleName . $validatedData['last_name'];
+                
                 $this->createNotification(
                     'info',
                     'New Application Submitted',
-                    "A new application has been submitted by {$validatedData['first_name']} {$validatedData['last_name']} ({$validatedData['email']}). Please review the application in the hiring & onboarding section.",
+                    "A new application has been submitted by {$fullName} ({$validatedData['email']}). Please review the application in the hiring & onboarding section.",
                     'fas fa-user-plus',
                     'blue',
                     [
-                        'application_id' => $application->id,
-                        'applicant_name' => $validatedData['first_name'] . ' ' . $validatedData['last_name'],
+                        'application_id' => $application->application_id,
+                        'applicant_name' => $fullName,
                         'applicant_email' => $validatedData['email'],
                         'submitted_at' => now()->toISOString()
                     ]
@@ -119,10 +241,14 @@ class ApplicationFormController extends Controller
             // Log the error for debugging
             Log::error('Application creation failed: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
-                'data' => $validatedData
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'data' => $validatedData ?? []
             ]);
+            
+            // Transaction will automatically rollback if exception is thrown
             return redirect()->back()
-                ->withErrors(['error' => 'Failed to submit application. Please try again.'])
+                ->withErrors(['error' => 'Failed to submit application. Please try again. If the problem persists, contact support.'])
                 ->withInput();
         }
         
@@ -153,22 +279,29 @@ class ApplicationFormController extends Controller
             return $this->viewOnboarding($request);
         }
         
-        $query = Application::query();
+        // Eager load all relationships to prevent N+1 queries
+        $query = Application::with([
+            'applicant',
+            'applicant.qualification',
+            'applicant.requirement',
+            'applicant.referral',
+            'applicant.workPreference'
+        ]);
         
         // Search across all visible table fields
         if ($request->filled('search')) {
             $search = trim($request->input('search'));
             if (strlen($search) >= 1) { // Allow search with just 1 character
-                $query->where(function($q) use ($search) {
+                $query->whereHas('applicant', function($q) use ($search) {
                     $q->where('first_name', 'like', "%{$search}%")
                       ->orWhere('last_name', 'like', "%{$search}%")
                       ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
                       ->orWhere('contact_number', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('start_time', 'like', "%{$search}%")
-                      ->orWhere('end_time', 'like', "%{$search}%")
-                      ->orWhere('status', 'like', "%{$search}%");
-                });
+                      ->orWhere('email', 'like', "%{$search}%");
+                })->orWhereHas('applicant.workPreference', function($q) use ($search) {
+                    $q->where('start_time', 'like', "%{$search}%")
+                      ->orWhere('end_time', 'like', "%{$search}%");
+                })->orWhere('status', 'like', "%{$search}%");
             }
         }
         
@@ -184,7 +317,9 @@ class ApplicationFormController extends Controller
         if ($request->filled('source')) {
             $source = trim($request->input('source'));
             if (strlen($source) >= 1) {
-                $query->where('source', 'like', "%{$source}%");
+                $query->whereHas('applicant.referral', function($q) use ($source) {
+                    $q->where('source', 'like', "%{$source}%");
+                });
             }
         }
         
@@ -192,7 +327,7 @@ class ApplicationFormController extends Controller
         
         // Get unique statuses and sources for filter dropdowns
         $statuses = Application::distinct()->pluck('status')->filter()->values();
-        $sources = Application::distinct()->pluck('source')->filter()->values();
+        $sources = Referral::distinct()->pluck('source')->filter()->values();
         
         return view('hiring_onboarding.index', compact('applicants', 'statuses', 'sources'));
     }
@@ -202,56 +337,60 @@ class ApplicationFormController extends Controller
      */
     public function viewDemo(Request $request)
     {
-    $query = Demo::query();
-    // Exclude onboarding and hired applicants from the For Demo list
-    $query->whereNotIn('status', ['onboarding', 'hired']);
+        // Work on the `screening` table (exposed through Demo proxy). Use applicant/account relations for searches.
+        $query = Demo::with(['applicant', 'account']);
 
-        // Search across all visible table fields
+        // Exclude onboarding and hired applicants from the For Demo list
+        $query->whereNotIn('phase', ['onboarding', 'hired']);
+
+        // Search across applicant and screening fields
         if ($request->filled('search')) {
             $search = trim($request->input('search'));
-            if (strlen($search) >= 1) { // Allow search with just 1 character
+            if (strlen($search) >= 1) {
                 $query->where(function($q) use ($search) {
-                    $q->where('first_name', 'like', "%{$search}%")
-                      ->orWhere('last_name', 'like', "%{$search}%")
-                      ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
-                      ->orWhere('contact_number', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('assigned_account', 'like', "%{$search}%")
-                      ->orWhere('notes', 'like', "%{$search}%")
-                      ->orWhere('status', 'like', "%{$search}%")
-                      ->orWhereRaw("DATE_FORMAT(demo_schedule, '%Y-%m-%d %H:%i') LIKE ?", ["%{$search}%"])
-                      ->orWhereRaw("DATE_FORMAT(interview_time, '%Y-%m-%d %H:%i') LIKE ?", ["%{$search}%"]);
+                    $q->whereHas('applicant', function($q2) use ($search) {
+                        $q2->where('first_name', 'like', "%{$search}%")
+                           ->orWhere('last_name', 'like', "%{$search}%")
+                           ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"]) 
+                           ->orWhere('contact_number', 'like', "%{$search}%")
+                           ->orWhere('email', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('account', function($q3) use ($search) {
+                        $q3->where('account_name', 'like', "%{$search}%");
+                    })
+                    ->orWhere('notes', 'like', "%{$search}%")
+                    ->orWhereRaw("DATE_FORMAT(screening_date_time, '%Y-%m-%d %H:%i') LIKE ?", ["%{$search}%"]) ;
                 });
             }
         }
-        
-        // Filter by status - partial match
+
+        // Filter by phase/status - partial match
         if ($request->filled('status')) {
             $status = trim($request->input('status'));
             if (strlen($status) >= 1) {
-                $query->where('status', 'like', "%{$status}%");
+                $query->where('phase', 'like', "%{$status}%");
             }
         }
-        
-        // Filter by assigned account - partial match
+
+        // Filter by assigned account - partial match (match account_name)
         if ($request->filled('account')) {
             $account = trim($request->input('account'));
             if (strlen($account) >= 1) {
-                $query->where('assigned_account', 'like', "%{$account}%");
+                $query->whereHas('account', function($q) use ($account) {
+                    $q->where('account_name', 'like', "%{$account}%");
+                });
             }
         }
-        
-        $demos = $query->orderBy('moved_to_demo_at', 'asc')->paginate(5);
-        
-        // Get unique statuses and accounts for filter dropdowns
-        // Exclude 'not_hired' from the status dropdown (not needed)
-        $statuses = Demo::distinct()->pluck('status')->filter(function($s) {
+
+        $screenings = $query->orderBy('screening_date_time', 'asc')->paginate(5);
+
+        // Get unique phases and accounts for filter dropdowns
+        $statuses = Demo::distinct()->pluck('phase')->filter(function($s) {
             return $s !== 'not_hired';
         })->values();
-        $accounts = Demo::distinct()->pluck('assigned_account')->filter()->values();
-        
-        return view('hiring_onboarding.index', compact('demos', 'statuses', 'accounts'));
-         
+        $accounts = \App\Models\Account::distinct()->pluck('account_name')->filter()->values();
+
+        return view('hiring_onboarding.index', compact('screenings', 'statuses', 'accounts'));
     }
 
     
@@ -260,38 +399,57 @@ class ApplicationFormController extends Controller
      */
     public function viewArchive(Request $request)
     {
-        $query = ArchivedApplication::query();
-        
-        // Search across all visible table fields
+        $query = \App\Models\Archive::with('applicant');
+
         if ($request->filled('search')) {
             $search = trim($request->input('search'));
-            if (strlen($search) >= 1) { // Allow search with just 1 character
+            if (strlen($search) >= 1) {
                 $query->where(function($q) use ($search) {
-                    $q->where('first_name', 'like', "%{$search}%")
-                      ->orWhere('last_name', 'like', "%{$search}%")
-                      ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
-                      ->orWhere('contact_number', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('notes', 'like', "%{$search}%")
-                      ->orWhere('final_status', 'like', "%{$search}%")
-                      ->orWhereRaw("DATE_FORMAT(interview_time, '%Y-%m-%d %H:%i') LIKE ?", ["%{$search}%"]);
+                    $q->whereHas('applicant', function($q2) use ($search) {
+                        $q2->where('first_name', 'like', "%{$search}%")
+                           ->orWhere('last_name', 'like', "%{$search}%")
+                           ->orWhere('contact_number', 'like', "%{$search}%")
+                           ->orWhere('email', 'like', "%{$search}%");
+                    })
+                    ->orWhere('notes', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%");
                 });
             }
         }
-        
-        // Filter by final status - partial match
+
         if ($request->filled('status')) {
             $status = trim($request->input('status'));
             if (strlen($status) >= 1) {
-                $query->where('final_status', 'like', "%{$status}%");
+                $query->where('status', 'like', "%{$status}%");
             }
         }
-        
-        $archivedApplicants = $query->orderBy('archived_at', 'asc')->paginate(5);
-        
-        // Get unique final statuses for filter dropdown
-        $statuses = ArchivedApplication::distinct()->pluck('final_status')->filter()->values();
-        
+
+        $archives = $query->orderBy('archive_date_time', 'asc')->paginate(5);
+
+        // Transform archives to match old view expectations (archivedApplicants)
+        $transformed = $archives->getCollection()->map(function($a) {
+            $payload = $a->payload ?? [];
+            return (object) [
+                'id' => $a->archive_id,
+                'first_name' => $payload['first_name'] ?? ($a->applicant->first_name ?? null),
+                'last_name' => $payload['last_name'] ?? ($a->applicant->last_name ?? null),
+                'contact_number' => $payload['contact_number'] ?? ($a->applicant->contact_number ?? null),
+                'email' => $payload['email'] ?? ($a->applicant->email ?? null),
+                'notes' => $payload['notes'] ?? ($a->notes ?? null),
+                'status' => $a->status ?? ($payload['status'] ?? null),
+                'interview_time' => isset($payload['interview_time']) ? \Carbon\Carbon::parse($payload['interview_time']) : ($a->payload['interview_time'] ?? null),
+                'archived_at' => $a->archive_date_time,
+                'payload' => $payload,
+            ];
+        });
+
+        $archives->setCollection($transformed);
+
+        $statuses = \App\Models\Archive::distinct()->pluck('status')->filter()->values();
+
+        // Keep variable name used by views
+        $archivedApplicants = $archives;
+
         return view('hiring_onboarding.index', compact('archivedApplicants', 'statuses'));
     }
 
@@ -300,11 +458,29 @@ class ApplicationFormController extends Controller
      */
     public function show(Application $application)
     {
+        // Eager load all relationships for the view
+        $application->load([
+            'applicant',
+            'applicant.qualification',
+            'applicant.requirement',
+            'applicant.referral',
+            'applicant.workPreference'
+        ]);
+        
         return view('hiring_onboarding.applicant-details', compact('application'));
     }
 
     public function showUneditable(Demo $demo)
     {
+        // Eager load all relationships needed for the view
+        $demo->load([
+            'applicant.qualification',
+            'applicant.requirement',
+            'applicant.referral',
+            'applicant.workPreference',
+            'account'
+        ]);
+        
         // Return the partial view with data
         return view('hiring_onboarding.applicant-details-unedited', compact('demo'));
     }
@@ -312,8 +488,42 @@ class ApplicationFormController extends Controller
     /**
      * Display archived applicant details
      */
-    public function showArchived(ArchivedApplication $archivedApplication)
+    public function showArchived(\App\Models\Archive $archive)
     {
+        // Transform archive record into expected view variable `$archivedApplication`
+        $payload = $archive->payload ?? [];
+
+        $archivedApplication = (object) [
+            'first_name' => $payload['first_name'] ?? ($archive->applicant->first_name ?? null),
+            'last_name' => $payload['last_name'] ?? ($archive->applicant->last_name ?? null),
+            'birth_date' => isset($payload['birth_date']) ? \Carbon\Carbon::parse($payload['birth_date']) : ($archive->applicant->birth_date ?? null),
+            'address' => $payload['address'] ?? ($archive->applicant->address ?? null),
+            'contact_number' => $payload['contact_number'] ?? ($archive->applicant->contact_number ?? null),
+            'email' => $payload['email'] ?? ($archive->applicant->email ?? null),
+            'ms_teams' => $payload['ms_teams'] ?? null,
+            'education' => $payload['education'] ?? null,
+            'esl_experience' => $payload['esl_experience'] ?? null,
+            'resume_link' => $payload['resume_link'] ?? null,
+            'intro_video' => $payload['intro_video'] ?? null,
+            'work_type' => $payload['work_type'] ?? null,
+            'speedtest' => $payload['speedtest'] ?? null,
+            'main_device' => $payload['main_device'] ?? null,
+            'backup_device' => $payload['backup_device'] ?? null,
+            'source' => $payload['source'] ?? null,
+            'referrer_name' => $payload['referrer_name'] ?? null,
+            'start_time' => $payload['start_time'] ?? null,
+            'end_time' => $payload['end_time'] ?? null,
+            'days' => $payload['days'] ?? [],
+            'platforms' => $payload['platforms'] ?? [],
+            'can_teach' => $payload['can_teach'] ?? [],
+            'interview_time' => isset($payload['interview_time']) ? \Carbon\Carbon::parse($payload['interview_time']) : null,
+            'status' => $archive->status ?? ($payload['status'] ?? null),
+            'attempt_count' => $payload['attempt_count'] ?? null,
+            'archived_at' => $archive->archive_date_time,
+            'interviewer' => $payload['interviewer'] ?? ($archive->notes ?? null),
+            'notes' => $payload['notes'] ?? ($archive->notes ?? null),
+        ];
+
         return view('hiring_onboarding.applicant-details-archived', compact('archivedApplication'));
     }
 
@@ -344,8 +554,10 @@ class ApplicationFormController extends Controller
         $notes = $request->input('notes');
         $interviewTime = $request->input('interview_time');
 
+        // Update interviewer and notes in application table
         $application->interviewer = $interviewer;
         $application->notes = $notes;
+        $application->save();
 
         // Handle different statuses based on business logic
         if (in_array($specialStatus, ['declined', 'not_recommended'])) {
@@ -360,9 +572,9 @@ class ApplicationFormController extends Controller
                 'fas fa-archive',
                 'yellow',
                 [
-                    'application_id' => $application->id,
+                    'application_id' => $application->application_id,
                     'applicant_name' => $application->first_name . ' ' . $application->last_name,
-                    'final_status' => $specialStatus,
+                        'status' => $specialStatus,
                     'interviewer' => $interviewer,
                     'archived_at' => now()->toISOString()
                 ]
@@ -390,9 +602,9 @@ class ApplicationFormController extends Controller
                     'fas fa-archive',
                     'yellow',
                     [
-                        'application_id' => $application->id,
+                        'application_id' => $application->application_id,
                         'applicant_name' => $application->first_name . ' ' . $application->last_name,
-                        'final_status' => 'no_answer',
+                            'status' => 'no_answer',
                         'attempt_count' => $application->attempt_count,
                         'archived_at' => now()->toISOString()
                     ]
@@ -415,10 +627,10 @@ class ApplicationFormController extends Controller
                     'fas fa-phone-slash',
                     'yellow',
                     [
-                        'application_id' => $application->id,
+                        'application_id' => $application->application_id,
                         'applicant_name' => $application->first_name . ' ' . $application->last_name,
                         'attempt_count' => $application->attempt_count,
-                        'status' => 'no_answer'
+                            'status' => 'no_answer'
                     ]
                 );
                 
@@ -433,7 +645,9 @@ class ApplicationFormController extends Controller
             
             // Update interview time if provided
             if ($interviewTime) {
-                $application->interview_time = $interviewTime;
+                $applicant = $application->applicant;
+                $applicant->interview_time = $interviewTime;
+                $applicant->save();
             }
             
             $application->save();
@@ -446,11 +660,11 @@ class ApplicationFormController extends Controller
                 'fas fa-calendar-alt',
                 'blue',
                 [
-                    'application_id' => $application->id,
+                    'application_id' => $application->application_id,
                     'applicant_name' => $application->first_name . ' ' . $application->last_name,
                     'new_interview_time' => $interviewTime,
                     'interviewer' => $interviewer,
-                    'status' => 're_schedule'
+                        'status' => 're_schedule'
                 ]
             );
             
@@ -511,10 +725,10 @@ class ApplicationFormController extends Controller
     // View Onboarding Participants 
     public function viewOnboarding(Request $request)
     {
-        $query = Demo::query();
-    
-        // ✅ Only show onboarding applicants
-        $query->where('status', 'onboarding');
+        $query = Demo::with(['applicant','account']);
+
+        // ✅ Only show onboarding applicants (phase == onboarding)
+        $query->where('phase', 'onboarding');
     
         // Search across all visible table fields
         if ($request->filled('search')) {
@@ -543,10 +757,10 @@ class ApplicationFormController extends Controller
         }
     
         // Sort by onboarding date
-        $onboardings = $query->orderBy('moved_to_onboarding_at', 'asc')->paginate(5);
-    
-        // Dropdown filter options
-        $accounts = Demo::distinct()->pluck('assigned_account')->filter()->values();
+        $onboardings = $query->orderBy('screening_date_time', 'asc')->paginate(5);
+
+        // Dropdown filter options - use account names
+        $accounts = \App\Models\Account::distinct()->pluck('account_name')->filter()->values();
     
         // ✅ This view will be used for onboarding tab
         return view('hiring_onboarding.index', compact('onboardings', 'accounts'));
@@ -558,14 +772,54 @@ class ApplicationFormController extends Controller
      */
     private function archiveApplication(Application $application, string $finalStatus)
     {
-        $archivedData = $application->toArray();
-        $archivedData['final_status'] = $finalStatus;
-        $archivedData['archived_at'] = now();
-        
-        // Remove the id to avoid conflicts
-        unset($archivedData['id']);
-        
-        ArchivedApplication::create($archivedData);
+        $applicant = $application->applicant;
+        $qualification = $applicant->qualification;
+        $requirement = $applicant->requirement;
+        $referral = $applicant->referral;
+        $workPreference = $applicant->workPreference;
+        // Build payload with full snapshot so we can store in central `archive` table
+        $payload = [
+            'first_name' => $applicant->first_name,
+            'last_name' => $applicant->last_name,
+            'birth_date' => $applicant->birth_date,
+            'address' => $applicant->address,
+            'contact_number' => $applicant->contact_number,
+            'email' => $applicant->email,
+            'ms_teams' => $applicant->ms_teams,
+            'education' => $qualification->education ?? null,
+            'esl_experience' => $qualification->esl_experience ?? null,
+            'resume_link' => $requirement->resume_link ?? null,
+            'intro_video' => $requirement->intro_video ?? null,
+            'work_type' => $requirement->work_type ?? null,
+            'speedtest' => $requirement->speedtest ?? null,
+            'backup_device' => $requirement->backup_devices ?? null,
+            'source' => $referral->source ?? null,
+            'referrer_name' => $referral->referrer_name ?? null,
+            'start_time' => $workPreference ? $workPreference->start_time : null,
+            'end_time' => $workPreference ? $workPreference->end_time : null,
+            'days' => $workPreference ? $workPreference->days_available : null,
+            'platforms' => $workPreference ? $workPreference->platform : null,
+            'can_teach' => $workPreference ? $workPreference->can_teach : null,
+            'interview_time' => $applicant->interview_time,
+            'notes' => $application->notes ?? null,
+            'attempt_count' => $application->attempt_count,
+        ];
+
+        // Determine current supervisor id (try auth then session)
+        $archiveBy = auth()->guard('supervisor')->check() 
+            ? auth()->guard('supervisor')->user()->supervisor_id 
+            : session('supervisor_id');
+
+        // Create central archive record (category: application)
+        \App\Models\Archive::create([
+            'applicant_id' => $applicant->applicant_id,
+            'archive_by' => $archiveBy,
+            'notes' => $application->notes ?? '',
+            'archive_date_time' => now(),
+            'category' => 'application',
+            'status' => $finalStatus,
+            'payload' => $payload,
+        ]);
     }
 
     /**
@@ -581,12 +835,10 @@ class ApplicationFormController extends Controller
         $interviewTime = $request->input('interview_time');
         $notes = $request->input('notes');
 
-        // Update interview time and notes
-        $application->interview_time = $interviewTime;
-        if ($notes) {
-            $application->notes = $notes;
-        }
-        $application->save();
+        // Update interview time in applicant table
+        $applicant = $application->applicant;
+        $applicant->interview_time = $interviewTime;
+        $applicant->save();
 
         // Archive the application with reschedule information
         $this->archiveApplication($application, 're_schedule');
@@ -601,21 +853,66 @@ class ApplicationFormController extends Controller
      */
     private function moveToDemo(Application $application, string $interviewer, ?string $startTime, ?string $endTime, string $assignedAccount, string $nextStatus, string $notes = null, $demoSchedule = null)
     {
-        $demoData = $application->toArray();
-        $demoData['status'] = $nextStatus;
-        // Preserve applicant's original preferred time availability
-        // $demoData['start_time'] = $startTime; // Don't override applicant's preference
-        // $demoData['end_time'] = $endTime; // Don't override applicant's preference
-        $demoData['assigned_account'] = $assignedAccount;
-        $demoData['interviewer'] = $interviewer;
-        $demoData['notes'] = $notes;
-        $demoData['demo_schedule'] = $demoSchedule;
-        $demoData['moved_to_demo_at'] = now();
+        $applicant = $application->applicant;
+        $qualification = $applicant->qualification;
+        $requirement = $applicant->requirement;
+        $referral = $applicant->referral;
+        $workPreference = $applicant->workPreference;
         
-        // Remove the id to avoid conflicts
-        unset($demoData['id']);
+        $demoData = [
+            'first_name' => $applicant->first_name,
+            'last_name' => $applicant->last_name,
+            'birth_date' => $applicant->birth_date,
+            'address' => $applicant->address,
+            'contact_number' => $applicant->contact_number,
+            'email' => $applicant->email,
+            'ms_teams' => $applicant->ms_teams,
+            'education' => $qualification->education ?? null,
+            'esl_experience' => $qualification->esl_experience ?? null,
+            'resume_link' => $requirement->resume_link ?? null,
+            'intro_video' => $requirement->intro_video ?? null,
+            'work_type' => $requirement->work_type ?? null,
+            'speedtest' => $requirement->speedtest ?? null,
+            'main_device' => $requirement->main_devices ?? null,
+            'backup_device' => $requirement->backup_devices ?? null,
+            'source' => $referral->source ?? null,
+            'referrer_name' => $referral->referrer_name ?? null,
+            'start_time' => $workPreference ? $workPreference->start_time : ($startTime ?? null),
+            'end_time' => $workPreference ? $workPreference->end_time : ($endTime ?? null),
+            'days' => $workPreference ? $workPreference->days_available : null,
+            'platforms' => $workPreference ? $workPreference->platform : null,
+            'can_teach' => $workPreference ? $workPreference->can_teach : null,
+            'interview_time' => $applicant->interview_time,
+            'status' => $nextStatus,
+            'assigned_account' => $assignedAccount,
+            'interviewer' => $interviewer,
+            'notes' => $notes,
+            'demo_schedule' => $demoSchedule,
+            'moved_to_demo_at' => now(),
+        ];
         
-        Demo::create($demoData);
+        // Create a screening record instead of inserting into the old `demos` table.
+        // Map assigned account name to account_id if possible
+        $account = Account::where('account_name', $assignedAccount)->first();
+        
+        if (!$account) {
+            throw new \Exception("Account '{$assignedAccount}' not found. Please ensure all accounts (gls, talk915, babilala, tutlo) are seeded in the database.");
+        }
+
+        // Get authenticated supervisor ID
+        $supervisorId = auth()->guard('supervisor')->check() 
+            ? auth()->guard('supervisor')->user()->supervisor_id 
+            : session('supervisor_id');
+
+        Screening::create([
+            'applicant_id' => $applicant->applicant_id,
+            'supervisor_id' => $supervisorId,
+            'account_id' => $account->account_id,
+            'phase' => $nextStatus,
+            'results' => 'pending',
+            'notes' => trim(($notes ? $notes . ' | ' : '') . ($interviewer ? "interviewer: {$interviewer}" : '')),
+            'screening_date_time' => $demoSchedule ? \Carbon\Carbon::parse($demoSchedule) : now(),
+        ]);
     }
 
     /**
@@ -624,16 +921,23 @@ class ApplicationFormController extends Controller
     public function getDemoEditData($id)
     {
         try {
-            $demo = Demo::findOrFail($id);
+            // Eager load the account and applicant relationships
+            $demo = Demo::with(['account', 'applicant'])->findOrFail($id);
             
             // Get assignment history for this applicant (all accounts they've been assigned to)
             $assignmentHistory = $this->getAssignmentHistory($demo);
             
+            // Try to extract interviewer from notes if present (we stored it there when creating screening)
+            $interviewer = null;
+            if (!empty($demo->notes) && preg_match('/interviewer:\s*([^|]+)/i', $demo->notes, $m)) {
+                $interviewer = trim($m[1]);
+            }
+
             return response()->json([
-                'interviewer' => $demo->interviewer,
+                'interviewer' => $interviewer,
                 'email' => $demo->email,
-                'start_time' => $demo->start_time,
-                'end_time' => $demo->end_time,
+                'start_time' => null,
+                'end_time' => null,
                 'assigned_account' => $demo->assigned_account,
                 'hiring_status' => $demo->status,
                 'schedule' => $demo->demo_schedule,
@@ -641,7 +945,7 @@ class ApplicationFormController extends Controller
                 'assignment_history' => $assignmentHistory,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error in getDemoEditData: ' . $e->getMessage());
+            Log::error('Error in getDemoEditData: ' . $e->getMessage());
             return response()->json([
                 'error' => 'Failed to load demo data: ' . $e->getMessage()
             ], 500);
@@ -655,18 +959,22 @@ class ApplicationFormController extends Controller
     {
         $assignmentHistory = [];
         
-        // Get all demos for this applicant (by email) - current and past
-        $demoAccounts = Demo::where('email', $demo->email)
-            ->whereNotNull('assigned_account')
-            ->pluck('assigned_account')
+        // Get all screenings for this applicant (by applicant_id) and collect account names
+        $demoAccountIds = Demo::where('applicant_id', $demo->applicant_id)
+            ->whereNotNull('account_id')
+            ->pluck('account_id')
             ->toArray();
-            
-        // Get all archived applications for this applicant (by email)
-        $archivedAccounts = ArchivedApplication::where('email', $demo->email)
-            ->whereNotNull('assigned_account')
-            ->pluck('assigned_account')
+
+        $demoAccounts = Account::whereIn('account_id', $demoAccountIds)
+            ->pluck('account_name')
             ->toArray();
-            
+
+        // Get all archived applications for this applicant (by email) from central archive payload
+        $archivedAccounts = \App\Models\Archive::whereRaw("JSON_UNQUOTE(JSON_EXTRACT(payload, '$.email')) = ?", [$demo->email])
+            ->whereRaw("JSON_EXTRACT(payload, '$.assigned_account') IS NOT NULL")
+            ->pluck(\Illuminate\Support\Facades\DB::raw("JSON_UNQUOTE(JSON_EXTRACT(payload, '$.assigned_account'))"))
+            ->toArray();
+
         // Combine and get unique accounts
         $assignmentHistory = array_unique(array_merge($demoAccounts, $archivedAccounts));
         
@@ -706,14 +1014,14 @@ class ApplicationFormController extends Controller
                 ->withInput();
         }
 
+        // Update screening record: map assigned_account to account_id and status -> phase
+        $account = Account::where('account_name', $request->input('assigned_account'))->first();
+
         $demo->update([
-            'interviewer' => $request->input('interviewer'),
-            'start_time' => $request->input('start_time'),
-            'end_time' => $request->input('end_time'),
-            'assigned_account' => $request->input('assigned_account'),
-            'status' => $request->input('hiring_status'),
-            'demo_schedule' => $request->input('schedule'),
-            'notes' => $request->input('notes'),
+            'account_id' => $account?->account_id,
+            'phase' => $request->input('hiring_status'),
+            'screening_date_time' => $request->input('schedule'),
+            'notes' => trim(($request->input('notes') ?? '') . ' | interviewer: ' . $request->input('interviewer')),
         ]);
 
         return redirect()->route('hiring_onboarding.index', ['tab' => 'demo'])
@@ -729,8 +1037,8 @@ class ApplicationFormController extends Controller
         ]);
 
         $demo->update([
-            'status' => $request->input('next_status'),
-            'demo_schedule' => $request->input('next_schedule'),
+            'phase' => $request->input('next_status'),
+            'screening_date_time' => $request->input('next_schedule'),
             'notes' => $request->input('next_notes'),
         ]);
 
@@ -750,21 +1058,23 @@ class ApplicationFormController extends Controller
         $decision = $request->input('decision');
         
         if ($decision === 'success') {
-            // Move to onboarding status
+            // Move to onboarding phase and mark result
             $demo->update([
-                'status' => 'onboarding',
-                'finalized_at' => now()
+                'phase' => 'onboarding',
+                'results' => 'hired',
+                'notes' => trim(($demo->notes ?? '') . ' | finalized_at: ' . now()->toDateTimeString()),
             ]);
-            
+
             return redirect()->route('hiring_onboarding.index', ['tab' => 'demo'])
                 ->with('success', 'Applicant has been successfully hired and moved to onboarding!');
         } else {
             // Mark as not hired
             $demo->update([
-                'status' => 'not_hired',
-                'finalized_at' => now()
+                'phase' => 'not_hired',
+                'results' => 'failed',
+                'notes' => trim(($demo->notes ?? '') . ' | finalized_at: ' . now()->toDateTimeString()),
             ]);
-            
+
             return redirect()->route('hiring_onboarding.index', ['tab' => 'demo'])
                 ->with('success', 'Applicant has been marked as not hired.');
         }

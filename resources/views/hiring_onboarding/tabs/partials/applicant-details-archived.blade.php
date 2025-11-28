@@ -11,332 +11,458 @@
     </div>
 @endif
 
-<!-- Back Button -->
-<div class="mb-4 flex justify-end">
+<!-- Header with Back Button -->
+<div class="flex items-center justify-between mb-4">
+    <h1 class="text-xl font-bold text-gray-800 dark:text-gray-200">Archived Applicant Details</h1>
     <a href="{{ route('hiring_onboarding.index', ['tab' => 'archive']) }}"
-       class="flex items-center space-x-2 px-4 py-2 bg-[#606979] text-white rounded-full text-sm font-medium 
-              hover:bg-[#4f5a66] transform transition duration-200 hover:scale-105"
-       style="width: 200px; justify-content: center;">
+       class="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-md text-sm font-medium 
+              hover:bg-gray-700 transition duration-200">
         <i class="fas fa-arrow-left"></i>
         <span>Back to Archive</span>
     </a>
 </div>
 
-<!-- Form Header -->
-<div class="bg-[#F29090] shadow-lg text-[#7A1F1F] font-bold text-center text-2xl rounded-md py-3 mb-6">
-    ARCHIVED APPLICANT DETAILS 
+<!-- Progress Bar -->
+<div x-show="showProgress" x-cloak class="fixed top-0 left-0 w-full h-1 bg-gray-200 z-50">
+    <div x-ref="progressBar" class="h-full bg-blue-600 transition-all duration-2000 ease-out" style="width: 0%;"></div>
 </div>
 
 <!-- Form Container -->
-<div class="bg-white rounded-xl shadow-md p-6 sm:p-10">
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6" x-data="{ 
+    currentPage: 1,
+    totalPages: 4,
+    showModal: false, 
+    showProgress: false,
+    showFailModal: false,
+    showPassModal: false,
+    nextPage() {
+        if (this.currentPage < this.totalPages) {
+            this.currentPage++;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    },
+    prevPage() {
+        if (this.currentPage > 1) {
+            this.currentPage--;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    },
+    goToPage(page) {
+        this.currentPage = page;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    closeFailModal() {
+        this.showProgress = true;
+        this.showFailModal = false;
+        this.$nextTick(() => {
+            this.$refs.progressBar.style.width = '0%';
+            setTimeout(() => { this.$refs.progressBar.style.width = '100%'; }, 10);
+            setTimeout(() => {
+                window.location.href = '{{ route('hiring_onboarding.index', ['tab' => 'archive']) }}';
+            }, 2000);
+        });
+    },
+    closePassModal() {
+        this.showProgress = true;
+        this.showPassModal = false;
+        this.$nextTick(() => {
+            this.$refs.progressBar.style.width = '0%';
+            setTimeout(() => { this.$refs.progressBar.style.width = '100%'; }, 10);
+            setTimeout(() => {
+                window.location.href = '{{ route('hiring_onboarding.index', ['tab' => 'archive']) }}';
+            }, 2000);
+        });
+    }
+}">
 
-    <form action="#" method="POST" class="space-y-6">
-        <!-- Personal Information -->
-        <div>
-            <h3 class="font-semibold text-[#0E335D] text-lg mb-3">Personal Information</h3>
-            <div class="grid md:grid-cols-3 gap-4 items-start">
-                <!-- Row 1 -->
-                <div class="flex flex-col">
-                    <label class="text-sm font-normal text-gray-500">First Name <span
-                            class="text-red-600">*</span></label>
-                    <input type="text" value="{{ $archivedApplication->first_name }}" class="p-2 border rounded-md w-full" readonly>
-                </div>
-                <div class="flex flex-col">
-                    <label class="text-sm font-normal text-gray-500">Last Name <span
-                            class="text-red-600">*</span></label>
-                    <input type="text" value="{{ $archivedApplication->last_name }}" class="p-2 border rounded-md w-full" readonly>
-                </div>
-                <div class="flex flex-col">
-                    <label class="text-sm font-normal text-gray-500">Birth Date <span
-                            class="text-red-600">*</span></label>
-                    <input type="date" value="{{ $archivedApplication->birth_date ? $archivedApplication->birth_date->format('Y-m-d') : '' }}" class="p-2 border rounded-md w-full" readonly>
-                </div>
-
-                <!-- Row 2 -->
-                <div class="flex flex-col">
-                    <label class="text-sm font-normal text-gray-500">Address <span class="text-red-600">*</span></label>
-                    <input type="text" value="{{ $archivedApplication->address }}" class="p-2 border rounded-md w-full" readonly>
-                </div>
-                <div class="flex flex-col">
-                    <label class="text-sm font-normal text-gray-500">Contact Number <span
-                            class="text-red-600">*</span></label>
-                    <input type="text" value="{{ $archivedApplication->contact_number }}" class="p-2 border rounded-md w-full" readonly>
-                </div>
-                <div class="flex flex-col">
-                    <label class="text-sm font-normal text-gray-500">Email <span class="text-red-600">*</span></label>
-                    <input type="email" value="{{ $archivedApplication->email }}" class="p-2 border rounded-md w-full" readonly>
-                </div>
-
-                <!-- Row 3 -->
-                <div class="flex flex-col md:col-span-3">
-                    <label class="text-sm font-normal text-gray-500">MS Teams (e.g., live:.cid...)</label>
-                    <input type="text" value="{{ $archivedApplication->ms_teams ?? 'Not provided' }}" class="p-2 border rounded-md w-full" readonly>
-                </div>
-            </div>
+    <!-- Page Indicator -->
+    <div class="flex items-center justify-between mb-6 pb-4 border-b">
+        <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-gray-600">Page</span>
+            <span class="text-lg font-bold text-[#0E335D]" x-text="currentPage"></span>
+            <span class="text-sm font-medium text-gray-600">of</span>
+            <span class="text-lg font-bold text-[#0E335D]" x-text="totalPages"></span>
         </div>
-
-        <hr class="my-10">
-
-        <!-- Education & Work Background -->
-        <div>
-            <h3 class="font-semibold text-[#0E335D] text-lg mb-3">Education & Work Background</h3>
-            <div class="grid md:grid-cols-2 gap-4 items-start">
-                <!-- Highest Educational Attainment -->
-                <div class="flex flex-col">
-                    <label class="text-sm font-normal text-gray-500">Highest Educational Attainment <span
-                            class="text-red-600">*</span></label>
-                    <select class="p-2 border rounded-md w-full" disabled>
-                        <option value="{{ $archivedApplication->education }}" selected>
-                            @switch($archivedApplication->education)
-                                @case('shs')
-                                    Senior High School
-                                    @break
-                                @case('college_undergrad')
-                                    College Undergraduate
-                                    @break
-                                @case('bachelor')
-                                    Bachelor's Degree
-                                    @break
-                                @case('master')
-                                    Master's Degree
-                                    @break
-                                @case('doctorate')
-                                    Doctorate
-                                    @break
-                                @default
-                                    {{ ucfirst($archivedApplication->education) }}
-                            @endswitch
-                        </option>
-                    </select>
-                </div>
-
-                <!-- ESL Teaching Experience -->
-                <div class="flex flex-col">
-                    <label class="text-sm font-normal text-gray-500">ESL Teaching Experience <span
-                            class="text-red-600">*</span></label>
-                    <select class="p-2 border rounded-md w-full" disabled>
-                        <option value="{{ $archivedApplication->esl_experience }}" selected>
-                            @switch($archivedApplication->esl_experience)
-                                @case('na')
-                                    No Experience
-                                    @break
-                                @case('1-2')
-                                    1-2 years
-                                    @break
-                                @case('3-4')
-                                    3-4 years
-                                    @break
-                                @case('5plus')
-                                    5+ years
-                                    @break
-                                @default
-                                    {{ ucfirst($archivedApplication->esl_experience) }}
-                            @endswitch
-                        </option>
-                    </select>
-                </div>
-            </div>
+        
+        <!-- Page Navigation Dots -->
+        <div class="flex gap-2">
+            <template x-for="page in totalPages" :key="page">
+                <button @click="goToPage(page)" 
+                    class="w-3 h-3 rounded-full transition-all"
+                    :class="currentPage === page ? 'bg-[#65DB7F] w-8' : 'bg-gray-300 hover:bg-gray-400'">
+                </button>
+            </template>
         </div>
+    </div>
 
-        <hr class="my-4">
+    <!-- Page 1: Personal Information -->
+    <div x-show="currentPage === 1" x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 transform translate-x-4"
+         x-transition:enter-end="opacity-100 transform translate-x-0">
+        <h3 class="font-semibold text-[#0E335D] text-xl mb-6 flex items-center">
+            <i class="fas fa-user mr-2 text-[#65DB7F]"></i>
+            Personal Information
+        </h3>
 
-        <!-- Requirements -->
-        <div>
-            <h3 class="font-semibold text-[#0E335D] text-lg mb-3">Requirements</h3>
-            <div class="grid md:grid-cols-2 gap-4">
-                <div class="flex flex-col">
-                    <label class="text-sm font-normal text-gray-500">Resume Link (GDrive / GDocs) <span
-                            class="text-red-600">*</span></label>
-                    <input type="text" value="{{ $archivedApplication->resume_link }}"
-                        class="p-2 border rounded-md w-full" readonly>
-                </div>
-                <div class="flex flex-col">
-                    <label class="text-sm font-normal text-gray-500">Intro Video (GDrive Link) <span
-                            class="text-red-600">*</span></label>
-                    <input type="text" value="{{ $archivedApplication->intro_video }}"
-                        class="p-2 border rounded-md w-full" readonly>
-                </div>
+        <div class="grid md:grid-cols-3 gap-6">
+                        <!-- Row 1 -->
+                        <div class="flex flex-col space-y-1">
+                            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">First Name</label>
+                            <div class="text-base font-medium text-gray-900 px-3 py-2 bg-gray-50 rounded-md">
+                                {{ $archivedApplication->first_name }}
+                            </div>
+                        </div>
+                        <div class="flex flex-col space-y-1">
+                            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Middle Name</label>
+                            <div class="text-base font-medium text-gray-900 px-3 py-2 bg-gray-50 rounded-md">
+                                {{ $archivedApplication->middle_name ?? 'N/A' }}
+                            </div>
+                        </div>
+                        <div class="flex flex-col space-y-1">
+                            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Last Name</label>
+                            <div class="text-base font-medium text-gray-900 px-3 py-2 bg-gray-50 rounded-md">
+                                {{ $archivedApplication->last_name }}
+                            </div>
+                        </div>
 
-                <!-- Work Setup -->
-                <div class="md:col-span-2 mt-2">
-                    <label class="text-sm font-normal text-gray-500 font-semibold">Work Setup:</label>
-                </div>
-                <div class="flex space-x-6 md:col-span-2">
-                    <label class="inline-flex items-center">
-                        <input type="radio" name="workSetup" value="work_from_home" 
-                               {{ $archivedApplication->work_type === 'work_from_home' ? 'checked' : '' }} disabled>
-                        <span class="ml-2">Work from Home</span>
-                    </label>
-                    <label class="inline-flex items-center">
-                        <input type="radio" name="workSetup" value="work_at_site" 
-                               {{ $archivedApplication->work_type === 'work_at_site' ? 'checked' : '' }} disabled>
-                        <span class="ml-2">Work at Site</span>
-                    </label>
-                </div>
+                        <!-- Row 2 -->
+                        <div class="flex flex-col space-y-1">
+                            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Birth Date</label>
+                            <div class="text-base font-medium text-gray-900 px-3 py-2 bg-gray-50 rounded-md">
+                                {{ $archivedApplication->birth_date ? $archivedApplication->birth_date->format('F d, Y') : 'N/A' }}
+                            </div>
+                        </div>
+                        <div class="flex flex-col space-y-1">
+                            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Contact Number</label>
+                            <div class="text-base font-medium text-gray-900 px-3 py-2 bg-gray-50 rounded-md">
+                                {{ $archivedApplication->contact_number }}
+                            </div>
+                        </div>
+                        <div class="flex flex-col space-y-1">
+                            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Email</label>
+                            <div class="text-base font-medium text-gray-900 px-3 py-2 bg-gray-50 rounded-md break-all">
+                                {{ $archivedApplication->email }}
+                            </div>
+                        </div>
 
-                <div class="grid md:grid-cols-3 gap-4 mt-4 md:col-span-2">
-                    <div class="flex flex-col">
-                        <label class="text-sm font-normal text-gray-500">Ookla Speedtest (GDrive Link)</label>
-                        <input id="speedtestField" type="text" value="{{ $archivedApplication->speedtest ?? 'Not provided' }}"
-                            class="p-2 border rounded-md w-full" readonly>
+                        <!-- Row 3 -->
+                        <div class="flex flex-col space-y-1 md:col-span-3">
+                            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Address</label>
+                            <div class="text-base font-medium text-gray-900 px-3 py-2 bg-gray-50 rounded-md">
+                                {{ $archivedApplication->address }}
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col space-y-1 md:col-span-3">
+                            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">MS Teams</label>
+                            <div class="text-base font-medium text-gray-900 px-3 py-2 bg-gray-50 rounded-md">
+                                {{ $archivedApplication->ms_teams ?? 'Not provided' }}
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex flex-col">
-                        <label class="text-sm font-normal text-gray-500">Main Device Specs (dxdiag Screenshot)</label>
-                        <input id="mainDeviceField" type="text" value="{{ $archivedApplication->main_device ?? 'Not provided' }}"
-                            class="p-2 border rounded-md w-full" readonly>
-                    </div>
-                    <div class="flex flex-col">
-                        <label class="text-sm font-normal text-gray-500">Backup Device Specs (dxdiag
-                            Screenshot)</label>
-                        <input id="backupDeviceField" type="text"
-                            value="{{ $archivedApplication->backup_device ?? 'Not provided' }}" class="p-2 border rounded-md w-full" readonly>
-                    </div>
+    </div>
+
+    <!-- Page 2: Education & Requirements -->
+    <div x-show="currentPage === 2" x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 transform translate-x-4"
+         x-transition:enter-end="opacity-100 transform translate-x-0">
+        <h3 class="font-semibold text-[#0E335D] text-xl mb-6 flex items-center">
+            <i class="fas fa-graduation-cap mr-2 text-[#65DB7F]"></i>
+            Education & Work Background
+        </h3>
+        
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- Highest Educational Attainment -->
+            <div class="flex flex-col space-y-1">
+                <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Highest Educational Attainment <span class="text-red-600">*</span>
+                </label>
+                <div class="text-base font-medium text-gray-900 px-3 py-2 bg-gray-50 rounded-md">
+                    @switch($archivedApplication->education)
+                        @case('shs')
+                            Senior High School
+                            @break
+                        @case('college_undergrad')
+                            College Undergraduate
+                            @break
+                        @case('bachelor')
+                            Bachelor's Degree
+                            @break
+                        @case('master')
+                            Master's Degree
+                            @break
+                        @case('doctorate')
+                            Doctorate
+                            @break
+                        @default
+                            {{ ucfirst($archivedApplication->education) }}
+                    @endswitch
+                </div>
+            </div>
+
+            <!-- ESL Teaching Experience -->
+            <div class="flex flex-col space-y-1">
+                <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    ESL Teaching Experience <span class="text-red-600">*</span>
+                </label>
+                <div class="text-base font-medium text-gray-900 px-3 py-2 bg-gray-50 rounded-md">
+                    @switch($archivedApplication->esl_experience)
+                        @case('na')
+                            No Experience
+                            @break
+                        @case('1-2')
+                            1-2 years
+                            @break
+                        @case('3-4')
+                            3-4 years
+                            @break
+                        @case('5plus')
+                            5+ years
+                            @break
+                        @default
+                            {{ ucfirst($archivedApplication->esl_experience) }}
+                    @endswitch
                 </div>
             </div>
         </div>
+    </div>
 
-        <hr class="my-4">
-
-        <!-- How Did You Hear About Us? -->
-        <div>
-            <h3 class="font-semibold text-[#0E335D] text-lg mb-3">How Did You Hear About Us?</h3>
-            <div class="flex flex-col md:flex-row md:items-center md:space-x-4">
-                <div class="flex space-x-6 mb-4 md:mb-0">
-                    <label class="inline-flex items-center">
-                        <input type="radio" {{ $archivedApplication->source === 'fb_boosting' ? 'checked' : '' }} disabled>
-                        <span class="ml-2">FB Boosting</span>
-                    </label> 
-                    <label class="inline-flex items-center">
-                        <input type="radio" {{ $archivedApplication->source === 'referral' ? 'checked' : '' }} disabled>
-                        <span class="ml-2">Referral</span>
+    <!-- Page 3: Requirements & Referral -->
+    <div x-show="currentPage === 3" x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 transform translate-x-4"
+         x-transition:enter-end="opacity-100 transform translate-x-0">
+        <h3 class="font-semibold text-[#0E335D] text-xl mb-6 flex items-center">
+            <i class="fas fa-file-alt mr-2 text-[#65DB7F]"></i>
+            Requirements & Setup
+        </h3>
+        
+        <div class="space-y-6">
+            <!-- Document Links -->
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="flex flex-col space-y-1">
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        Resume Link (GDrive / GDocs) <span class="text-red-600">*</span>
                     </label>
+                    <a href="{{ $archivedApplication->resume_link }}" target="_blank" 
+                       class="text-base font-medium text-blue-600 hover:text-blue-800 px-3 py-2 bg-gray-50 rounded-md break-all">
+                        {{ $archivedApplication->resume_link }}
+                    </a>
                 </div>
-                @if($archivedApplication->source === 'referral')
-                <div class="flex flex-col">
-                    <label class="text-sm font-normal text-gray-500">Referrer Name <span
-                            class="text-red-600">*</span></label>
-                    <input type="text" value="{{ $archivedApplication->referrer_name }}" class="p-2 border rounded-md w-64" readonly>
+                <div class="flex flex-col space-y-1">
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        Intro Video (GDrive Link) <span class="text-red-600">*</span>
+                    </label>
+                    <a href="{{ $archivedApplication->intro_video }}" target="_blank" 
+                       class="text-base font-medium text-blue-600 hover:text-blue-800 px-3 py-2 bg-gray-50 rounded-md break-all">
+                        {{ $archivedApplication->intro_video }}
+                    </a>
                 </div>
-                @endif
             </div>
-        </div>
 
-        <hr class="my-4">
+            <!-- Work Setup -->
+            <div class="flex flex-col space-y-1">
+                <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Work Setup <span class="text-red-600">*</span></label>
+                <div class="text-base font-medium text-gray-900 px-3 py-2 bg-gray-50 rounded-md">
+                    {{ $archivedApplication->work_type === 'work_from_home' ? 'Work from Home' : 'Work at Site' }}
+                </div>
+            </div>
 
-        <!-- Work Preference -->
-        <div>
-            <h3 class="font-semibold text-[#0E335D] text-lg mb-3">Work Preference</h3>
+            <!-- Device & Network Requirements -->
+            @if($archivedApplication->work_type === 'work_from_home')
             <div class="grid md:grid-cols-3 gap-6">
+                <div class="flex flex-col space-y-1">
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Ookla Speedtest (GDrive Link)</label>
+                    @if($archivedApplication->speedtest)
+                        <a href="{{ $archivedApplication->speedtest }}" target="_blank" 
+                           class="text-base font-medium text-blue-600 hover:text-blue-800 px-3 py-2 bg-gray-50 rounded-md break-all">
+                            {{ $archivedApplication->speedtest }}
+                        </a>
+                    @else
+                        <div class="text-base font-medium text-gray-500 px-3 py-2 bg-gray-50 rounded-md">Not provided</div>
+                    @endif
+                </div>
+                <div class="flex flex-col space-y-1">
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Main Device Specs (dxdiag)</label>
+                    @if($archivedApplication->main_device)
+                        <div class="text-base font-medium text-gray-900 px-3 py-2 bg-gray-50 rounded-md break-all border border-gray-200">
+                            {{ $archivedApplication->main_device }}
+                        </div>
+                    @else
+                        <div class="text-base font-medium text-gray-500 px-3 py-2 bg-gray-50 rounded-md">Not provided</div>
+                    @endif
+                </div>
+                <div class="flex flex-col space-y-1">
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Backup Device Specs (dxdiag)</label>
+                    @if($archivedApplication->backup_device)
+                        <div class="text-base font-medium text-gray-900 px-3 py-2 bg-gray-50 rounded-md break-all border border-gray-200">
+                            {{ $archivedApplication->backup_device }}
+                        </div>
+                    @else
+                        <div class="text-base font-medium text-gray-500 px-3 py-2 bg-gray-50 rounded-md">Not provided</div>
+                    @endif
+                </div>
+            </div>
+            @endif
 
-                <!-- Column 1: Working Availability -->
-                <div class="flex flex-col h-full">
-                    <label class="text-sm font-normal text-gray-500 mb-2">Working Availability</label>
-                    <div class="p-4 border rounded-lg shadow-lg flex-1">
-                        <div class="grid grid-cols-2 gap-4 mb-4">
-                            <select class="p-2 border rounded-md w-full" disabled>
-                                <option selected>{{ $archivedApplication->start_time }}</option>
-                            </select>
-                            <select class="p-2 border rounded-md w-full" disabled>
-                                <option selected>{{ $archivedApplication->end_time }}</option>
-                            </select>
+            <!-- How Did You Hear About Us -->
+            <div class="flex flex-col space-y-1">
+                <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">How Did You Hear About Us? <span class="text-red-600">*</span></label>
+                <div class="text-base font-medium text-gray-900 px-3 py-2 bg-gray-50 rounded-md">
+                    {{ $archivedApplication->source === 'fb_boosting' ? 'FB Boosting' : 'Referral' }}
+                </div>
+            </div>
+
+            @if($archivedApplication->source === 'referral')
+            <div class="flex flex-col space-y-1">
+                <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Referrer Name <span class="text-red-600">*</span></label>
+                <div class="text-base font-medium text-gray-900 px-3 py-2 bg-gray-50 rounded-md">
+                    {{ $archivedApplication->referrer_name }}
+                </div>
+            </div>
+            @endif
+        </div>
+    </div>
+
+    <!-- Page 4: Work Preferences -->
+    <div x-show="currentPage === 4" x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 transform translate-x-4"
+         x-transition:enter-end="opacity-100 transform translate-x-0">
+        <h3 class="font-semibold text-[#0E335D] text-xl mb-6 flex items-center">
+            <i class="fas fa-clock mr-2 text-[#65DB7F]"></i>
+            Work Preferences
+        </h3>
+        
+        <div class="space-y-6">
+            <!-- Working Availability -->
+            <div class="bg-gray-50 p-6 rounded-lg">
+                <h4 class="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Working Availability</h4>
+                <div class="grid md:grid-cols-2 gap-6 mb-6">
+                    <div class="flex flex-col space-y-1">
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Start Time</label>
+                        <div class="text-base font-medium text-gray-900 px-3 py-2 bg-white rounded-md">
+                            {{ $archivedApplication->start_time }}
                         </div>
-                        <div class="text-sm font-medium text-gray-700 mb-2">Days Available:</div>
-                        <div class="grid grid-cols-4 gap-2 mb-2">
-                            <label><input type="checkbox" {{ in_array('monday', $archivedApplication->days) ? 'checked' : '' }} disabled> Mon</label>
-                            <label><input type="checkbox" {{ in_array('tuesday', $archivedApplication->days) ? 'checked' : '' }} disabled> Tue</label>
-                            <label><input type="checkbox" {{ in_array('wednesday', $archivedApplication->days) ? 'checked' : '' }} disabled> Wed</label>
-                            <label><input type="checkbox" {{ in_array('thursday', $archivedApplication->days) ? 'checked' : '' }} disabled> Thu</label>
-                        </div>
-                        <div class="grid grid-cols-3 gap-2">
-                            <label><input type="checkbox" {{ in_array('friday', $archivedApplication->days) ? 'checked' : '' }} disabled> Fri</label>
-                            <label><input type="checkbox" {{ in_array('saturday', $archivedApplication->days) ? 'checked' : '' }} disabled> Sat</label>
-                            <label><input type="checkbox" {{ in_array('sunday', $archivedApplication->days) ? 'checked' : '' }} disabled> Sun</label>
+                    </div>
+                    <div class="flex flex-col space-y-1">
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">End Time</label>
+                        <div class="text-base font-medium text-gray-900 px-3 py-2 bg-white rounded-md">
+                            {{ $archivedApplication->end_time }}
                         </div>
                     </div>
                 </div>
-
-                <!-- Column 2: Platform Familiarity + Preferred Time -->
-                <div class="flex flex-col h-full justify-between">
-                    <div>
-                        <label class="text-sm font-normal text-gray-500 mb-2">Platform Familiarity</label>
-                        <div class="p-4 border rounded-lg shadow-lg mb-4">
-                            <div class="grid grid-cols-3 gap-2 mb-2">
-                                <label><input type="checkbox" {{ in_array('classin', $archivedApplication->platforms) ? 'checked' : '' }} disabled> ClassIn</label>
-                                <label><input type="checkbox" {{ in_array('zoom', $archivedApplication->platforms) ? 'checked' : '' }} disabled> Zoom</label>
-                                <label><input type="checkbox" {{ in_array('voov', $archivedApplication->platforms) ? 'checked' : '' }} disabled> Voov</label>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <label><input type="checkbox" {{ in_array('ms_teams', $archivedApplication->platforms) ? 'checked' : '' }} disabled> MS Teams</label>
-                                <label><input type="checkbox" {{ in_array('others', $archivedApplication->platforms) ? 'checked' : '' }} disabled> Others</label>
-                            </div>
-                        </div>
-
-                        <label class="text-sm font-normal text-gray-500 mb-2">Preferred Schedule (Date & Time)</label>
-                        <div class="p-4 border rounded-lg shadow-lg">
-                            <input type="datetime-local" value="{{ $archivedApplication->interview_time ? $archivedApplication->interview_time->format('Y-m-d\TH:i') : '' }}"
-                                class="p-2 border rounded-md w-full" readonly>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Column 3: Can Teach + Archive Information -->
-                <div class="flex flex-col h-full justify-between">
-                    <div>
-                        <label class="text-sm font-normal text-gray-500 mb-2">Can Teach</label>
-                        <div class="p-4 border rounded-lg shadow-lg space-y-4">
-                            <div class="grid grid-cols-2 gap-2">
-                                <label><input type="checkbox" {{ in_array('kids', $archivedApplication->can_teach) ? 'checked' : '' }} disabled> Kids</label>
-                                <label><input type="checkbox" {{ in_array('teenager', $archivedApplication->can_teach) ? 'checked' : '' }} disabled> Teenager</label>
-                            </div>
-                            <div>
-                                <label><input type="checkbox" {{ in_array('adults', $archivedApplication->can_teach) ? 'checked' : '' }} disabled> Adults</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Archive Information -->
-                    <div class="mt-6 mb-4 p-4 bg-red-50 rounded-lg border border-red-200">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm font-medium text-gray-700">Final Status:</span>
-                            <span class="px-3 py-1 rounded-full text-xs font-bold 
-                                @php
-                                    $statusColors = [
-                                        'declined' => 'bg-red-500 text-white',
-                                        'not_recommended' => 'bg-orange-500 text-white',
-                                        'no_answer_3_attempts' => 'bg-gray-500 text-white',
-                                        're_schedule' => 'bg-blue-500 text-white'
-                                    ];
-                                    $statusColor = $statusColors[$archivedApplication->final_status] ?? 'bg-gray-500 text-white';
-                                @endphp
-                                {{ $statusColor }}">
-                                {{ ucwords(str_replace('_', ' ', $archivedApplication->final_status)) }}
-                            </span>
-                        </div>
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm font-medium text-gray-700">Archived At:</span>
-                            <span class="text-sm text-gray-900">{{ $archivedApplication->archived_at->format('Y-m-d H:i') }}</span>
-                        </div>
-                        @if($archivedApplication->attempt_count > 0)
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm font-medium text-gray-700">Attempt Count:</span>
-                            <span class="text-sm font-bold text-gray-900">{{ $archivedApplication->attempt_count }}/3</span>
-                        </div>
-                        @endif
-                        @if($archivedApplication->interviewer)
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm font-medium text-gray-700">Last Interviewer:</span>
-                            <span class="text-sm text-gray-900">{{ $archivedApplication->interviewer }}</span>
-                        </div>
-                        @endif
-                        @if($archivedApplication->notes)
-                        <div class="mt-2">
-                            <span class="text-sm font-medium text-gray-700">Notes:</span>
-                            <p class="text-sm text-gray-900 mt-1 p-2 bg-gray-100 rounded">{{ $archivedApplication->notes }}</p>
-                        </div>
-                        @endif
+                
+                <div class="flex flex-col space-y-1">
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Days Available</label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-md">
+                            <input type="checkbox" {{ (is_array($archivedApplication->days) && in_array('monday', $archivedApplication->days)) ? 'checked' : '' }} disabled class="rounded">
+                            <span class="text-sm font-medium">Monday</span>
+                        </label>
+                        <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-md">
+                            <input type="checkbox" {{ (is_array($archivedApplication->days) && in_array('tuesday', $archivedApplication->days)) ? 'checked' : '' }} disabled class="rounded">
+                            <span class="text-sm font-medium">Tuesday</span>
+                        </label>
+                        <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-md">
+                            <input type="checkbox" {{ (is_array($archivedApplication->days) && in_array('wednesday', $archivedApplication->days)) ? 'checked' : '' }} disabled class="rounded">
+                            <span class="text-sm font-medium">Wednesday</span>
+                        </label>
+                        <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-md">
+                            <input type="checkbox" {{ (is_array($archivedApplication->days) && in_array('thursday', $archivedApplication->days)) ? 'checked' : '' }} disabled class="rounded">
+                            <span class="text-sm font-medium">Thursday</span>
+                        </label>
+                        <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-md">
+                            <input type="checkbox" {{ (is_array($archivedApplication->days) && in_array('friday', $archivedApplication->days)) ? 'checked' : '' }} disabled class="rounded">
+                            <span class="text-sm font-medium">Friday</span>
+                        </label>
+                        <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-md">
+                            <input type="checkbox" {{ (is_array($archivedApplication->days) && in_array('saturday', $archivedApplication->days)) ? 'checked' : '' }} disabled class="rounded">
+                            <span class="text-sm font-medium">Saturday</span>
+                        </label>
+                        <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-md">
+                            <input type="checkbox" {{ (is_array($archivedApplication->days) && in_array('sunday', $archivedApplication->days)) ? 'checked' : '' }} disabled class="rounded">
+                            <span class="text-sm font-medium">Sunday</span>
+                        </label>
                     </div>
                 </div>
             </div>
+
+            <!-- Platform Familiarity -->
+            <div class="bg-gray-50 p-6 rounded-lg">
+                <h4 class="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Platform Familiarity</h4>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-md">
+                        <input type="checkbox" {{ (is_array($archivedApplication->platforms) && in_array('classin', $archivedApplication->platforms)) ? 'checked' : '' }} disabled class="rounded">
+                        <span class="text-sm font-medium">ClassIn</span>
+                    </label>
+                    <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-md">
+                        <input type="checkbox" {{ (is_array($archivedApplication->platforms) && in_array('zoom', $archivedApplication->platforms)) ? 'checked' : '' }} disabled class="rounded">
+                        <span class="text-sm font-medium">Zoom</span>
+                    </label>
+                    <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-md">
+                        <input type="checkbox" {{ (is_array($archivedApplication->platforms) && in_array('voov', $archivedApplication->platforms)) ? 'checked' : '' }} disabled class="rounded">
+                        <span class="text-sm font-medium">Voov</span>
+                    </label>
+                    <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-md">
+                        <input type="checkbox" {{ (is_array($archivedApplication->platforms) && in_array('ms_teams', $archivedApplication->platforms)) ? 'checked' : '' }} disabled class="rounded">
+                        <span class="text-sm font-medium">MS Teams</span>
+                    </label>
+                    <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-md">
+                        <input type="checkbox" {{ (is_array($archivedApplication->platforms) && in_array('others', $archivedApplication->platforms)) ? 'checked' : '' }} disabled class="rounded">
+                        <span class="text-sm font-medium">Others</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Can Teach -->
+            <div class="bg-gray-50 p-6 rounded-lg">
+                <h4 class="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Can Teach</h4>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-md">
+                        <input type="checkbox" {{ (is_array($archivedApplication->can_teach) && in_array('kids', $archivedApplication->can_teach)) ? 'checked' : '' }} disabled class="rounded">
+                        <span class="text-sm font-medium">Kids</span>
+                    </label>
+                    <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-md">
+                        <input type="checkbox" {{ (is_array($archivedApplication->can_teach) && in_array('teenager', $archivedApplication->can_teach)) ? 'checked' : '' }} disabled class="rounded">
+                        <span class="text-sm font-medium">Teenager</span>
+                    </label>
+                    <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-md">
+                        <input type="checkbox" {{ (is_array($archivedApplication->can_teach) && in_array('adults', $archivedApplication->can_teach)) ? 'checked' : '' }} disabled class="rounded">
+                        <span class="text-sm font-medium">Adults</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Preferred Interview Time -->
+            <div class="flex flex-col space-y-1">
+                <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred Time for Interview Call</label>
+                <div class="text-base font-medium text-gray-900 px-3 py-2 bg-gray-50 rounded-md">
+                    {{ \Carbon\Carbon::parse($archivedApplication->interview_time)->format('F d, Y - h:i A') }}
+                </div>
+            </div>
         </div>
-    </form>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="flex justify-between items-center mt-8 pt-6 border-t">
+        <button @click="prevPage()" :disabled="currentPage === 1" 
+            class="px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            :class="currentPage === 1 ? 'bg-gray-300 text-gray-500' : 'bg-[#0E335D] text-white hover:opacity-90'">
+            <i class="fas fa-chevron-left mr-2"></i>
+            Previous
+        </button>
+        
+        <div class="text-sm font-medium text-gray-600">
+            Page <span class="text-[#0E335D] font-bold" x-text="currentPage"></span> of <span class="text-[#0E335D] font-bold" x-text="totalPages"></span>
+        </div>
+        
+        <button @click="nextPage()" :disabled="currentPage === totalPages" 
+            class="px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            :class="currentPage === totalPages ? 'bg-gray-300 text-gray-500' : 'bg-[#65DB7F] text-white hover:opacity-90'">
+            Next
+            <i class="fas fa-chevron-right ml-2"></i>
+        </button>
+    </div>
+
 </div>
+
+

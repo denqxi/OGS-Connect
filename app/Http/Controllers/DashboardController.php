@@ -73,8 +73,8 @@ class DashboardController extends Controller
      */
     private function getApplicantsThisMonth($month)
     {
-        return Application::whereYear('created_at', Carbon::parse($month . '-01')->year)
-            ->whereMonth('created_at', Carbon::parse($month . '-01')->month)
+        return Application::whereYear('application_date_time', Carbon::parse($month . '-01')->year)
+            ->whereMonth('application_date_time', Carbon::parse($month . '-01')->month)
             ->count();
     }
 
@@ -84,7 +84,7 @@ class DashboardController extends Controller
     private function getDemoApplicants($month)
     {
         // Same logic as viewDemo method - exclude onboarding and hired applicants
-        return Demo::whereNotIn('status', ['onboarding', 'hired'])->count();
+        return Demo::whereNotIn('phase', ['onboarding', 'hired'])->count();
     }
 
     /**
@@ -93,7 +93,7 @@ class DashboardController extends Controller
     private function getOnboardingApplicants($month)
     {
         // Same logic as viewOnboarding method - only show onboarding applicants
-        return Demo::where('status', 'onboarding')->count();
+        return Demo::where('phase', 'onboarding')->count();
     }
 
     /**
@@ -217,9 +217,9 @@ class DashboardController extends Controller
     private function getHiringStats($month)
     {
         // Get hiring stats from ArchivedApplication model - same data as archive.blade.php
-        $notRecommended = ArchivedApplication::where('final_status', 'not_recommended')->count();
-        $noAnswer = ArchivedApplication::where('final_status', 'no_answer_3_attempts')->count();
-        $declined = ArchivedApplication::where('final_status', 'declined')->count();
+        $notRecommended = ArchivedApplication::where('status', 'not_recommended')->count();
+        $noAnswer = ArchivedApplication::where('status', 'no_answer_3_attempts')->count();
+        $declined = ArchivedApplication::where('status', 'declined')->count();
         
         return [
             'not_recommended' => $notRecommended,

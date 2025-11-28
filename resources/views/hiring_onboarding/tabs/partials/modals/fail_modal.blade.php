@@ -6,8 +6,8 @@
     data-current-attempts="{{ $application->attempt_count ?? 0 }}">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto relative">
         <!-- Header -->
-        <div class="flex justify-between items-center px-6 py-3 bg-[#F65353] rounded-t-xl">
-            <h2 class="text-white text-lg font-bold">Confirm Fail</h2>
+        <div class="flex justify-between items-center px-6 py-3 bg-[#234D7C] rounded-t-xl">
+            <h2 class="text-white text-lg font-bold">Fail Applicant</h2>
             <button type="button"
                 @click="closeFailModal()"
                 class="text-white text-2xl font-bold hover:opacity-75">&times;
@@ -15,7 +15,7 @@
         </div>
         
         <!-- Content -->
-        <form id="failForm" action="{{ route('hiring_onboarding.applicant.fail', $application->id) }}" method="POST" class="px-6 py-6">
+        <form id="failForm" action="{{ route('hiring_onboarding.applicant.fail', $application->application_id) }}" method="POST" class="px-6 py-6">
             @csrf
             @method('PATCH')
             
@@ -25,19 +25,19 @@
                 <input type="text" 
                     name="interviewer"
                     id="interviewer"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F65353] focus:border-transparent"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent"
                     placeholder="Enter interviewer name"
                     value="{{ Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : '' }}"
-                    required>
+                    required disabled>
             </div>
             
             <!-- Special Status Field -->
             <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-medium mb-2">Special Status:</label>
+                <label class="block text-gray-700 text-sm font-medium mb-2">Status:</label>
                 <div class="relative">
                     <select name="special_status" 
                         id="special_status"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F65353] focus:border-transparent appearance-none bg-white"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent appearance-none bg-white"
                         required
                         onchange="toggleInterviewTime()">
                         <option value="" disabled selected>-Select Status-</option>
@@ -60,7 +60,7 @@
                 <input type="datetime-local" 
                     name="interview_time"
                     id="interview_time"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F65353] focus:border-transparent"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent"
                     min="{{ now()->format('Y-m-d\TH:i') }}">
             </div>
             
@@ -68,7 +68,7 @@
             <div class="mb-6">
                 <label class="block text-gray-700 text-sm font-medium mb-2">Notes:</label>
                 <textarea name="notes" rows="4"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F65353] focus:border-transparent resize-none"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent resize-none"
                     placeholder="Enter reason for the chosen status..."></textarea>
             </div>
             
@@ -76,7 +76,7 @@
             <div class="flex justify-center">
                 <button type="button" onclick="showConfirmation()"
                     class="bg-[#F65353] text-white px-8 py-2 rounded-full font-bold hover:opacity-90 transition-opacity">
-                    Confirm Fail
+                    Fail
                 </button>
             </div>
         </form>
@@ -185,8 +185,6 @@ function updateConfirmationModal(status, interviewer, notes, interviewTime) {
             messageElement.innerHTML = `
                 This applicant has been <span class="font-bold text-red-600">declined</span> and will be moved to the Archive.
                 <br><br>
-                <strong>Interviewer:</strong> ${interviewer}
-                ${notes ? `<br><strong>Notes:</strong> ${notes}` : ''}
             `;
             iconElement.innerHTML = `
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -200,8 +198,6 @@ function updateConfirmationModal(status, interviewer, notes, interviewTime) {
             messageElement.innerHTML = `
                 This applicant has been marked as <span class="font-bold text-red-600">not recommended</span> and will be moved to the Archive.
                 <br><br>
-                <strong>Interviewer:</strong> ${interviewer}
-                ${notes ? `<br><strong>Notes:</strong> ${notes}` : ''}
             `;
             iconElement.innerHTML = `
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -218,13 +214,11 @@ function updateConfirmationModal(status, interviewer, notes, interviewTime) {
             messageElement.innerHTML = `
                 This call attempt has been recorded. 
                 <br><br>
-                <span class="font-bold text-orange-600">${remainingAttempts} attempts remaining</span> before automatic archiving.
+                <span class="font-bold text-blue-800">${remainingAttempts} attempts remaining</span> before automatic archiving.
                 <br><br>
-                <strong>Interviewer:</strong> ${interviewer}
-                ${notes ? `<br><strong>Notes:</strong> ${notes}` : ''}
             `;
             iconElement.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                 </svg>
             `;
@@ -238,8 +232,6 @@ function updateConfirmationModal(status, interviewer, notes, interviewTime) {
                 <br><br>
                 <strong>New Interview Time:</strong> <span class="font-bold text-blue-600">${formattedTime}</span>
                 <br><br>
-                <strong>Interviewer:</strong> ${interviewer}
-                ${notes ? `<br><strong>Notes:</strong> ${notes}` : ''}
             `;
             iconElement.innerHTML = `
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">

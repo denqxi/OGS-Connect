@@ -113,7 +113,7 @@
                         <i class="fas fa-sign-in-alt mr-2"></i>LOG IN
                     </button>
                 </a>
-                <button onclick="window.location.href='{{ route('application.form') }}'"
+                <button onclick="window.location.href='{{ route('application.form.index') }}'"
                     class="px-6 shadow-lg text-xs py-2 bg-gradient-to-r from-ogs-green to-ogs-dark-green font-normal text-white rounded-full hover:shadow-xl transition-all duration-300 transform hover:scale-105">
                     <i class="fas fa-rocket mr-2"></i>APPLY NOW
                 </button>
@@ -141,7 +141,7 @@
                 LOG IN
             </button>
         </a>
-        <button onclick="window.location.href='{{ route('application.form') }}'"
+        <button onclick="window.location.href='{{ route('application.form.index') }}'"
             class="w-full shadow-lg px-6 text-xs py-2 bg-ogs-green font-normal text-white rounded-full hover:bg-ogs-dark-green transition-colors">
             APPLY NOW
         </button>
@@ -194,7 +194,7 @@
                     </p>
 
                     <div class="flex flex-col sm:flex-row gap-4">
-                        <button onclick="window.location.href='{{ route('application.form') }}'"
+                        <button onclick="window.location.href='{{ route('application.form.index') }}'"
                             class="bg-ogs-navy text-white px-8 py-4 rounded-full font-semibold hover:bg-ogs-dark-navy transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center">
                             <i class="fas fa-rocket mr-2"></i>APPLY NOW
                         </button>
@@ -309,7 +309,7 @@
                             </div>
                         </div>
 
-                        <a href="{{ route('application.form') }}"
+                        <a href="{{ route('application.form.index') }}"
                             class="bg-ogs-navy text-white px-6 sm:px-8 py-4 rounded-full font-semibold hover:bg-ogs-dark-navy transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl w-full text-center inline-block flex items-center justify-center">
                             <i class="fas fa-rocket mr-2"></i>APPLY NOW
                         </a>
@@ -418,7 +418,7 @@
             </div>
 
             <!-- Apply Button -->
-            <button onclick="window.location.href='{{ route('application.form') }}'"
+            <button onclick="window.location.href='{{ route('application.form.index') }}'"
                 class="bg-gradient-to-r from-ogs-navy to-ogs-dark-navy text-white px-8 sm:px-12 py-4 sm:py-5 rounded-full font-semibold text-base sm:text-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-fade-in flex items-center mx-auto">
                 <i class="fas fa-rocket mr-3"></i>START YOUR JOURNEY NOW
             </button>

@@ -229,10 +229,10 @@ class EmployeeManagementController extends Controller
         if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function($q) use ($search) {
-                $q->where('sfname', 'like', "%{$search}%")
-                  ->orWhere('slname', 'like', "%{$search}%")
-                  ->orWhere('semail', 'like', "%{$search}%")
-                  ->orWhere('sconNum', 'like', "%{$search}%")
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('contact_number', 'like', "%{$search}%")
                   ->orWhere('assigned_account', 'like', "%{$search}%");
             });
         }
@@ -247,7 +247,7 @@ class EmployeeManagementController extends Controller
             $query->where('assigned_account', $request->get('account'));
         }
 
-        $supervisors = $query->orderBy('assigned_account')->orderBy('sfname')->orderBy('slname')->paginate(5)->withQueryString();
+        $supervisors = $query->orderBy('assigned_account')->orderBy('first_name')->orderBy('last_name')->paginate(5)->withQueryString();
 
         return view('emp_management.index', compact('supervisors', 'tab'));
     }

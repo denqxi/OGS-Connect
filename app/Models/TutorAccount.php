@@ -50,6 +50,7 @@ class TutorAccount extends Model
     ];
 
     // Relationship back to tutor
+    // tutor_id in tutor_accounts references tutorID (formatted string like OGS-T0001)
     public function tutor(): BelongsTo
     {
         return $this->belongsTo(Tutor::class, 'tutor_id', 'tutorID');

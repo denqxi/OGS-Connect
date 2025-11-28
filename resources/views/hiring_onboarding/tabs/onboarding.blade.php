@@ -120,21 +120,38 @@
 
             <!-- Status -->
             <td class="px-6 py-4 whitespace-nowrap">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $onboarding->statusColor() }}">
-                    {{ ucwords(str_replace('_', ' ', $onboarding->status ?? '—')) }}
-                </span>
+                <div class="flex items-center gap-2">
+                    @php
+                        $statusColors = [
+                            'pending' => 'bg-yellow-400',
+                            'rejected' => 'bg-red-500',
+                            'no_answer' => 'bg-orange-500',
+                            're_schedule' => 'bg-purple-400',
+                            'declined' => 'bg-red-600',
+                            'not_recommended' => 'bg-red-700',
+                            'passed' => 'bg-green-500',
+                            'failed' => 'bg-red-500',
+                            'completed' => 'bg-blue-500',
+                        ];
+                        $circleColor = $statusColors[$onboarding->status ?? 'pending'] ?? 'bg-gray-500';
+                    @endphp
+                    <span class="w-2.5 h-2.5 rounded-full {{ $circleColor }}"></span>
+                    <span class="text-xs font-medium text-gray-700">
+                        {{ ucwords(str_replace('_', ' ', $onboarding->status ?? '—')) }}
+                    </span>
+                </div>
             </td>
 
             <!-- Actions -->
             <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                 <div class="flex items-center space-x-2">
                     <a href="{{ route('hiring_onboarding.applicant.showUneditable', $onboarding->id) }}?tab=onboarding" title="View Details"
-                        class="w-8 h-8 flex items-center justify-center bg-[#9DC9FD] text-[#2C5B8C] rounded hover:bg-[#7BB4FB] transition-colors" aria-label="view">
+                        class="w-8 h-8 flex items-center justify-center bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors" aria-label="view">
                         <i class="fas fa-eye text-xs"></i>
                     </a>
 
                     <button onclick="showOnboardingPassFailModal({{ $onboarding->id }}, '{{ $onboarding->first_name }} {{ $onboarding->last_name }}', '{{ $onboarding->assigned_account }}', '{{ $onboarding->interview_time ? \Carbon\Carbon::parse($onboarding->interview_time)->format('M d, Y h:i A') : ($onboarding->demo_schedule ? \Carbon\Carbon::parse($onboarding->demo_schedule)->format('M d, Y h:i A') : '—') }}', '{{ $onboarding->email }}')"
-                        class="w-8 h-8 flex items-center justify-center bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 transition-colors" title="Update Hiring Stage">
+                        class="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors" title="Update Hiring Stage">
                         <i class="fas fa-edit text-xs"></i>
                     </button>
                 </div>

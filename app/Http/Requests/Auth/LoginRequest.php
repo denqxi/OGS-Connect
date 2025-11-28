@@ -26,11 +26,22 @@ class LoginRequest extends FormRequest
      */
     public function rules(): array
     {
+        $userRole = $this->input('user_role', 'auto');
+        
+        // Dynamic regex based on role
+        $idPattern = 'OGS-[ST]\\d{4}';
+        if ($userRole === 'admin_supervisor') {
+            $idPattern = 'OGS-S\\d{4}';
+        } elseif ($userRole === 'tutor') {
+            $idPattern = 'OGS-T\\d{4}';
+        }
+        
         return [
+            'user_role' => ['nullable', 'string', 'in:admin_supervisor,tutor,auto'],
             'login_id' => [
                 'required', 
                 'string',
-                'regex:/^(OGS-[ST]\d{4}|[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})$/'
+                'regex:/^(' . $idPattern . '|[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})$/'
             ],
             'password' => ['required', 'string'],
         ];

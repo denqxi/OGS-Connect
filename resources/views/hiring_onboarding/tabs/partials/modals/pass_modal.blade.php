@@ -13,7 +13,7 @@
             </button>
         </div>
         
-    <form id="passForm" action="{{ route('hiring_onboarding.applicant.pass', $application->id) }}" method="POST">
+    <form id="passForm" action="{{ route('hiring_onboarding.applicant.pass', $application->application_id) }}" method="POST">
         @csrf
         @method('PATCH')
         <!-- Content -->

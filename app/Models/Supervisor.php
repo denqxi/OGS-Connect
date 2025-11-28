@@ -7,25 +7,23 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class Supervisor extends Authenticatable
 {
-    protected $primaryKey = 'supID';
-    public $incrementing = false; // Primary key is not auto-incrementing
-    protected $keyType = 'string'; // Primary key is string type
+    protected $table = 'supervisor';
+    protected $primaryKey = 'supervisor_id';
     
     protected $fillable = [
+        'supervisor_id',
         'supID',
-        'sfname',
-        'smname',
-        'slname',
+        'first_name',
+        'middle_name',
+        'last_name',
         'birth_date',
-        'semail',
-        'sconNum',
-        'password',
+        'email',
+        'contact_number',
         'assigned_account',
-        'srole',
-        'saddress',
-        'steams',
-        'sshift',
-        'status'
+        'ms_teams',
+        'shift',
+        'password',
+        'status',
     ];
 
     protected $hidden = [
@@ -69,7 +67,7 @@ class Supervisor extends Authenticatable
      */
     public function getEmailForPasswordReset()
     {
-        return $this->semail;
+        return $this->email ?? $this->semail;
     }
 
     /**
@@ -85,7 +83,7 @@ class Supervisor extends Authenticatable
      */
     public function getAuthIdentifier()
     {
-        return $this->getKey();
+        return $this->supID ?? $this->supervisor_id;
     }
 
     /**
@@ -128,7 +126,43 @@ class Supervisor extends Authenticatable
      */
     public function getFullNameAttribute()
     {
-        return trim(($this->sfname ?? '') . ' ' . ($this->smname ?? '') . ' ' . ($this->slname ?? ''));
+        return trim(($this->first_name ?? '') . ' ' . ($this->middle_name ?? '') . ' ' . ($this->last_name ?? ''));
+    }
+
+    // Accessors for backward compatibility with old field names
+    public function getSfnameAttribute()
+    {
+        return $this->first_name;
+    }
+
+    public function getSmnameAttribute()
+    {
+        return $this->middle_name;
+    }
+
+    public function getSlnameAttribute()
+    {
+        return $this->last_name;
+    }
+
+    public function getSemailAttribute()
+    {
+        return $this->email;
+    }
+
+    public function getSconNumAttribute()
+    {
+        return $this->contact_number;
+    }
+
+    public function getSteamsAttribute()
+    {
+        return $this->ms_teams;
+    }
+
+    public function getSshiftAttribute()
+    {
+        return $this->shift;
     }
 
     /**
@@ -138,16 +172,17 @@ class Supervisor extends Authenticatable
     {
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
-                // If searching for formatted ID pattern, extract numeric part
+                // If searching for formatted ID pattern
                 if (preg_match('/^OGS-S(\d+)$/', $search, $matches)) {
-                    $numericId = (int) $matches[1];
-                    $q->where('supID', $numericId);
+                    $q->where('supID', $search);
                 } else {
                     // Regular search on other fields
-                    $q->where('sfname', 'LIKE', "%{$search}%")
-                      ->orWhere('smname', 'LIKE', "%{$search}%")
-                      ->orWhere('slname', 'LIKE', "%{$search}%")
-                      ->orWhere('semail', 'LIKE', "%{$search}%");
+                    $q->where('first_name', 'LIKE', "%{$search}%")
+                      ->orWhere('middle_name', 'LIKE', "%{$search}%")
+                      ->orWhere('last_name', 'LIKE', "%{$search}%")
+                      ->orWhere('email', 'LIKE', "%{$search}%")
+                      ->orWhere('contact_number', 'LIKE', "%{$search}%")
+                      ->orWhere('supID', 'LIKE', "%{$search}%");
                 }
             });
         }

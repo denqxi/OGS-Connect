@@ -31,7 +31,7 @@ class ArchivedApplication extends Model
         'platforms',
         'can_teach',
         'interview_time',
-        'final_status',
+            'status',
         'assigned_account',
         'interviewer',
         'notes',
