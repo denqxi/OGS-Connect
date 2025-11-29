@@ -38,14 +38,20 @@ class EmployeeManagementController extends Controller
             $q->where('account_name', 'GLS');
         });
 
-        // Apply search filter
+        // Apply search filter (search applicant name via relationship)
         if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
+                $q->where('tutorID', 'like', "%{$search}%")
+                  ->orWhere('tusername', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone_number', 'like', "%{$search}%");
+                  ->orWhere('phone_number', 'like', "%{$search}%")
+                  ->orWhereHas('applicant', function($appQ) use ($search) {
+                      $appQ->where('first_name', 'like', "%{$search}%")
+                           ->orWhere('last_name', 'like', "%{$search}%")
+                           ->orWhere('email', 'like', "%{$search}%")
+                           ->orWhere('contact_number', 'like', "%{$search}%");
+                  });
             });
         }
 
@@ -72,7 +78,12 @@ class EmployeeManagementController extends Controller
             });
         }
 
-        $tutors = $query->orderBy('first_name')->orderBy('last_name')->paginate(5)->withQueryString();
+        // Join applicants so we can order by the applicant's name columns
+        $tutors = $query->leftJoin('applicants', 'tutors.applicant_id', '=', 'applicants.applicant_id')
+                ->select('tutors.*')
+                ->orderBy('applicants.first_name')
+                ->orderBy('applicants.last_name')
+                ->paginate(5)->withQueryString();
 
         return view('emp_management.index', compact('tutors', 'tab'));
     }
@@ -86,14 +97,20 @@ class EmployeeManagementController extends Controller
             $q->where('account_name', 'Tutlo');
         });
 
-        // Apply search filter
+        // Apply search filter (search applicant name via relationship)
         if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
+                $q->where('tutorID', 'like', "%{$search}%")
+                  ->orWhere('tusername', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone_number', 'like', "%{$search}%");
+                  ->orWhere('phone_number', 'like', "%{$search}%")
+                  ->orWhereHas('applicant', function($appQ) use ($search) {
+                      $appQ->where('first_name', 'like', "%{$search}%")
+                           ->orWhere('last_name', 'like', "%{$search}%")
+                           ->orWhere('email', 'like', "%{$search}%")
+                           ->orWhere('contact_number', 'like', "%{$search}%");
+                  });
             });
         }
 
@@ -120,7 +137,11 @@ class EmployeeManagementController extends Controller
             });
         }
 
-        $tutors = $query->orderBy('first_name')->orderBy('last_name')->paginate(5)->withQueryString();
+        $tutors = $query->leftJoin('applicants', 'tutors.applicant_id', '=', 'applicants.applicant_id')
+                ->select('tutors.*')
+                ->orderBy('applicants.first_name')
+                ->orderBy('applicants.last_name')
+                ->paginate(5)->withQueryString();
 
         return view('emp_management.index', compact('tutors', 'tab'));
     }
@@ -134,14 +155,20 @@ class EmployeeManagementController extends Controller
             $q->where('account_name', 'Babilala');
         });
 
-        // Apply search filter
+        // Apply search filter (search applicant name via relationship)
         if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
+                $q->where('tutorID', 'like', "%{$search}%")
+                  ->orWhere('tusername', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone_number', 'like', "%{$search}%");
+                  ->orWhere('phone_number', 'like', "%{$search}%")
+                  ->orWhereHas('applicant', function($appQ) use ($search) {
+                      $appQ->where('first_name', 'like', "%{$search}%")
+                           ->orWhere('last_name', 'like', "%{$search}%")
+                           ->orWhere('email', 'like', "%{$search}%")
+                           ->orWhere('contact_number', 'like', "%{$search}%");
+                  });
             });
         }
 
@@ -168,7 +195,11 @@ class EmployeeManagementController extends Controller
             });
         }
 
-        $tutors = $query->orderBy('first_name')->orderBy('last_name')->paginate(5)->withQueryString();
+        $tutors = $query->leftJoin('applicants', 'tutors.applicant_id', '=', 'applicants.applicant_id')
+                ->select('tutors.*')
+                ->orderBy('applicants.first_name')
+                ->orderBy('applicants.last_name')
+                ->paginate(5)->withQueryString();
 
         return view('emp_management.index', compact('tutors', 'tab'));
     }

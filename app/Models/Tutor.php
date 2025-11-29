@@ -1,16 +1,17 @@
 <?php
 
 namespace App\Models;
-
+use App\Models\TutorWorkDetail; 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Carbon\Carbon;
 
 class Tutor extends Authenticatable
 {
-    protected $table = 'tutor';
+    protected $table = 'tutors';
     protected $primaryKey = 'tutor_id';
-    
+    public $incrementing = true;
+    protected $keyType = 'int';
     protected $fillable = [
         'tutor_id',
         'applicant_id',
@@ -254,6 +255,13 @@ class Tutor extends Authenticatable
         return $this->hasOne(TutorDetails::class, 'tutor_id', 'tutorID');
     }
 
+    /**
+     * Get work details (ph times / durations) for this tutor
+     */
+    public function workDetails()
+    {
+        return $this->hasMany(TutorWorkDetail::class, 'tutor_id', 'tutorID');
+    }
     /**
      * Get the email address for password reset.
      */

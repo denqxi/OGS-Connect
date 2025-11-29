@@ -146,6 +146,18 @@
                     </div>
                 </a>
 
+                <a href="{{ route('tutor.portal', ['tab'=> 'work_details'])}}"
+                    class="flex-shrink-0 py-3 md:py-4 px-3 md:px-4 relative"
+                    {{ $activeTab == 'work_details' ? 'after:absolute after:-bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#16A34A] dark:after:bg-[#86EFAC] after:rounded-full after:transition-all after:duration-300' : '' }}">
+                    <div
+                        class="flex flex-col md:flex-row items-center md:space-x-2 font-medium text-base md:text-sm
+                        text-[#16A34A] dark:text-[#86EFAC] hover:text-[#16A34A] dark:hover:text-[#BBF7D0]
+                        transform hover:scale-105 transition-transform duration-200">
+                        <i class="fas fa-briefcase text-xl md:text-lg"></i>
+                        <span class="hidden sm:inline">Work Details</span>
+                    </div>
+                </a>
+
 
             </nav>
         </div>
@@ -160,6 +172,8 @@
                 @include('tutor.tabs.payment_details')
             @elseif ($activeTab == 'account')
                 @include('tutor.tabs.account_management')
+            @elseif ($activeTab == 'work_details')
+                @include('tutor.tabs.work_details')
             @endif
         </div>
     </div>

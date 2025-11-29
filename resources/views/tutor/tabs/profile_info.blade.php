@@ -140,5 +140,7 @@
                 </div>
                 </div>
             </div>
-
+        </div>
+    </div>
+</div>
 <script src="{{ asset('js/tutor-profile.js') }}"></script>

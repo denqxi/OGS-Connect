@@ -15,9 +15,12 @@ use App\Http\Controllers\PaymentInformationController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ScheduleExportController;
 use App\Http\Controllers\SupervisorProfileController;
+use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\TutorAssignmentController;
 use App\Http\Controllers\EmployeeManagementController;
 use App\Http\Controllers\TutorAvailabilityController;
+use App\Http\Controllers\TutorAccountController;
+use App\Http\Controllers\TutorWorkDetailController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\SimplePasswordResetController;
 
@@ -159,6 +162,13 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
         Route::get('/{employeeType}/{employeeId}', [PaymentInformationController::class, 'show'])->name('show');
     });
     Route::get('/payment-information-all', [PaymentInformationController::class, 'getAll'])->name('payment-information.all');
+
+    // ------------------------------------------------------------------------
+    // PAYROLL
+    // ------------------------------------------------------------------------
+    Route::prefix('payroll')->name('payroll.')->group(function () {
+        Route::get('/', [PayrollController::class, 'index'])->name('index');
+    });
 });
 
 
@@ -173,7 +183,13 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
     Route::get('/tutor_portal', function () {
         $tutor = Auth::guard('tutor')->user();
         $tutor->load(['tutorDetails', 'paymentInformation', 'securityQuestions']);
-        return view('tutor.tutor_portal', compact('tutor'));
+
+        // Paginate tutor work details for the portal (10 per page)
+        $workDetails = \App\Models\TutorWorkDetail::where('tutor_id', $tutor->tutorID)
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        return view('tutor.tutor_portal', compact('tutor', 'workDetails'));
     })->name('tutor.portal');
     
     // ------------------------------------------------------------------------
@@ -203,6 +219,17 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
         Route::post('/change-password', [TutorAvailabilityController::class, 'changePassword'])->name('change-password');
         Route::post('/update-security-questions', [TutorAvailabilityController::class, 'updateSecurityQuestions'])->name('update-security-questions');
     });
+
+    // ------------------------------------------------------------------------
+    // TUTOR WORK DETAILS (Tutor-scoped API for the portal JS)
+    // ------------------------------------------------------------------------
+    Route::prefix('tutor/work-details')->name('tutor.work-details.')->group(function () {
+    Route::post('/', [TutorWorkDetailController::class, 'store'])->name('store'); 
+    Route::get('/{id}', [TutorWorkDetailController::class, 'show'])->name('show');
+    Route::put('/{id}', [TutorWorkDetailController::class, 'update'])->name('update');
+    Route::delete('/{id}', [TutorWorkDetailController::class, 'destroy'])->name('destroy');
+});
+
 });
 
 // ============================================================================
@@ -268,6 +295,9 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->prefix('api')->name(
 
         return response()->json($result);
     })->name('debug-tutors');
+
+    // Tutor accounts by tutorID
+    Route::get('/tutors/{tutorID}/accounts', [TutorAccountController::class, 'byTutorId'])->name('tutors.accounts');
 });
 
 // Assignment status check (separate route with optional parameter)

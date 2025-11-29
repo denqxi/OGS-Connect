@@ -136,15 +136,18 @@ class ScheduleController extends Controller
             $query->where('account_name', 'GLS')->where('status', 'active');
         });
         
-        // Apply filters
+        // Apply filters (search applicant name via relationship instead of non-existent tutor columns)
         if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
-                $q->where('tusername', 'like', '%' . $request->search . '%')
-                  ->orWhere('first_name', 'like', '%' . $request->search . '%')
-                  ->orWhere('last_name', 'like', '%' . $request->search . '%')
-                  ->orWhere('email', 'like', '%' . $request->search . '%')
-                  ->orWhere('phone_number', 'like', '%' . $request->search . '%')
-                  ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ['%' . $request->search . '%']);
+            $searchTerm = $request->search;
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('tusername', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('email', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('phone_number', 'like', '%' . $searchTerm . '%')
+                  ->orWhereHas('applicant', function($appQ) use ($searchTerm) {
+                      $appQ->where('first_name', 'like', '%' . $searchTerm . '%')
+                           ->orWhere('last_name', 'like', '%' . $searchTerm . '%')
+                           ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ['%' . $searchTerm . '%']);
+                  });
             });
         }
         
@@ -216,7 +219,12 @@ class ScheduleController extends Controller
             }
         }
         
-        $tutors = $query->orderBy('first_name')->orderBy('last_name')->paginate(5)->withQueryString();
+        // Join applicants so we can order by the applicant's name columns
+        $tutors = $query->leftJoin('applicants', 'tutors.applicant_id', '=', 'applicants.applicant_id')
+                ->select('tutors.*')
+                ->orderBy('applicants.first_name')
+                ->orderBy('applicants.last_name')
+                ->paginate(5)->withQueryString();
         $availableTimeSlots = $this->getAvailableTimeSlots();
         $availableDays = $this->getAvailableDaysFromTutorAccounts();
         
@@ -946,11 +954,13 @@ class ScheduleController extends Controller
                 $searchTerm = $request->input('search');
                 $query->where(function($q) use ($searchTerm) {
                     $q->where('tusername', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('first_name', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('last_name', 'like', '%' . $searchTerm . '%')
                       ->orWhere('email', 'like', '%' . $searchTerm . '%')
                       ->orWhere('phone_number', 'like', '%' . $searchTerm . '%')
-                      ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ['%' . $searchTerm . '%']);
+                      ->orWhereHas('applicant', function($appQ) use ($searchTerm) {
+                          $appQ->where('first_name', 'like', '%' . $searchTerm . '%')
+                               ->orWhere('last_name', 'like', '%' . $searchTerm . '%')
+                               ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ['%' . $searchTerm . '%']);
+                      });
                 });
             }
             
@@ -974,7 +984,11 @@ class ScheduleController extends Controller
                 });
             }
             
-            $tutors = $query->orderBy('first_name')->orderBy('last_name')->paginate(5)->withQueryString();
+            $tutors = $query->leftJoin('applicants', 'tutors.applicant_id', '=', 'applicants.applicant_id')
+                            ->select('tutors.*')
+                            ->orderBy('applicants.first_name')
+                            ->orderBy('applicants.last_name')
+                            ->paginate(5)->withQueryString();
             
             // Render the tutor rows HTML
             $html = view('schedules.tabs.partials.tutor-table-rows', compact('tutors'))->render();

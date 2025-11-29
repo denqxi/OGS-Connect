@@ -1,32 +1,4 @@
-// Tutor total results will be set by the Blade template
-    
-function handleTutorFilterChange(changed) {
-    // Allow day and time filters to work together, but clear them when status changes
-    if (changed === 'status') {
-        // When status changes, clear day and time filters
-        document.getElementById('filterTimeSlot').value = '';
-        document.getElementById('filterDay').value = '';
-        // Also clear the time pickers
-        document.getElementById('startTime').value = '';
-        document.getElementById('endTime').value = '';
-    } else if (changed === 'day') {
-        // When day changes, preserve the current time picker values
-        const startTime = document.getElementById('startTime').value;
-        const endTime = document.getElementById('endTime').value;
-        const timeSlotInput = document.getElementById('filterTimeSlot');
-        
-        if (startTime && endTime) {
-            const timeRange = startTime + '-' + endTime;
-            timeSlotInput.value = timeRange;
-        }
-    }
-    
-    // Update clear button visibility
-    updateClearButtonVisibility();
-    
-    // Submit the form to apply filters
-    document.getElementById('tutorFilterForm').submit();
-}
+
 
 // Debounce timer for time range updates
 let timeRangeTimeout;

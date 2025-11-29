@@ -75,6 +75,15 @@
                     </span>
                 </a>
             </li>
+            <li class="min-h-[56px] flex items-center">
+                <a href="{{ route('payroll.index') }}"
+                    class="sidebar-nav-item sidebar-hover-effect flex items-center space-x-3 w-full px-4 py-3 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95 {{ request()->is('payroll*') || Route::is('payroll.*') ? 'text-white bg-[#234D7C] hover:bg-[#033f92] active:bg-[#023873] shadow-md border border-white scale-105 active' : 'text-[#0E335D] hover:text-[#0B294A] active:text-[#0E335D]/80 hover:bg-gray-100 hover:shadow-sm' }}">
+                    <i class="sidebar-icon fas fa-file-invoice-dollar text-m items-center"></i>
+                    <span class="font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out whitespace-nowrap overflow-hidden">
+                        Payroll
+                    </span>
+                </a>
+            </li>
         </ul>
     </nav>
 </div>

@@ -7,7 +7,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class Supervisor extends Authenticatable
 {
-    protected $table = 'supervisor';
+    protected $table = 'supervisors';
     protected $primaryKey = 'supervisor_id';
     
     protected $fillable = [
