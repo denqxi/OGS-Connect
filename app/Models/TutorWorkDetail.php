@@ -24,4 +24,9 @@ class TutorWorkDetail extends Model
     {
         return $this->belongsTo(Tutor::class, 'tutor_id', 'tutorID');
     }
+
+    public function approvals()
+    {
+        return $this->hasMany(TutorWorkDetailApproval::class, 'work_detail_id');
+    }
 }

@@ -168,7 +168,16 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
     // ------------------------------------------------------------------------
     Route::prefix('payroll')->name('payroll.')->group(function () {
         Route::get('/', [PayrollController::class, 'index'])->name('index');
+        Route::get('/work-details', [PayrollController::class, 'workDetails'])->name('work-details');
+        Route::get('/tutor/{tutor}/summary', [PayrollController::class, 'tutorSummary'])->name('tutor.summary');
+        Route::post('/work-detail/{id}/approve', [PayrollController::class, 'approveWorkDetail'])
+            ->name('work-detail.approve');
+        Route::post('/work-detail/{id}/reject', [PayrollController::class, 'rejectWorkDetail'])
+            ->name('work-detail.reject');
+
     });
+    Route::post('/payroll/tutor/{tutor}/send-email', [PayrollController::class, 'sendPayslipEmail']);
+
 });
 
 
@@ -185,9 +194,22 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
         $tutor->load(['tutorDetails', 'paymentInformation', 'securityQuestions']);
 
         // Paginate tutor work details for the portal (10 per page)
-        $workDetails = \App\Models\TutorWorkDetail::where('tutor_id', $tutor->tutorID)
+        // Eager-load latest approval record so rejection notes are available to the tutor
+        $workDetails = \App\Models\TutorWorkDetail::with(['approvals' => function($q) {
+                $q->orderBy('approved_at', 'desc');
+            }])
+            ->where('tutor_id', $tutor->tutorID)
             ->orderBy('created_at', 'desc')
             ->paginate(10);
+        // Attach the latest approval note (if any) to each paginator item so the view can render it easily.
+        $workDetails->getCollection()->transform(function ($wd) {
+            $latest = null;
+            if (!empty($wd->approvals) && is_iterable($wd->approvals)) {
+                $latest = $wd->approvals->first();
+            }
+            $wd->approval_note = $latest->note ?? null;
+            return $wd;
+        });
 
         return view('tutor.tutor_portal', compact('tutor', 'workDetails'));
     })->name('tutor.portal');

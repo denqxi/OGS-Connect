@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\TutorWorkDetail;
+use App\Models\TutorWorkDetailApproval;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
@@ -53,15 +55,49 @@ class TutorWorkDetailController extends Controller
             'ph_time' => 'nullable|string|max:100',
             'class_no' => 'nullable|string|max:50',
             'notes' => 'nullable|string|max:2000',
-            'status' => 'nullable|string|in:pending,active,cancelled',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
 
-        $detail->fill($request->only(['date', 'ph_time', 'class_no', 'notes', 'status']));
-        $detail->save();
+        // Handle optional image upload on update
+        if ($request->hasFile('image')) {
+            try {
+                $filename = time().'_'.$request->file('image')->getClientOriginalName();
+                $imagePath = $request->file('image')->storeAs('tutor_work_screenshots', $filename, 'public');
+                $detail->screenshot = $imagePath;
+            } catch (\Exception $e) {
+                Log::warning('Failed to store tutor work image on update: ' . $e->getMessage());
+            }
+        }
+
+        // Apply editable fields
+        $detail->fill($request->only(['date', 'ph_time', 'class_no', 'notes']));
+
+        // If this work detail was previously rejected, mark it as pending again when the tutor updates (resubmission).
+        if (is_string($detail->status) && strtolower($detail->status) === 'reject') {
+            $oldStatus = $detail->status;
+            $detail->status = 'pending';
+            $detail->save();
+
+            // Record a resubmission approval record (no supervisor) for auditability
+            try {
+                TutorWorkDetailApproval::create([
+                    'work_detail_id' => $detail->id,
+                    'supervisor_id' => null,
+                    'old_status' => $oldStatus,
+                    'new_status' => 'pending',
+                    'approved_at' => now(),
+                    'note' => 'Resubmitted by tutor',
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('Failed to record resubmission approval: ' . $e->getMessage());
+            }
+        } else {
+            $detail->save();
+        }
 
         return response()->json(['message' => 'Updated', 'data' => $detail]);
     }
