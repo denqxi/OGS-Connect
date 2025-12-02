@@ -63,6 +63,14 @@ class Supervisor extends Authenticatable
     }
 
     /**
+     * Get the route key name for Laravel model binding.
+     */
+    public function getRouteKeyName()
+    {
+        return 'supID';
+    }
+
+    /**
      * Get the email address for password reset.
      */
     public function getEmailForPasswordReset()

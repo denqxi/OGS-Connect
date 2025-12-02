@@ -5,7 +5,7 @@
     x-transition>
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto relative">
         <!-- Header -->
-        <div class="flex justify-between items-center px-6 py-3 bg-[#65DB7F] rounded-t-xl">
+        <div class="flex justify-between items-center px-6 py-3 bg-[#1E40AF] rounded-t-xl">
             <h2 class="text-white text-lg font-bold">Confirm Pass</h2>
             <button type="button"
                 @click="closePassModal()"
@@ -24,10 +24,10 @@
                 <input type="text" 
                     name="interviewer"
                     id="interviewer"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#65DB7F] focus:border-transparent"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent bg-gray-100"
                     placeholder="Enter interviewer name" 
                     value="{{ Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : '' }}"
-                    required>
+                    required readonly>
             </div>
 
 
@@ -38,7 +38,7 @@
                     <select 
                         name="assigned_account"
                         id="assigned_account"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#65DB7F] focus:border-transparent appearance-none bg-white">
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2  focus:border-transparent appearance-none bg-white">
                         <option value="" selected disabled>Select an Account</option>
                         <option value="tutlo">Tutlo</option>
                         <option value="talk915">Talk915</option>
@@ -60,7 +60,7 @@
                     <select 
                         name="next_status" 
                         id="next_status"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#65DB7F] focus:border-transparent appearance-none bg-white"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent appearance-none bg-white"
                         onchange="toggleDemoSchedule()">
                         <option value="" selected disabled>Select Current Status</option>
                         <option value="screening">Screening</option>
@@ -77,11 +77,11 @@
             
             <!-- Demo Schedule Field -->
             <div id="demo_schedule_field" class="mb-4">
-                <label class="block text-gray-700 text-sm font-medium mb-2">Demo Schedule:</label>
+                <label class="block text-gray-700 text-sm font-medium mb-2">Next Schedule:</label>
                 <input type="datetime-local" 
                     name="demo_schedule"
                     id="demo_schedule"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#65DB7F] focus:border-transparent"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent"
                     min="{{ now()->format('Y-m-d\TH:i') }}">
             </div>
 
@@ -89,7 +89,7 @@
             <div class="mb-6">
                 <label class="block text-gray-700 text-sm font-medium mb-2">Notes:</label>
                 <textarea rows="4" name="notes"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#65DB7F] focus:border-transparent resize-none"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent resize-none"
                     placeholder="Enter reason for the chosen status..."></textarea>
             </div>
             

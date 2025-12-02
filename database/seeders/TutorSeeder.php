@@ -46,19 +46,20 @@ class TutorSeeder extends Seeder
         ]);
 
         // Create test tutor with new normalized structure
-        Tutor::create([
+        $tutor = Tutor::create([
             'applicant_id' => $applicant->applicant_id,
             'account_id' => $account->account_id,
             'tutorID' => 'OGS-T0001',
-            'tusername' => 'testtutor',
+            'username' => 'testtutor',
             'email' => 'test.tutor@example.com',
-            'tpassword' => 'tutor1234', // Will be hashed automatically by the model
-            'phone_number' => '09171234567',
-            'sex' => 'male',
-            'date_of_birth' => '1995-01-15',
+            'password' => 'tutor1234', // Will be hashed automatically by the model
             'status' => 'active',
-            'hired_date_time' => now(),
         ]);
+        
+        // Update hired_date_time using DB to avoid fillable restrictions
+        DB::table('tutor')
+            ->where('tutor_id', $tutor->tutor_id)
+            ->update(['hired_date_time' => now()]);
 
         if ($this->command) {
             $this->command->info('✅ Created test tutor account:');

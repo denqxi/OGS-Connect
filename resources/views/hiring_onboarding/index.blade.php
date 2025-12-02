@@ -52,7 +52,7 @@
     <!-- Main Content -->
     <div>
         <div class="max-w-full mx-auto">
-            <div class="bg-white rounded-lg shadow-sm p-4 md:p-6">
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
                 @if (request('tab', 'new') == 'new')
                     @include('hiring_onboarding.tabs.new-applicant')
                 @elseif(request('tab') == 'demo')

@@ -49,8 +49,8 @@ class ScheduleController extends Controller
                 return $this->showEmployeeAvailability($request);
             }
 
-            // Default redirect
-            return redirect()->route('schedules.index', ['tab' => 'employee']);
+            // Default redirect to class scheduling tab
+            return redirect()->route('schedules.index', ['tab' => 'class']);
             
         } catch (\Exception $e) {
             Log::error('Error in ScheduleController@index: ' . $e->getMessage());
@@ -193,7 +193,9 @@ class ScheduleController extends Controller
                     }])->whereIn('tutorID', $allTutorIds)->get();
                     
                     foreach ($tutorsWithAccounts as $tutor) {
-                        $glsAccount = $tutor->accounts->firstWhere('account_name', 'GLS');
+                        $glsAccount = $tutor->accounts->first(function($account) {
+                            return $account->account && $account->account->account_name === 'GLS';
+                        });
                         if ($glsAccount && $this->isTimeRangeAvailable($glsAccount->available_times, $requestedStart, $requestedEnd)) {
                             $filteredTutorIds[] = $tutor->tutorID;
                         }

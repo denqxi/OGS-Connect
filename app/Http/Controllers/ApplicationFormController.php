@@ -16,6 +16,7 @@ use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class ApplicationFormController extends Controller
 {
@@ -288,6 +289,9 @@ class ApplicationFormController extends Controller
             'applicant.workPreference'
         ]);
         
+        // Exclude declined, not_recommended, and rejected statuses from new applicant list
+        $query->whereNotIn('status', ['declined', 'not_recommended', 'rejected']);
+        
         // Search across all visible table fields
         if ($request->filled('search')) {
             $search = trim($request->input('search'));
@@ -323,10 +327,31 @@ class ApplicationFormController extends Controller
             }
         }
         
-        $applicants = $query->orderBy('created_at', 'asc')->paginate(5);
+        // Sorting
+        $sortField = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'asc');
         
-        // Get unique statuses and sources for filter dropdowns
-        $statuses = Application::distinct()->pluck('status')->filter()->values();
+        // Handle different sort fields
+        if ($sortField === 'first_name') {
+            $query->join('applicants', 'application.applicant_id', '=', 'applicants.applicant_id')
+                  ->orderBy('applicants.first_name', $sortDirection)
+                  ->select('application.*');
+        } elseif ($sortField === 'interview_time') {
+            $query->join('applicants', 'application.applicant_id', '=', 'applicants.applicant_id')
+                  ->orderBy('applicants.interview_time', $sortDirection)
+                  ->select('application.*');
+        } else {
+            $query->orderBy($sortField, $sortDirection);
+        }
+        
+        $applicants = $query->paginate(5)->withQueryString();
+        
+        // Get unique statuses and sources for filter dropdowns (exclude declined, not_recommended, rejected)
+        $statuses = Application::whereNotIn('status', ['declined', 'not_recommended', 'rejected'])
+            ->distinct()
+            ->pluck('status')
+            ->filter()
+            ->values();
         $sources = Referral::distinct()->pluck('source')->filter()->values();
         
         return view('hiring_onboarding.index', compact('applicants', 'statuses', 'sources'));
@@ -342,6 +367,9 @@ class ApplicationFormController extends Controller
 
         // Exclude onboarding and hired applicants from the For Demo list
         $query->whereNotIn('phase', ['onboarding', 'hired']);
+        
+        // Exclude passed and failed results from the demo list
+        $query->whereNotIn('results', ['passed', 'failed']);
 
         // Search across applicant and screening fields
         if ($request->filled('search')) {
@@ -382,12 +410,36 @@ class ApplicationFormController extends Controller
             }
         }
 
-        $screenings = $query->orderBy('screening_date_time', 'asc')->paginate(5);
+        // Sorting
+        $sortField = $request->get('sort', 'screening_date_time');
+        $sortDirection = $request->get('direction', 'asc');
+        
+        // Handle different sort fields
+        if ($sortField === 'first_name') {
+            $query->join('applicants', 'screening.applicant_id', '=', 'applicants.applicant_id')
+                  ->orderBy('applicants.first_name', $sortDirection)
+                  ->select('screening.*');
+        } elseif ($sortField === 'assigned_account') {
+            $query->leftJoin('accounts', 'screening.account_id', '=', 'accounts.account_id')
+                  ->orderBy('accounts.account_name', $sortDirection)
+                  ->select('screening.*');
+        } elseif ($sortField === 'status') {
+            $query->orderBy('phase', $sortDirection);
+        } elseif ($sortField === 'created_at') {
+            $query->orderBy('created_at', $sortDirection);
+        } else {
+            $query->orderBy($sortField, $sortDirection);
+        }
+        
+        $screenings = $query->paginate(5)->withQueryString();
 
-        // Get unique phases and accounts for filter dropdowns
-        $statuses = Demo::distinct()->pluck('phase')->filter(function($s) {
-            return $s !== 'not_hired';
-        })->values();
+        // Get unique phases and accounts for filter dropdowns (exclude passed, failed results and not_hired phase)
+        $statuses = Demo::whereNotIn('phase', ['onboarding', 'hired', 'not_hired'])
+            ->whereNotIn('results', ['passed', 'failed'])
+            ->distinct()
+            ->pluck('phase')
+            ->filter()
+            ->values();
         $accounts = \App\Models\Account::distinct()->pluck('account_name')->filter()->values();
 
         return view('hiring_onboarding.index', compact('screenings', 'statuses', 'accounts'));
@@ -424,7 +476,26 @@ class ApplicationFormController extends Controller
             }
         }
 
-        $archives = $query->orderBy('archive_date_time', 'asc')->paginate(5);
+        // Sorting
+        $sortField = $request->get('sort', 'archive_date_time');
+        $sortDirection = $request->get('direction', 'asc');
+        
+        // Handle different sort fields
+        if ($sortField === 'first_name') {
+            $query->join('applicants', 'archive.applicant_id', '=', 'applicants.applicant_id')
+                  ->orderBy('applicants.first_name', $sortDirection)
+                  ->select('archive.*');
+        } elseif ($sortField === 'archived_at') {
+            $query->orderBy('archive_date_time', $sortDirection);
+        } elseif ($sortField === 'interview_time') {
+            $query->join('applicants', 'archive.applicant_id', '=', 'applicants.applicant_id')
+                  ->orderBy('applicants.interview_time', $sortDirection)
+                  ->select('archive.*');
+        } else {
+            $query->orderBy($sortField, $sortDirection);
+        }
+        
+        $archives = $query->paginate(5)->withQueryString();
 
         // Transform archives to match old view expectations (archivedApplicants)
         $transformed = $archives->getCollection()->map(function($a) {
@@ -470,16 +541,26 @@ class ApplicationFormController extends Controller
         return view('hiring_onboarding.applicant-details', compact('application'));
     }
 
-    public function showUneditable(Demo $demo)
+    public function showUneditable($id)
     {
-        // Eager load all relationships needed for the view
-        $demo->load([
-            'applicant.qualification',
-            'applicant.requirement',
-            'applicant.referral',
-            'applicant.workPreference',
-            'account'
-        ]);
+        // Check if we're coming from the onboarding tab
+        if (request()->get('tab') === 'onboarding') {
+            $demo = \App\Models\Onboarding::with([
+                'applicant.qualification',
+                'applicant.requirement',
+                'applicant.referral',
+                'applicant.workPreference',
+                'account'
+            ])->findOrFail($id);
+        } else {
+            $demo = Demo::with([
+                'applicant.qualification',
+                'applicant.requirement',
+                'applicant.referral',
+                'applicant.workPreference',
+                'account'
+            ])->findOrFail($id);
+        }
         
         // Return the partial view with data
         return view('hiring_onboarding.applicant-details-unedited', compact('demo'));
@@ -490,33 +571,52 @@ class ApplicationFormController extends Controller
      */
     public function showArchived(\App\Models\Archive $archive)
     {
+        // Load applicant relationships for fallback data
+        $archive->load([
+            'applicant.qualification',
+            'applicant.requirement',
+            'applicant.referral',
+            'applicant.workPreference'
+        ]);
+
         // Transform archive record into expected view variable `$archivedApplication`
         $payload = $archive->payload ?? [];
+        $applicant = $archive->applicant;
+
+        // Helper function to format time
+        $formatTime = function($time) {
+            if (!$time) return null;
+            if ($time instanceof \Carbon\Carbon) {
+                return $time->format('h:i A');
+            }
+            return \Carbon\Carbon::parse($time)->format('h:i A');
+        };
 
         $archivedApplication = (object) [
-            'first_name' => $payload['first_name'] ?? ($archive->applicant->first_name ?? null),
-            'last_name' => $payload['last_name'] ?? ($archive->applicant->last_name ?? null),
-            'birth_date' => isset($payload['birth_date']) ? \Carbon\Carbon::parse($payload['birth_date']) : ($archive->applicant->birth_date ?? null),
-            'address' => $payload['address'] ?? ($archive->applicant->address ?? null),
-            'contact_number' => $payload['contact_number'] ?? ($archive->applicant->contact_number ?? null),
-            'email' => $payload['email'] ?? ($archive->applicant->email ?? null),
-            'ms_teams' => $payload['ms_teams'] ?? null,
-            'education' => $payload['education'] ?? null,
-            'esl_experience' => $payload['esl_experience'] ?? null,
-            'resume_link' => $payload['resume_link'] ?? null,
-            'intro_video' => $payload['intro_video'] ?? null,
-            'work_type' => $payload['work_type'] ?? null,
-            'speedtest' => $payload['speedtest'] ?? null,
-            'main_device' => $payload['main_device'] ?? null,
-            'backup_device' => $payload['backup_device'] ?? null,
-            'source' => $payload['source'] ?? null,
-            'referrer_name' => $payload['referrer_name'] ?? null,
-            'start_time' => $payload['start_time'] ?? null,
-            'end_time' => $payload['end_time'] ?? null,
-            'days' => $payload['days'] ?? [],
-            'platforms' => $payload['platforms'] ?? [],
-            'can_teach' => $payload['can_teach'] ?? [],
-            'interview_time' => isset($payload['interview_time']) ? \Carbon\Carbon::parse($payload['interview_time']) : null,
+            'first_name' => $payload['first_name'] ?? ($applicant->first_name ?? null),
+            'middle_name' => $payload['middle_name'] ?? ($applicant->middle_name ?? null),
+            'last_name' => $payload['last_name'] ?? ($applicant->last_name ?? null),
+            'birth_date' => isset($payload['birth_date']) ? \Carbon\Carbon::parse($payload['birth_date']) : ($applicant->birth_date ?? null),
+            'address' => $payload['address'] ?? ($applicant->address ?? null),
+            'contact_number' => $payload['contact_number'] ?? ($applicant->contact_number ?? null),
+            'email' => $payload['email'] ?? ($applicant->email ?? null),
+            'ms_teams' => $payload['ms_teams'] ?? ($applicant->ms_teams ?? null),
+            'education' => $payload['education'] ?? ($applicant->qualification->education ?? null),
+            'esl_experience' => $payload['esl_experience'] ?? ($applicant->qualification->esl_experience ?? null),
+            'resume_link' => $payload['resume_link'] ?? ($applicant->requirement->resume_link ?? null),
+            'intro_video' => $payload['intro_video'] ?? ($applicant->requirement->intro_video ?? null),
+            'work_type' => $payload['work_type'] ?? ($applicant->requirement->work_type ?? null),
+            'speedtest' => $payload['speedtest'] ?? ($applicant->requirement->speedtest ?? null),
+            'main_device' => $payload['main_device'] ?? ($applicant->requirement->main_devices ?? null),
+            'backup_device' => $payload['backup_device'] ?? ($applicant->requirement->backup_devices ?? null),
+            'source' => $payload['source'] ?? ($applicant->referral->source ?? null),
+            'referrer_name' => $payload['referrer_name'] ?? ($applicant->referral->referrer_name ?? null),
+            'start_time' => $formatTime($payload['start_time'] ?? ($applicant->workPreference->start_time ?? null)),
+            'end_time' => $formatTime($payload['end_time'] ?? ($applicant->workPreference->end_time ?? null)),
+            'days' => $payload['days'] ?? ($applicant->workPreference->days_available ?? []),
+            'platforms' => $payload['platforms'] ?? ($applicant->workPreference->platform ?? []),
+            'can_teach' => $payload['can_teach'] ?? ($applicant->workPreference->can_teach ?? []),
+            'interview_time' => isset($payload['interview_time']) ? \Carbon\Carbon::parse($payload['interview_time']) : ($applicant->interview_time ?? null),
             'status' => $archive->status ?? ($payload['status'] ?? null),
             'attempt_count' => $payload['attempt_count'] ?? null,
             'archived_at' => $archive->archive_date_time,
@@ -697,6 +797,25 @@ class ApplicationFormController extends Controller
         // Move applicant to demo table (preserving original time availability)
         $this->moveToDemo($application, $interviewer, null, null, $assignedAccount, $nextStatus, $notes, $demoSchedule);
         
+        // Send email notification to applicant
+        $applicantEmail = $application->applicant->email ?? $application->email;
+        if ($applicantEmail) {
+            try {
+                Mail::to($applicantEmail)->send(new \App\Mail\ApplicantPassedMail(
+                    $application->first_name . ' ' . $application->last_name,
+                    $applicantEmail,
+                    'application', // phase they just passed
+                    $nextStatus, // next phase (demo/screening/training)
+                    $demoSchedule,
+                    $interviewer,
+                    $notes ?? 'Congratulations! You have passed the initial application review.'
+                ));
+                Log::info('New applicant pass email sent to: ' . $applicantEmail);
+            } catch (\Exception $e) {
+                Log::error('Failed to send new applicant pass email: ' . $e->getMessage());
+            }
+        }
+        
         // Create notification for passed application
         $this->createNotification(
             'success',
@@ -725,25 +844,26 @@ class ApplicationFormController extends Controller
     // View Onboarding Participants 
     public function viewOnboarding(Request $request)
     {
-        $query = Demo::with(['applicant','account']);
-
-        // ✅ Only show onboarding applicants (phase == onboarding)
-        $query->where('phase', 'onboarding');
+        // Query from onboarding table instead of screening/demo table
+        $query = \App\Models\Onboarding::with(['applicant', 'account']);
     
         // Search across all visible table fields
         if ($request->filled('search')) {
             $search = trim($request->input('search'));
-            if (strlen($search) >= 1) { // Allow search with just 1 character
+            if (strlen($search) >= 1) {
                 $query->where(function($q) use ($search) {
-                    $q->where('first_name', 'like', "%{$search}%")
-                      ->orWhere('last_name', 'like', "%{$search}%")
-                      ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
-                      ->orWhere('contact_number', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('assigned_account', 'like', "%{$search}%")
-                      ->orWhere('status', 'like', "%{$search}%")
-                      ->orWhereRaw("DATE_FORMAT(demo_schedule, '%Y-%m-%d %H:%i') LIKE ?", ["%{$search}%"])
-                      ->orWhereRaw("DATE_FORMAT(interview_time, '%Y-%m-%d %H:%i') LIKE ?", ["%{$search}%"]);
+                    $q->whereHas('applicant', function($q2) use ($search) {
+                        $q2->where('first_name', 'like', "%{$search}%")
+                           ->orWhere('last_name', 'like', "%{$search}%")
+                           ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
+                           ->orWhere('contact_number', 'like', "%{$search}%")
+                           ->orWhere('email', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('account', function($q3) use ($search) {
+                        $q3->where('account_name', 'like', "%{$search}%");
+                    })
+                    ->orWhere('notes', 'like', "%{$search}%")
+                    ->orWhereRaw("DATE_FORMAT(onboarding_date_time, '%Y-%m-%d %H:%i') LIKE ?", ["%{$search}%"]);
                 });
             }
         }
@@ -752,17 +872,41 @@ class ApplicationFormController extends Controller
         if ($request->filled('account')) {
             $account = trim($request->input('account'));
             if (strlen($account) >= 1) {
-                $query->where('assigned_account', 'like', "%{$account}%");
+                $query->whereHas('account', function($q) use ($account) {
+                    $q->where('account_name', 'like', "%{$account}%");
+                });
             }
         }
     
-        // Sort by onboarding date
-        $onboardings = $query->orderBy('screening_date_time', 'asc')->paginate(5);
+        // Sorting
+        $sortField = $request->get('sort', 'onboarding_date_time');
+        $sortDirection = $request->get('direction', 'asc');
+        
+        // Handle different sort fields
+        if ($sortField === 'first_name') {
+            $query->join('applicants', 'onboardings.applicant_id', '=', 'applicants.applicant_id')
+                  ->orderBy('applicants.first_name', $sortDirection)
+                  ->select('onboardings.*');
+        } elseif ($sortField === 'assigned_account') {
+            $query->leftJoin('accounts', 'onboardings.account_id', '=', 'accounts.account_id')
+                  ->orderBy('accounts.account_name', $sortDirection)
+                  ->select('onboardings.*');
+        } elseif ($sortField === 'interview_time') {
+            $query->join('applicants', 'onboardings.applicant_id', '=', 'applicants.applicant_id')
+                  ->orderBy('applicants.interview_time', $sortDirection)
+                  ->select('onboardings.*');
+        } elseif ($sortField === 'created_at') {
+            $query->orderBy('created_at', $sortDirection);
+        } else {
+            $query->orderBy($sortField, $sortDirection);
+        }
+        
+        $onboardings = $query->paginate(5)->withQueryString();
 
         // Dropdown filter options - use account names
         $accounts = \App\Models\Account::distinct()->pluck('account_name')->filter()->values();
     
-        // ✅ This view will be used for onboarding tab
+        // This view will be used for onboarding tab
         return view('hiring_onboarding.index', compact('onboardings', 'accounts'));
     }
     
@@ -780,6 +924,7 @@ class ApplicationFormController extends Controller
         // Build payload with full snapshot so we can store in central `archive` table
         $payload = [
             'first_name' => $applicant->first_name,
+            'middle_name' => $applicant->middle_name,
             'last_name' => $applicant->last_name,
             'birth_date' => $applicant->birth_date,
             'address' => $applicant->address,
@@ -792,6 +937,7 @@ class ApplicationFormController extends Controller
             'intro_video' => $requirement->intro_video ?? null,
             'work_type' => $requirement->work_type ?? null,
             'speedtest' => $requirement->speedtest ?? null,
+            'main_device' => $requirement->main_devices ?? null,
             'backup_device' => $requirement->backup_devices ?? null,
             'source' => $referral->source ?? null,
             'referrer_name' => $referral->referrer_name ?? null,

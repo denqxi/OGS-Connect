@@ -39,4 +39,12 @@ class Account extends Model
     {
         return $this->hasMany(Tutor::class, 'account_id', 'account_id');
     }
+
+    /**
+     * Get the tutor accounts (availability records) for this company
+     */
+    public function tutorAccounts(): HasMany
+    {
+        return $this->hasMany(TutorAccount::class, 'account_id', 'account_id');
+    }
 }

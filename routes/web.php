@@ -134,6 +134,9 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
     
     Route::prefix('demos')->name('demo.')->group(function () {
         Route::post('/{id}/register-tutor', [ApplicationController::class, 'registerTutor'])->name('register.tutor');
+        Route::post('/{id}/generate-unique-username', [ApplicationController::class, 'generateUniqueUsername'])->name('generate.username');
+        Route::post('/{id}/generate-unique-email', [ApplicationController::class, 'generateUniqueEmail'])->name('generate.email');
+        Route::post('/generate-tutor-id', [ApplicationController::class, 'generateTutorId'])->name('generate.tutor.id');
     });
     
     // Legacy route compatibility
@@ -172,7 +175,15 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
     // ------------------------------------------------------------------------
     Route::get('/tutor_portal', function () {
         $tutor = Auth::guard('tutor')->user();
-        $tutor->load(['tutorDetails', 'paymentInformation', 'securityQuestions']);
+        $tutor->load([
+            'applicant.qualification', 
+            'applicant.requirement', 
+            'applicant.workPreference',
+            // TODO: Uncomment when employee_payment_information table exists
+            // 'paymentInformation', 
+            // TODO: Uncomment when security_questions relationship is fixed
+            // 'securityQuestions'
+        ]);
         return view('tutor.tutor_portal', compact('tutor'));
     })->name('tutor.portal');
     
@@ -253,7 +264,7 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->prefix('api')->name(
         $result = $tutors->map(function ($tutor) {
             return [
                 'id' => $tutor->tutorID,
-                'username' => $tutor->tusername,
+                'username' => $tutor->username,
                 'full_name' => $tutor->full_name,
                 'status' => $tutor->status,
                 'accounts' => $tutor->accounts->map(function ($account) {
@@ -285,7 +296,7 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
         foreach ($classes as $class) {
             $assigned = $class->tutorAssignments->count();
             $needed = $class->number_required;
-            $tutors = $class->tutorAssignments->pluck('tutor.tusername')->toArray();
+            $tutors = $class->tutorAssignments->pluck('tutor.username')->toArray();
 
             $status[] = [
                 'id' => $class->id,

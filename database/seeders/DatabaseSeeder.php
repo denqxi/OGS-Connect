@@ -26,12 +26,11 @@ class DatabaseSeeder extends Seeder
             AccountSeeder::class,
             SupervisorSeeder::class,
             TutorSeeder::class,
-            TutorDetailsSeeder::class,
-            TutorAccountSeeder::class,
-            PaymentInformationSeeder::class,
-            TutorAssignmentSeeder::class,
-            SecurityQuestionsSeeder::class,
             ApplicantSeeder::class,
+            ScreeningSeeder::class,
+            OnboardingSeeder::class,
+            ArchiveSeeder::class,
+            EmployeeSeeder::class, // Add sample employee data
         ]);
     }
 }

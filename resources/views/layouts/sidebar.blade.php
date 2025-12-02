@@ -64,7 +64,7 @@
             </li>
             <!-- GLS Scheduling -->
             <li class="min-h-[56px] flex items-center">
-                <a href="/scheduling"
+                <a href="{{ route('schedules.index', ['tab' => 'class']) }}"
                     class="sidebar-nav-item sidebar-hover-effect flex items-center space-x-3 w-full px-4 py-3 rounded-lg transition-all duration-300 
                     ease-in-out transform hover:scale-105 active:scale-95 {{ Route::is('schedules.*') || Route::is('class-scheduling') || request()->is('scheduling*') || request()->is('class-scheduling*') ? 'text-white bg-[#234D7C] 
                     hover:bg-[#033f92] active:bg-[#023873] shadow-md border border-white scale-105 active' : 'text-[#0E335D] hover:text-[#0B294A] active:text-[#0E335D]/80 hover:bg-gray-100 hover:shadow-sm' }}">

@@ -29,7 +29,8 @@
                                 alt="Profile" class="w-20 h-20 rounded-full object-cover border-2 border-[#0E335D]">
                             <div>
                                 <h2 class="text-lg font-semibold text-[#0E335D]" id="tutor-name">Tutor Name</h2>
-                                <p class="text-gray-700 text-sm" id="tutor-email">tutor@email.com</p>
+                                <p class="text-gray-700 text-sm" id="tutor-username">@username</p>
+                                <p class="text-gray-600 text-xs" id="tutor-company-email">company@email.com</p>
                                 <p class="text-gray-600 text-xs" id="tutor-id">Tutor ID: N/A</p>
                             </div>
                         </div>
@@ -213,8 +214,9 @@ function populateTutorModal(data) {
     
     // Update header
     document.getElementById('tutor-name').textContent = data.full_name || 'N/A';
-    document.getElementById('tutor-email').textContent = data.email || 'N/A';
-    document.getElementById('tutor-id').textContent = `Tutor ID: ${data.id || 'N/A'}`;
+    document.getElementById('tutor-username').textContent = '@' + (data.username || 'N/A');
+    document.getElementById('tutor-company-email').textContent = data.email || 'N/A';
+    document.getElementById('tutor-id').textContent = `Tutor ID: ${data.tutorID || 'N/A'}`;
     
     // Update status badge
     const statusElement = document.getElementById('tutor-status-badge');
@@ -232,18 +234,28 @@ function populateTutorModal(data) {
                 class="border border-gray-300 rounded-md px-3 py-2 w-full bg-gray-50 text-gray-900">
         </div>
         <div>
+            <label class="block text-sm text-gray-600 mb-1">Middle Name</label>
+            <input type="text" value="${data.middle_name || 'N/A'}" readonly
+                class="border border-gray-300 rounded-md px-3 py-2 w-full bg-gray-50 text-gray-900">
+        </div>
+        <div>
             <label class="block text-sm text-gray-600 mb-1">Last Name</label>
             <input type="text" value="${data.last_name || ''}" readonly
                 class="border border-gray-300 rounded-md px-3 py-2 w-full bg-gray-50 text-gray-900">
         </div>
         <div>
             <label class="block text-sm text-gray-600 mb-1">Date of Birth</label>
-            <input type="date" value="${data.date_of_birth || ''}" readonly
+            <input type="text" value="${data.date_of_birth || 'N/A'}" readonly
                 class="border border-gray-300 rounded-md px-3 py-2 w-full bg-gray-50 text-gray-900">
         </div>
         <div>
-            <label class="block text-sm text-gray-600 mb-1">Email</label>
-            <input type="email" value="${data.email || ''}" readonly
+            <label class="block text-sm text-gray-600 mb-1">Personal Email</label>
+            <input type="email" value="${data.personal_email || 'N/A'}" readonly
+                class="border border-gray-300 rounded-md px-3 py-2 w-full bg-gray-50 text-gray-900">
+        </div>
+        <div>
+            <label class="block text-sm text-gray-600 mb-1">Company Email</label>
+            <input type="email" value="${data.email || 'N/A'}" readonly
                 class="border border-gray-300 rounded-md px-3 py-2 w-full bg-gray-50 text-gray-900">
         </div>
         <div>
@@ -286,7 +298,7 @@ function populateTutorModal(data) {
                 </div>
                 <div>
                     <label class="block text-sm text-gray-600 mb-1">First Day of Teaching</label>
-                    <input type="date" value="${details.first_day_of_teaching || ''}" readonly
+                    <input type="text" value="${details.first_day_of_teaching || 'N/A'}" readonly
                         class="border border-gray-300 rounded-md px-3 py-2 w-full bg-gray-50 text-gray-900">
                 </div>
             </div>
@@ -404,45 +416,70 @@ function populateTutorModal(data) {
     
     // Populate work availability info
     const availabilityInfo = document.getElementById('tutor-availability-info');
-    if (data.accounts && data.accounts.length > 0) {
-        availabilityInfo.innerHTML = data.accounts.map(account => `
-            <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                <div class="flex items-center justify-between mb-4">
-                    <h4 class="text-lg font-semibold text-gray-800">${account.account_name}</h4>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        account.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }">
-                        ${account.status.charAt(0).toUpperCase() + account.status.slice(1)}
-                    </span>
+    if (data.availability) {
+        const avail = data.availability;
+        const daysArray = Array.isArray(avail.days_available) ? avail.days_available : JSON.parse(avail.days_available || '[]');
+        
+        // Map day names
+        const dayNames = {
+            'monday': 'Monday', 'mon': 'Monday',
+            'tuesday': 'Tuesday', 'tue': 'Tuesday',
+            'wednesday': 'Wednesday', 'wed': 'Wednesday',
+            'thursday': 'Thursday', 'thur': 'Thursday', 'thu': 'Thursday',
+            'friday': 'Friday', 'fri': 'Friday',
+            'saturday': 'Saturday', 'sat': 'Saturday',
+            'sunday': 'Sunday', 'sun': 'Sunday'
+        };
+        
+        // Create day badges
+        const dayBadges = daysArray.map(day => {
+            const dayName = dayNames[day.toLowerCase()] || day;
+            return `<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">${dayName}</span>`;
+        }).join(' ');
+        
+        availabilityInfo.innerHTML = `
+            <div class="col-span-full bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                <div class="mb-4">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-2">${avail.account_name}</h4>
+                    <p class="text-sm text-gray-600">Work Availability Schedule</p>
                 </div>
-                <div class="space-y-3">
-                    ${account.account_name === 'GLS' && account.gls_id ? `
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Time Section -->
+                    <div class="space-y-3">
+                        <h5 class="text-sm font-semibold text-gray-700 mb-3">⏰ Available Time</h5>
                         <div>
-                            <label class="block text-sm text-gray-600 mb-1">GLS ID</label>
-                            <input type="text" value="${account.gls_id}" readonly
-                                class="border border-gray-300 rounded-md px-3 py-2 w-full bg-gray-50 text-gray-900">
+                            <label class="block text-xs text-gray-600 mb-1">Start Time</label>
+                            <div class="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-lg px-4 py-3">
+                                <span class="text-lg font-semibold text-green-800">${avail.start_time}</span>
+                            </div>
                         </div>
-                    ` : ''}
-                    <div>
-                        <label class="block text-sm text-gray-600 mb-1">Available Time</label>
-                        <input type="text" value="${account.formatted_available_time || 'N/A'}" readonly
-                            class="border border-gray-300 rounded-md px-3 py-2 w-full bg-gray-50 text-gray-900">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-600 mb-1">Available Days</label>
-                        <input type="text" value="${account.formatted_available_days || 'N/A'}" readonly
-                            class="border border-gray-300 rounded-md px-3 py-2 w-full bg-gray-50 text-gray-900">
-                    </div>
-                    ${account.account_name === 'Talk915' && account.ms_teams_id ? `
                         <div>
-                            <label class="block text-sm text-gray-600 mb-1">MS Teams ID</label>
-                            <input type="text" value="${account.ms_teams_id}" readonly
-                                class="border border-gray-300 rounded-md px-3 py-2 w-full bg-gray-50 text-gray-900">
+                            <label class="block text-xs text-gray-600 mb-1">End Time</label>
+                            <div class="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-lg px-4 py-3">
+                                <span class="text-lg font-semibold text-red-800">${avail.end_time}</span>
+                            </div>
                         </div>
-                    ` : ''}
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">Timezone</label>
+                            <div class="bg-gray-100 border border-gray-300 rounded-lg px-4 py-3">
+                                <span class="text-sm font-medium text-gray-800">${avail.timezone}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Days Section -->
+                    <div>
+                        <h5 class="text-sm font-semibold text-gray-700 mb-3">📅 Available Days</h5>
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="flex flex-wrap gap-2">
+                                ${dayBadges || '<span class="text-gray-500 italic">No days specified</span>'}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        `).join('');
+        `;
     } else {
         availabilityInfo.innerHTML = '<p class="text-gray-500 italic">No availability information available</p>';
     }

@@ -59,7 +59,7 @@
             <!-- Confirm Archive Button -->
             <div class="flex justify-center">
                 <button type="button" onclick="showArchiveConfirmation()"
-                    class="bg-[#1E40AF] text-white px-8 py-2 rounded-full font-bold hover:opacity-90 transition-opacity">
+                    class="bg-[#F65353] text-white px-8 py-2 rounded-full font-bold hover:opacity-90 transition-opacity">
                     Confirm Archive
                 </button>
             </div>

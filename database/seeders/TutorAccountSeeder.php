@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use App\Models\Tutor;
 use App\Models\TutorAccount;
 
@@ -15,33 +16,13 @@ class TutorAccountSeeder extends Seeder
     {
         $this->command->info('🏢 Creating tutor accounts for all companies...');
         
-        // Company configurations with time restrictions
-        $companies = [
-            'GLS' => [
-                'restricted_start_time' => '07:00:00',
-                'restricted_end_time' => '15:30:00',
-                'company_notes' => 'GLS operates from 7:00 AM to 3:30 PM only',
-                'preferred_time_range' => 'morning'
-            ],
-            'Babilala' => [
-                'restricted_start_time' => '20:00:00',
-                'restricted_end_time' => '22:00:00',
-                'company_notes' => 'Babilala operates from 8:00 PM to 10:00 PM only',
-                'preferred_time_range' => 'evening'
-            ],
-            'Tutlo' => [
-                'restricted_start_time' => null,
-                'restricted_end_time' => null,
-                'company_notes' => 'Tutlo has open hours - no time restrictions',
-                'preferred_time_range' => 'flexible'
-            ],
-            'Talk915' => [
-                'restricted_start_time' => null,
-                'restricted_end_time' => null,
-                'company_notes' => 'Talk915 has open hours - no time restrictions',
-                'preferred_time_range' => 'flexible'
-            ]
-        ];
+        // Get account IDs from accounts table
+        $accountsData = DB::table('accounts')
+            ->select('account_id', 'account_name')
+            ->get()
+            ->keyBy('account_name');
+
+        $companies = ['GLS', 'Babilala', 'Tutlo', 'Talk915'];
 
         $tutors = Tutor::all();
         $accountCount = 0;
@@ -59,51 +40,26 @@ class TutorAccountSeeder extends Seeder
                     continue; // Skip if account already exists
                 }
 
-                $config = $companies[$companyName];
+                // Get account ID
+                $accountId = $accountsData[$companyName]->account_id ?? null;
+                if (!$accountId) {
+                    $this->command->warn("⚠️  Account {$companyName} not found in accounts table. Skipping.");
+                    continue;
+                }
                 
                 // Get personalized availability for this tutor and company
-                $personalizedAvailability = $this->getPersonalizedAvailability($tutor, $companyName, $config);
+                $personalizedAvailability = $this->getPersonalizedAvailability($tutor, $companyName, []);
                 
-                // Prepare base account data
+                // Prepare account data (simplified - no account-specific fields)
                 $accountData = [
                     'tutor_id' => $tutor->tutorID,
+                    'account_id' => $accountId,
                     'account_name' => $companyName,
                     'available_days' => json_encode($personalizedAvailability['days']),
                     'available_times' => json_encode($personalizedAvailability['times']),
-                    'preferred_time_range' => $config['preferred_time_range'],
                     'timezone' => 'UTC',
-                    'restricted_start_time' => $config['restricted_start_time'],
-                    'restricted_end_time' => $config['restricted_end_time'],
-                    'company_notes' => $config['company_notes'],
-                    'availability_notes' => $personalizedAvailability['notes'],
-                    'status' => 'active'
+                    'notes' => $personalizedAvailability['notes'],
                 ];
-
-                // Add account-specific fields
-                if ($companyName === 'GLS') {
-                    // Generate random GLS ID between 100-9999 (hundreds to thousands)
-                    do {
-                        $glsId = rand(100, 9999);
-                    } while (in_array($glsId, $usedGlsIds));
-                    
-                    $usedGlsIds[] = $glsId;
-                    $accountData['gls_id'] = (string)$glsId;
-                    $accountData['account_number'] = (string)$glsId; // Use GLS ID as account number
-                    $accountData['username'] = 'OGS-' . strtolower($tutor->first_name); // GLS username is OGS-{FirstName}
-                    $accountData['screen_name'] = 'OGS-' . $tutor->first_name; // GLS screen_name is OGS-{FirstName}
-                } elseif ($companyName === 'Babilala') {
-                    $accountData['username'] = strtolower($tutor->first_name) . '.' . strtolower($tutor->last_name); // Babilala username is firstname.lastname
-                    $accountData['screen_name'] = $tutor->first_name . ' ' . $tutor->last_name; // Babilala screen_name is full name
-                    $accountData['account_number'] = 'BAB-' . rand(100, 999) . '-' . rand(100, 999); // Babilala account number format
-                } elseif ($companyName === 'Tutlo') {
-                    $accountData['username'] = 'tutlo_' . strtolower($tutor->first_name) . strtolower(substr($tutor->last_name, 0, 3)); // Tutlo username is tutlo_firstname+3letters
-                    $accountData['screen_name'] = $tutor->first_name . ' ' . $tutor->last_name; // Tutlo screen_name is full name
-                    $accountData['account_number'] = 'TUT-' . rand(100000, 999999); // Tutlo account number format
-                } elseif ($companyName === 'Talk915') {
-                    $accountData['username'] = strtolower($tutor->first_name) . strtolower(substr($tutor->last_name, 0, 2)); // Talk915 username is firstname+2letters
-                    $accountData['screen_name'] = $tutor->first_name . ' ' . $tutor->last_name; // Talk915 screen_name is full name
-                    $accountData['account_number'] = 'T915-' . rand(10000, 99999); // Talk915 account number format
-                }
 
                 TutorAccount::create($accountData);
                 $accountCount++;
@@ -152,7 +108,7 @@ class TutorAccountSeeder extends Seeder
     /**
      * Get personalized availability for a tutor based on company rules and tutor preferences
      */
-    private function getPersonalizedAvailability($tutor, string $companyName, array $config): array
+    private function getPersonalizedAvailability($tutor, string $companyName, array $config = []): array
     {
         // Create a more varied seed based on tutor ID and company name
         $seed = crc32($tutor->tutorID . $companyName . $tutor->first_name);

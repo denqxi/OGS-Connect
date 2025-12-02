@@ -1,8 +1,4 @@
 <!-- Page Title -->
-<div class="p-4 border-b border-gray-200">
-    <h2 class="text-xl font-bold text-gray-800">Onboarding</h2>
-</div>
-
 @php
     // Ensure variables exist when this tab partial is rendered by different controllers
     $onboardings = $onboardings ?? collect();
@@ -10,7 +6,7 @@
 @endphp
 
 <!-- Search Filters -->
-<div class="p-6 border-b border-gray-200">
+<div class="px-4 md:px-6 py-4 border-b border-gray-200">
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
     </div>
@@ -44,37 +40,82 @@
     <table class="w-full">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Schedule for Interview</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'onboarding', 'sort' => 'created_at', 'direction' => request('sort') === 'created_at' && request('direction') === 'asc' ? 'desc' : 'asc'])) }}'">
+                    <div class="flex items-center gap-1">
+                        Date Approved
+                        @if(request('sort') === 'created_at')
+                            <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                        @else
+                            <i class="fas fa-sort text-xs opacity-30"></i>
+                        @endif
+                    </div>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'onboarding', 'sort' => 'first_name', 'direction' => request('sort') === 'first_name' && request('direction') === 'asc' ? 'desc' : 'asc'])) }}'">
+                    <div class="flex items-center gap-1">
+                        Name
+                        @if(request('sort') === 'first_name')
+                            <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                        @else
+                            <i class="fas fa-sort text-xs opacity-30"></i>
+                        @endif
+                    </div>
+                </th>
+                {{-- <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th> --}}
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'onboarding', 'sort' => 'assigned_account', 'direction' => request('sort') === 'assigned_account' && request('direction') === 'asc' ? 'desc' : 'asc'])) }}'">
+                    <div class="flex items-center gap-1">
+                        Account
+                        @if(request('sort') === 'assigned_account')
+                            <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                        @else
+                            <i class="fas fa-sort text-xs opacity-30"></i>
+                        @endif
+                    </div>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'onboarding', 'sort' => 'interview_time', 'direction' => request('sort') === 'interview_time' && request('direction') === 'asc' ? 'desc' : 'asc'])) }}'">
+                    <div class="flex items-center gap-1">
+                        Schedule for Interview
+                        @if(request('sort') === 'interview_time')
+                            <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                        @else
+                            <i class="fas fa-sort text-xs opacity-30"></i>
+                        @endif
+                    </div>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'onboarding', 'sort' => 'status', 'direction' => request('sort') === 'status' && request('direction') === 'asc' ? 'desc' : 'asc'])) }}'">
+                    <div class="flex items-center gap-1">
+                        Status
+                        @if(request('sort') === 'status')
+                            <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                        @else
+                            <i class="fas fa-sort text-xs opacity-30"></i>
+                        @endif
+                    </div>
+                </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
     @forelse ($onboardings as $onboarding)
         <tr class="hover:bg-gray-50">
-            <!-- Timestamp -->
+            <!-- Timestamp/Date Approved -->
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ $onboarding->moved_to_onboarding_at
+                {{ $onboarding->created_at ? $onboarding->created_at->format('M d, Y h:i A') : 'N/A' }}
+                {{-- {{ $onboarding->moved_to_onboarding_at
                     ? \Carbon\Carbon::parse($onboarding->moved_to_onboarding_at)->format('Y-m-d H:i')
                     : ($onboarding->moved_to_demo_at
                         ? \Carbon\Carbon::parse($onboarding->moved_to_demo_at)->format('Y-m-d H:i')
                         : ($onboarding->created_at
                             ? $onboarding->created_at->format('Y-m-d H:i')
-                            : '—')) }}
+                            : '—')) }} --}}
             </td>
 
             <!-- Name -->
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {{ trim($onboarding->first_name . ' ' . $onboarding->last_name) ?: '—' }}
+                {{ trim($onboarding->first_name . ' ' . $onboarding->middle_name . ' '. $onboarding->last_name) ?: '—' }}
             </td>
 
-            <!-- Contact -->
+            {{-- <!-- Contact -->
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {{ $onboarding->contact_number ?? '—' }}
             </td>
@@ -82,7 +123,7 @@
             <!-- Email -->
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {{ $onboarding->email ?? '—' }}
-            </td>
+            </td> --}}
 
             <!-- Account -->
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -102,36 +143,24 @@
                 @endif
             </td>
 
-            <!-- Notes -->
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                @php
-                    // Notes logic for onboarding: if fail value or reason is missed, notes will show "Missed" but can be changed
-                    $showMissed = $onboarding->status === 'failed' && (empty($onboarding->notes) || $onboarding->notes === 'Missed');
-                @endphp
-                
-                @if($showMissed)
-                    <span class="text-red-600 font-medium">Missed</span>
-                @elseif(!empty($onboarding->notes))
-                    {{ \Illuminate\Support\Str::limit($onboarding->notes, 50) }}
-                @else
-                    —
-                @endif
-            </td>
-
             <!-- Status -->
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center gap-2">
                     @php
                         $statusColors = [
-                            'pending' => 'bg-yellow-400',
-                            'rejected' => 'bg-red-500',
-                            'no_answer' => 'bg-orange-500',
-                            're_schedule' => 'bg-purple-400',
-                            'declined' => 'bg-red-600',
-                            'not_recommended' => 'bg-red-700',
-                            'passed' => 'bg-green-500',
-                            'failed' => 'bg-red-500',
-                            'completed' => 'bg-blue-500',
+                            'pending' => 'bg-[#FBBF24]',
+                            'rejected' => 'bg-[#F65353]',
+                            'no_answer' => 'bg-[#FF7515]',
+                            're_schedule' => 'bg-[#A78BFA]',
+                            'declined' => 'bg-[#E02F2F]',
+                            'not_recommended' => 'bg-[#AA1B1B]',
+                            'passed' => 'bg-[#65DB7F]',
+                            'failed' => 'bg-[#F65353]',
+                            'completed' => 'bg-[#1E40AF]',
+                            'screening' => 'bg-[#65DB7F]',
+                            'demo' => 'bg-[#FBBF24]',
+                            'training' => 'bg-[#9DC9FD]',
+                            'onboarding' => 'bg-[#A78BFA]',
                         ];
                         $circleColor = $statusColors[$onboarding->status ?? 'pending'] ?? 'bg-gray-500';
                     @endphp
@@ -146,20 +175,27 @@
             <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                 <div class="flex items-center space-x-2">
                     <a href="{{ route('hiring_onboarding.applicant.showUneditable', $onboarding->id) }}?tab=onboarding" title="View Details"
-                        class="w-8 h-8 flex items-center justify-center bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors" aria-label="view">
+                        class="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors" aria-label="view">
                         <i class="fas fa-eye text-xs"></i>
                     </a>
 
-                    <button onclick="showOnboardingPassFailModal({{ $onboarding->id }}, '{{ $onboarding->first_name }} {{ $onboarding->last_name }}', '{{ $onboarding->assigned_account }}', '{{ $onboarding->interview_time ? \Carbon\Carbon::parse($onboarding->interview_time)->format('M d, Y h:i A') : ($onboarding->demo_schedule ? \Carbon\Carbon::parse($onboarding->demo_schedule)->format('M d, Y h:i A') : '—') }}', '{{ $onboarding->email }}')"
-                        class="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors" title="Update Hiring Stage">
-                        <i class="fas fa-edit text-xs"></i>
-                    </button>
+                    @if($onboarding->status === 'onboarding')
+                        <button onclick="showOnboardingPassFailModal({{ $onboarding->id }}, '{{ $onboarding->first_name }} {{ $onboarding->last_name }}', '{{ $onboarding->email }}', '{{ $onboarding->contact_number }}', '{{ $onboarding->assigned_account }}', '{{ $onboarding->interview_time ? \Carbon\Carbon::parse($onboarding->interview_time)->format('M d, Y h:i A') : ($onboarding->demo_schedule ? \Carbon\Carbon::parse($onboarding->demo_schedule)->format('M d, Y h:i A') : '—') }}', '{{ addslashes($onboarding->notes ?? 'No notes available') }}')"
+                            class="w-8 h-8 flex items-center justify-center bg-purple-100 text-purple-600 rounded hover:bg-purple-200 transition-colors" title="Review Onboarding">
+                            <i class="fas fa-clipboard-check text-xs"></i>
+                        </button>
+                    @else
+                        <button onclick="loadEditModalData({{ $onboarding->id }})"
+                            class="w-8 h-8 flex items-center justify-center bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 transition-colors" title="Edit Details">
+                            <i class="fas fa-edit text-xs"></i>
+                        </button>
+                    @endif
                 </div>
             </td>
         </tr>
     @empty
         <tr>
-            <td colspan="9" class="px-6 py-4 text-center text-sm text-gray-500">
+            <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">
                 No onboarding applications found.
             </td>
         </tr>
@@ -170,45 +206,117 @@
 </div>
 
 <!-- Pagination -->
-<div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+@if($onboardings->total() >= 6)
+@php
+    $queryParams = request()->query();
+    unset($queryParams['page']);
+    
+    $params = [
+        'tab' => 'onboarding',
+        'sort' => request('sort'),
+        'direction' => request('direction'),
+        'search' => request('search'),
+        'account' => request('account')
+    ];
+    
+    $baseUrl = route('hiring_onboarding.index', $params);
+    $separator = strpos($baseUrl, '?') !== false ? '&' : '?';
+    
+    $currentPage = $onboardings->currentPage();
+    $lastPage = $onboardings->lastPage();
+    $useCompactPagination = $lastPage > 7;
+    
+    if (!$useCompactPagination) {
+        $startPage = max(1, $currentPage - 2);
+        $endPage = min($lastPage, $currentPage + 2);
+        
+        if ($endPage - $startPage < 4) {
+            if ($startPage == 1) {
+                $endPage = min($lastPage, $startPage + 4);
+            } else {
+                $startPage = max(1, $endPage - 4);
+            }
+        }
+    }
+@endphp
+<div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between h-16 w-full">
     <div class="text-sm text-gray-500">
-        Showing {{ $onboardings->firstItem() ?? 0 }} to {{ $onboardings->lastItem() ?? 0 }} of {{ $onboardings->total() }} results
+        @if($onboardings->total() > 0)
+            Showing {{ $onboardings->firstItem() }} to {{ $onboardings->lastItem() }} of {{ $onboardings->total() }} results
+        @else
+            Showing 0 results
+        @endif
     </div>
-    @if($onboardings->hasPages())
-    <div class="flex items-center space-x-2">
-        {{-- Previous Page Link --}}
+    <div class="flex items-center justify-center space-x-2 w-[300px]">
+        {{-- Previous Button --}}
         @if ($onboardings->onFirstPage())
-            <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
+            <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center" disabled>
                 <i class="fas fa-chevron-left"></i>
             </button>
         @else
-            <a href="{{ $onboardings->previousPageUrl() }}&tab=onboarding" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
+            <a href="{{ $baseUrl . $separator . 'page=' . ($onboardings->currentPage() - 1) }}"
+               class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors">
                 <i class="fas fa-chevron-left"></i>
             </a>
         @endif
 
-        {{-- Pagination Elements --}}
-        @foreach ($onboardings->getUrlRange(1, $onboardings->lastPage()) as $page => $url)
-            @if ($page == $onboardings->currentPage())
-                <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">{{ $page }}</button>
-            @else
-                <a href="{{ $url }}&tab=onboarding" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">{{ $page }}</a>
+        @if($useCompactPagination)
+            {{-- Ultra compact pagination --}}
+            <button class="w-8 h-8 bg-slate-700 text-white rounded text-sm flex items-center justify-center font-medium">{{ $currentPage }}</button>
+        @else
+            {{-- Normal pagination with range --}}
+            @if($startPage > 1)
+                <a href="{{ $baseUrl . $separator . 'page=1' }}"
+                   class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors">
+                    1
+                </a>
+                @if($startPage > 2)
+                    <span class="w-8 h-8 flex items-center justify-center text-gray-400">...</span>
+                @endif
             @endif
-        @endforeach
 
-        {{-- Next Page Link --}}
+            @for($page = $startPage; $page <= $endPage; $page++)
+                @if ($page == $onboardings->currentPage())
+                    <button class="w-8 h-8 bg-slate-700 text-white rounded text-sm flex items-center justify-center font-medium">{{ $page }}</button>
+                @else
+                    <a href="{{ $baseUrl . $separator . 'page=' . $page }}"
+                       class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors">
+                        {{ $page }}
+                    </a>
+                @endif
+            @endfor
+
+            @if($endPage < $lastPage)
+                @if($endPage < $lastPage - 1)
+                    <span class="w-8 h-8 flex items-center justify-center text-gray-400">...</span>
+                @endif
+                <a href="{{ $baseUrl . $separator . 'page=' . $lastPage }}"
+                   class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors">
+                    {{ $lastPage }}
+                </a>
+            @endif
+        @endif
+
+        {{-- Next Button --}}
         @if ($onboardings->hasMorePages())
-            <a href="{{ $onboardings->nextPageUrl() }}&tab=onboarding" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
+            <a href="{{ $baseUrl . $separator . 'page=' . ($onboardings->currentPage() + 1) }}"
+               class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors">
                 <i class="fas fa-chevron-right"></i>
             </a>
         @else
-            <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
+            <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center" disabled>
                 <i class="fas fa-chevron-right"></i>
             </button>
         @endif
     </div>
-    @endif
 </div>
+@elseif($onboardings->total() > 0)
+<div class="px-6 py-4 border-t border-gray-200">
+    <div class="text-sm text-gray-500">
+        Showing {{ $onboardings->firstItem() }} to {{ $onboardings->lastItem() }} of {{ $onboardings->total() }} results
+    </div>
+</div>
+@endif
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {

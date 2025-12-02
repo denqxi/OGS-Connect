@@ -31,7 +31,7 @@
     }
 @endphp
 
-@if($data->hasPages())
+@if($data->total() >= 6)
 <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between h-16 w-full" id="paginationSection">
     <div class="text-sm text-gray-500">
         @if($data->total() > 0)
@@ -111,23 +111,10 @@
         @endif
     </div>
 </div>
-@else
-<div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between h-16 w-full" id="paginationSection">
+@elseif($data->total() > 0)
+<div class="px-6 py-4 border-t border-gray-200" id="paginationSection">
     <div class="text-sm text-gray-500">
-        @if($data->total() > 0)
-            Showing {{ $data->count() }} of {{ $data->total() }} results
-        @else
-            Showing 0 results
-        @endif
-    </div>
-    <div class="flex items-center justify-center space-x-2 w-[300px]">
-        <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center" disabled>
-            <i class="fas fa-chevron-left"></i>
-        </button>
-        <button class="w-8 h-8 bg-slate-700 text-white rounded text-sm flex items-center justify-center font-medium">1</button>
-        <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center" disabled>
-            <i class="fas fa-chevron-right"></i>
-        </button>
+        Showing {{ $data->firstItem() }} to {{ $data->lastItem() }} of {{ $data->total() }} results
     </div>
 </div>
 @endif

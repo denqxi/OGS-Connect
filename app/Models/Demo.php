@@ -82,6 +82,11 @@ class Demo extends Model
         return $this->screening_date_time;
     }
 
+    public function getScheduledAtAttribute()
+    {
+        return $this->screening_date_time;
+    }
+
     public function getInterviewTimeAttribute()
     {
         return $this->applicant?->interview_time;
@@ -175,6 +180,14 @@ class Demo extends Model
             'demo' => 'bg-[#FBBF24] text-[#6C5600]',
             'training' => 'bg-[#9DC9FD] text-[#6C5600]',
             'onboarding' => 'bg-[#A78BFA] text-white',
+            'pending' => 'bg-[#FBBF24] text-[#6C5600]',
+            'passed' => 'bg-[#65DB7F] text-white',
+            'failed' => 'bg-[#F65353] text-white',
+            'rejected' => 'bg-[#F65353] text-white',
+            'no_answer' => 'bg-[#FF7515] text-white',
+            're_schedule' => 'bg-[#A78BFA] text-white',
+            'declined' => 'bg-[#E02F2F] text-white',
+            'not_recommended' => 'bg-[#AA1B1B] text-white',
             default => 'bg-gray-200 text-black',
         };
     }

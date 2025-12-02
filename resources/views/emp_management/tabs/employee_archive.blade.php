@@ -1,6 +1,6 @@
 
 <!-- Search Filters -->
-<div class="p-6 border-b border-gray-200">
+<div class="px-4 md:px-6 pt-4 md:pt-6 pb-3 border-b border-gray-200">
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
     </div>
@@ -34,7 +34,7 @@
 
 <!-- Table -->
 <div class="overflow-x-auto">
-    <table class="w-full">
+    <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Archived</th>
@@ -97,6 +97,16 @@
         const end = start + rowsPerPage;
         const paginated = filteredTutors.slice(start, end);
 
+        // Always show result count
+        const total = filteredTutors.length;
+        const startResult = total === 0 ? 0 : start + 1;
+        const endResult = Math.min(end, total);
+        if (total > 0) {
+            paginationInfo.textContent = `Showing ${startResult} to ${endResult} of ${total} results`;
+        } else {
+            paginationInfo.textContent = 'Showing 0 results';
+        }
+
         paginated.forEach(tutor => {
             const row = `
                 <tr class="hover:bg-gray-50">
@@ -106,26 +116,32 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">
                         <a href="mailto:${tutor.email}">${tutor.email}</a>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${tutor.reason}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            ${tutor.status}
-                        </span>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#FF7515]"></span>
+                            <span class="text-xs font-medium text-gray-500">${tutor.reason}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#F65353]"></span>
+                            <span class="text-xs font-medium text-gray-500">${tutor.status}</span>
+                        </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
-                        <button class="px-3 py-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors text-xs font-medium">
-                            Restore
-                        </button>
+                        <div class="flex space-x-2">
+                            <button onclick="alert('Archive feature is currently using sample data. View details will be available when connected to real archived employee data.')" class="w-8 h-8 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 inline-flex items-center justify-center transition-colors" title="View Details">
+                                <i class="fas fa-eye text-xs"></i>
+                            </button>
+                            <button onclick="alert('Restore feature coming soon')" class="w-8 h-8 bg-green-100 text-green-600 rounded hover:bg-green-200 inline-flex items-center justify-center transition-colors" title="Restore">
+                                <i class="fas fa-undo text-xs"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>
             `;
             tableBody.insertAdjacentHTML("beforeend", row);
         });
-
-        const total = filteredTutors.length;
-        const startResult = total === 0 ? 0 : start + 1;
-        const endResult = Math.min(end, total);
-        paginationInfo.textContent = `Showing ${startResult}-${endResult} of ${total} results`;
 
         pageNumber.textContent = currentPage;
         prevBtn.disabled = currentPage === 1;
@@ -164,6 +180,23 @@
             renderTable();
         }
     });
+
+    // Show/hide pagination buttons based on total count
+    function updatePaginationVisibility() {
+        const paginationButtons = document.querySelector("#paginationSection .flex.items-center.justify-center");
+        if (filteredTutors.length >= 6) {
+            paginationButtons.style.display = "flex";
+        } else {
+            paginationButtons.style.display = "none";
+        }
+    }
+
+    // Call after renderTable
+    const originalRenderTable = renderTable;
+    renderTable = function() {
+        originalRenderTable();
+        updatePaginationVisibility();
+    };
 
     renderTable();
 </script>

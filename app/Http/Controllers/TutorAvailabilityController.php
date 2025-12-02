@@ -28,6 +28,9 @@ class TutorAvailabilityController extends Controller
                 ], 401);
             }
 
+            // Load applicant relationships for tutor details
+            $tutor->load(['applicant.qualification', 'applicant.requirement']);
+
             // Get all accounts for this tutor
             $accounts = $tutor->accounts()->get();
             
@@ -78,22 +81,21 @@ class TutorAvailabilityController extends Controller
                 $availability[$account->account_name] = [
                     'id' => $account->id,
                     'account_name' => $account->account_name,
-                    'status' => $account->status,
                     'available_days' => $availableDays,
                     'available_times' => $availableTimes,
-                    'preferred_time_range' => $account->preferred_time_range,
                     'timezone' => $account->timezone,
-                    'availability_notes' => $account->availability_notes,
-                    'restricted_start_time' => $account->restricted_start_time,
-                    'restricted_end_time' => $account->restricted_end_time,
-                    'company_notes' => $account->company_notes,
+                    'notes' => $account->notes,
+                    'operating_start_time' => $account->account?->operating_start_time,
+                    'operating_end_time' => $account->account?->operating_end_time,
+                    'company_rules' => $account->account?->company_rules,
                 ];
             }
 
             // Get tutor details, payment information, and security questions for additional information
             $tutorDetails = $tutor->tutorDetails;
-            $paymentMethods = $tutor->paymentMethods;
-            $securityQuestions = $tutor->securityQuestions()->take(2)->get();
+            // TODO: Uncomment when employee_payment_information table exists
+            // $paymentMethods = $tutor->paymentMethods;
+            // $securityQuestions = $tutor->securityQuestions()->take(2)->get();
             
             return response()->json([
                 'success' => true,
@@ -108,27 +110,31 @@ class TutorAvailabilityController extends Controller
                     'address' => $tutorDetails->address ?? null,
                     'contact_number' => $tutor->phone_number ?? null,
                     'ms_teams_id' => $tutorDetails->ms_teams_id ?? null,
-                    'payment_info' => $paymentMethods->map(function($payment) {
-                        return [
-                            'id' => $payment->id,
-                            'payment_method' => $payment->payment_method ?? null,
-                            'payment_method_uppercase' => $payment->payment_method_uppercase ?? null,
-                            'bank_name' => $payment->bank_name ?? null,
-                            'account_number' => $payment->account_number ?? null,
-                            'account_name' => $payment->account_name ?? null,
-                            'paypal_email' => $payment->paypal_email ?? null,
-                            'gcash_number' => $payment->gcash_number ?? null,
-                            'paymaya_number' => $payment->paymaya_number ?? null,
-                            'created_at' => $payment->created_at,
-                            'updated_at' => $payment->updated_at
-                        ];
-                    })->toArray(),
-                    'security_questions' => $securityQuestions->map(function($question) {
-                        return [
-                            'question' => $question->question ?? null,
-                            'answer' => '***' // Don't expose the actual answer for security
-                        ];
-                    })->toArray()
+                    // TODO: Uncomment when employee_payment_information table exists
+                    // 'payment_info' => $paymentMethods->map(function($payment) {
+                    //     return [
+                    //         'id' => $payment->id,
+                    //         'payment_method' => $payment->payment_method ?? null,
+                    //         'payment_method_uppercase' => $payment->payment_method_uppercase ?? null,
+                    //         'bank_name' => $payment->bank_name ?? null,
+                    //         'account_number' => $payment->account_number ?? null,
+                    //         'account_name' => $payment->account_name ?? null,
+                    //         'paypal_email' => $payment->paypal_email ?? null,
+                    //         'gcash_number' => $payment->gcash_number ?? null,
+                    //         'paymaya_number' => $payment->paymaya_number ?? null,
+                    //         'created_at' => $payment->created_at,
+                    //         'updated_at' => $payment->updated_at
+                    //     ];
+                    // })->toArray(),
+                    'payment_info' => [], // Temporary empty array
+                    // TODO: Uncomment when security_questions relationship is fixed
+                    // 'security_questions' => $securityQuestions->map(function($question) {
+                    //     return [
+                    //         'question' => $question->question ?? null,
+                    //         'answer' => '***' // Don't expose the actual answer for security
+                    //     ];
+                    // })->toArray()
+                    'security_questions' => [] // Temporary empty array
                 ]
             ]);
 
@@ -163,9 +169,8 @@ class TutorAvailabilityController extends Controller
                 'available_days' => 'required|array',
                 'available_days.*' => 'string|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
                 'available_times' => 'required|array',
-                'preferred_time_range' => 'nullable|string|in:morning,afternoon,evening,flexible',
                 'timezone' => 'nullable|string|max:10',
-                'availability_notes' => 'nullable|string|max:1000',
+                'notes' => 'nullable|string|max:1000',
             ]);
 
             if ($validator->fails()) {
@@ -227,9 +232,8 @@ class TutorAvailabilityController extends Controller
             // Update availability data
             $tutorAccount->available_days = $availableDays;
             $tutorAccount->available_times = $availableTimes;
-            $tutorAccount->preferred_time_range = $request->input('preferred_time_range', 'flexible');
             $tutorAccount->timezone = $request->input('timezone', 'UTC');
-            $tutorAccount->availability_notes = $request->input('availability_notes');
+            $tutorAccount->notes = $request->input('notes');
 
             $tutorAccount->save();
 
@@ -297,9 +301,8 @@ class TutorAvailabilityController extends Controller
                     'available_days' => 'required|array',
                     'available_days.*' => 'string|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
                     'available_times' => 'required|array',
-                    'preferred_time_range' => 'nullable|string|in:morning,afternoon,evening,flexible',
                     'timezone' => 'nullable|string|max:10',
-                    'availability_notes' => 'nullable|string|max:1000',
+                    'notes' => 'nullable|string|max:1000',
                 ]);
 
                 if ($validator->fails()) {
@@ -350,19 +353,28 @@ class TutorAvailabilityController extends Controller
                     ->first();
 
                 if (!$tutorAccount) {
+                    // Get account_id from accounts table
+                    $account = \App\Models\Account::where('account_name', $accountName)->first();
+                    if (!$account) {
+                        DB::rollback();
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Account {$accountName} not found in accounts table"
+                        ], 404);
+                    }
+
                     $tutorAccount = new TutorAccount([
                         'tutor_id' => $tutor->tutorID,
+                        'account_id' => $account->account_id,
                         'account_name' => $accountName,
-                        'status' => 'active',
                     ]);
                 }
 
                 // Update availability data
                 $tutorAccount->available_days = $availableDays;
                 $tutorAccount->available_times = $availableTimes;
-                $tutorAccount->preferred_time_range = $accountData['preferred_time_range'] ?? 'flexible';
                 $tutorAccount->timezone = $accountData['timezone'] ?? 'UTC';
-                $tutorAccount->availability_notes = $accountData['availability_notes'] ?? null;
+                $tutorAccount->notes = $accountData['notes'] ?? null;
 
                 $tutorAccount->save();
 
@@ -410,7 +422,9 @@ class TutorAvailabilityController extends Controller
             }
 
             $tutor = Auth::guard('tutor')->user();
-            $account = $tutor->accounts()->where('account_name', $accountName)->first();
+            $account = $tutor->accounts()->whereHas('account', function($q) use ($accountName) {
+                $q->where('account_name', $accountName);
+            })->first();
 
             if (!$account) {
                 return response()->json([
@@ -733,17 +747,12 @@ public function updatePersonalInfo(Request $request)
             'phone_number' => $request->phone_number,
         ]);
 
-        // Update or create tutor details
-        $tutorDetails = $tutor->tutorDetails;
-        if ($tutorDetails) {
-            $tutorDetails->update([
+        // Update applicant details (tutor details are stored in applicant table)
+        $applicant = $tutor->applicant;
+        if ($applicant) {
+            $applicant->update([
                 'address' => $request->address,
-                'ms_teams_id' => $request->ms_teams_id,
-            ]);
-        } else {
-            $tutor->tutorDetails()->create([
-                'address' => $request->address,
-                'ms_teams_id' => $request->ms_teams_id,
+                'ms_teams' => $request->ms_teams_id,
             ]);
         }
 

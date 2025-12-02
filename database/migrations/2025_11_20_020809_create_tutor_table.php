@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreign('applicant_id')->references('applicant_id')->on('applicants')->onDelete('cascade');  
             $table->unsignedBigInteger('account_id');
             $table->foreign('account_id')->references('account_id')->on('accounts')->onDelete('cascade');
-            $table->datetime('hired_date_time');
+            $table->datetime('hired_date_time')->nullable();
             $table->timestamps();
         });
     }

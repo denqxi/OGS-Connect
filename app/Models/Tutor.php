@@ -6,6 +6,27 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Carbon\Carbon;
 
+/**
+ * @property int $tutor_id
+ * @property int $applicant_id
+ * @property int $account_id
+ * @property string $tutorID
+ * @property string $username
+ * @property string $email
+ * @property string $password
+ * @property string $status
+ * @property string $full_name (accessor)
+ * @property string $first_name (accessor)
+ * @property string $last_name (accessor)
+ * @property string $phone_number (accessor)
+ * @property string $date_of_birth (accessor)
+ * @property string $formatted_available_time (accessor)
+ * @property \Illuminate\Support\Carbon $created_at
+ * @property \Illuminate\Support\Carbon $updated_at
+ * @property-read Applicant $applicant
+ * @property-read Account $account
+ * @property-read WorkPreference $workPreferences
+ */
 class Tutor extends Authenticatable
 {
     protected $table = 'tutor';
@@ -16,29 +37,32 @@ class Tutor extends Authenticatable
         'applicant_id',
         'account_id',
         'tutorID',
-        'tusername',
+        'username',
         'email',
-        'tpassword',
-        'phone_number',
-        'sex',
-        'date_of_birth',
+        'password',
         'status',
-        'hired_date_time',
     ];
 
     protected $hidden = [
-        'tpassword',
-        'remember_token',
+        'password',
     ];
 
     protected $casts = [
-        'tpassword' => 'hashed',
+        'password' => 'hashed',
     ];
 
-    // Override getAuthPassword to use tpassword field
+    protected $appends = [
+        'full_name',
+        'first_name',
+        'last_name',
+        'phone_number',
+        'date_of_birth',
+    ];
+
+    // Override getAuthPassword to use password field
     public function getAuthPassword()
     {
-        return $this->tpassword;
+        return $this->password;
     }
 
     // Automatically generate formatted ID when creating new tutors
@@ -85,12 +109,36 @@ class Tutor extends Authenticatable
         $username = $baseUsername;
         $counter = 1;
         
-        while (self::where('tusername', $username)->exists()) {
+        while (self::where('username', $username)->exists()) {
             $username = $baseUsername . $counter;
             $counter++;
         }
         
         return $username;
+    }
+    
+    /**
+     * Generate company email for tutor - username@ogsconnect.com format
+     */
+    public static function generateCompanyEmail($username): string
+    {
+        return strtolower($username) . '@ogsconnect.com';
+    }
+    
+    /**
+     * Check if username is available
+     */
+    public static function isUsernameAvailable($username): bool
+    {
+        return !self::where('username', $username)->exists();
+    }
+    
+    /**
+     * Check if email is available
+     */
+    public static function isEmailAvailable($email): bool
+    {
+        return !self::where('email', $email)->exists();
     }
 
     /**
@@ -109,17 +157,23 @@ class Tutor extends Authenticatable
         return $this->belongsTo(Account::class, 'account_id', 'account_id');
     }
 
-    // Relationship to tutor accounts (new multi-account system)
-    // tutor_id in tutor_accounts references tutorID (formatted string)
-    public function accounts()
+    // Relationship to work preferences through applicant
+    public function workPreferences()
     {
-        return $this->hasMany(TutorAccount::class, 'tutor_id', 'tutorID');
+        return $this->hasOneThrough(
+            WorkPreference::class,
+            Applicant::class,
+            'applicant_id', // Foreign key on applicants table
+            'applicant_id', // Foreign key on work_preferences table
+            'applicant_id', // Local key on tutor table
+            'applicant_id'  // Local key on applicants table
+        );
     }
 
-    // Get account-specific availability
-    public function accountAvailability($accountName)
+    // Alias for backward compatibility
+    public function availability()
     {
-        return $this->accounts()->forAccount($accountName)->active()->first();
+        return $this->workPreferences();
     }
 
     public function assignments()
@@ -136,9 +190,8 @@ class Tutor extends Authenticatable
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('tutorID', 'LIKE', "%{$search}%")
-                  ->orWhere('tusername', 'LIKE', "%{$search}%")
+                  ->orWhere('username', 'LIKE', "%{$search}%")
                   ->orWhere('email', 'LIKE', "%{$search}%")
-                  ->orWhere('phone_number', 'LIKE', "%{$search}%")
                   ->orWhereHas('applicant', function($applicantQuery) use ($search) {
                       $applicantQuery->where('first_name', 'LIKE', "%{$search}%")
                                      ->orWhere('last_name', 'LIKE', "%{$search}%")
@@ -160,23 +213,32 @@ class Tutor extends Authenticatable
         return $query->where('status', $status);
     }
 
-    // Get formatted available time from tutor accounts (prioritizes GLS account for display)
+    // Get formatted available time from work preferences
     public function getFormattedAvailableTimeAttribute()
     {
-        // Use the multi-account system - prioritize GLS account for display
-        $glsAccount = $this->accountAvailability('GLS');
-        if ($glsAccount) {
-            return $glsAccount->getFormattedAvailableTimeAttribute();
+        $workPref = $this->workPreferences;
+        
+        if (!$workPref || !$workPref->days_available) {
+            return 'No availability set';
         }
         
-        // Fallback to first available account
-        $firstAccount = $this->accounts()->active()->first();
-        if ($firstAccount) {
-            return $firstAccount->getFormattedAvailableTimeAttribute();
+        // Handle both array and JSON string for days_available
+        if (is_array($workPref->days_available)) {
+            $days = $workPref->days_available;
+        } elseif (is_string($workPref->days_available)) {
+            $days = json_decode($workPref->days_available, true);
+        } else {
+            $days = [];
         }
         
-        // No fallback needed - return message if no accounts exist
-        return 'No availability set';
+        if (empty($days)) {
+            return 'No availability set';
+        }
+        
+        $startTime = $workPref->start_time ? date('g:i A', strtotime($workPref->start_time)) : 'N/A';
+        $endTime = $workPref->end_time ? date('g:i A', strtotime($workPref->end_time)) : 'N/A';
+        
+        return implode(', ', $days) . ': ' . $startTime . ' - ' . $endTime;
     }
 
 
@@ -188,7 +250,7 @@ class Tutor extends Authenticatable
         }
         
         // Fallback to username if no applicant
-        return $this->tusername ?? 'N/A';
+        return $this->username ?? 'N/A';
     }
 
     // Accessors for backward compatibility
@@ -230,28 +292,96 @@ class Tutor extends Authenticatable
 
     /**
      * Get the payment information for this tutor
+     * TODO: Uncomment when employee_payment_information table exists
      */
-    public function paymentInformation()
-    {
-        return $this->hasOne(EmployeePaymentInformation::class, 'employee_id', 'tutorID')
-                    ->where('employee_type', 'tutor');
-    }
+    // public function paymentInformation()
+    // {
+    //     return $this->hasOne(EmployeePaymentInformation::class, 'employee_id', 'tutorID')
+    //                 ->where('employee_type', 'tutor');
+    // }
 
     /**
      * Get all payment information for this tutor
+     * TODO: Uncomment when employee_payment_information table exists
      */
-    public function paymentMethods()
-    {
-        return $this->hasMany(EmployeePaymentInformation::class, 'employee_id', 'tutorID')
-                    ->where('employee_type', 'tutor');
-    }
+    // public function paymentMethods()
+    // {
+    //     return $this->hasMany(EmployeePaymentInformation::class, 'employee_id', 'tutorID')
+    //                 ->where('employee_type', 'tutor');
+    // }
 
     /**
-     * Get the tutor details for this tutor
+     * Get the tutor details from applicant relationship
+     * Tutor details are stored in the applicants table
      */
     public function tutorDetails()
     {
-        return $this->hasOne(TutorDetails::class, 'tutor_id', 'tutorID');
+        // Return applicant as tutor details since all details are stored there
+        return $this->applicant();
+    }
+    
+    /**
+     * Get address from applicant
+     */
+    public function getAddressAttribute()
+    {
+        return $this->applicant?->address;
+    }
+    
+    /**
+     * Get educational attainment from applicant's qualification
+     */
+    public function getEducationalAttainmentAttribute()
+    {
+        return $this->applicant?->qualification?->education;
+    }
+    
+    /**
+     * Get ESL teaching experience from applicant's qualification
+     */
+    public function getEslTeachingExperienceAttribute()
+    {
+        return $this->applicant?->qualification?->esl_experience;
+    }
+    
+    /**
+     * Get work setup from applicant's requirement
+     */
+    public function getWorkSetupAttribute()
+    {
+        return $this->applicant?->requirement?->work_type;
+    }
+    
+    /**
+     * Get first day of teaching (hire date)
+     */
+    public function getFirstDayOfTeachingAttribute()
+    {
+        return $this->hire_date_time;
+    }
+    
+    /**
+     * Get MS Teams ID from applicant
+     */
+    public function getMsTeamsIdAttribute()
+    {
+        return $this->applicant?->ms_teams ?? null;
+    }
+
+    /**
+     * Get phone number from applicant
+     */
+    public function getPhoneNumberAttribute()
+    {
+        return $this->applicant?->contact_number ?? null;
+    }
+
+    /**
+     * Get date of birth from applicant
+     */
+    public function getDateOfBirthAttribute()
+    {
+        return $this->applicant?->birth_date ?? null;
     }
 
     /**
@@ -260,6 +390,14 @@ class Tutor extends Authenticatable
     public function getEmailForPasswordReset()
     {
         return $this->email ?? $this->applicant?->email;
+    }
+
+    /**
+     * Get the route key name for Laravel model binding.
+     */
+    public function getRouteKeyName()
+    {
+        return 'tutorID';
     }
 
     /**
@@ -283,7 +421,7 @@ class Tutor extends Authenticatable
      */
     public function getRememberToken()
     {
-        return $this->remember_token;
+        return null; // Remember token column removed
     }
 
     /**
@@ -291,7 +429,7 @@ class Tutor extends Authenticatable
      */
     public function setRememberToken($value)
     {
-        $this->remember_token = $value;
+        // Remember token column removed - do nothing
     }
 
     /**
@@ -299,6 +437,6 @@ class Tutor extends Authenticatable
      */
     public function getRememberTokenName()
     {
-        return 'remember_token';
+        return null; // Remember token column removed
     }
 }

@@ -439,6 +439,21 @@
                     {{ \Carbon\Carbon::parse($application->interview_time)->format('F d, Y - h:i A') }}
                 </div>
             </div>
+
+            <!-- Application Notes -->
+            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 uppercase flex items-center">
+                    <i class="fas fa-sticky-note mr-2 text-yellow-500"></i>
+                    Application Notes
+                </h4>
+                <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-white dark:bg-gray-800 rounded-md min-h-[60px]">
+                    @if(!empty($application->notes))
+                        {{ $application->notes }}
+                    @else
+                        <span class="text-gray-500 dark:text-gray-400 italic">No notes available</span>
+                    @endif
+                </div>
+            </div>
         </div>
     </div>
 
@@ -509,8 +524,9 @@
 
                     @if($application->attempt_count > 0)
                     <div class="border-l pl-6">
-                        <p class="text-xs text-gray-500 mb-1">Attempt Count</p>
-                        <p class="text-lg font-bold text-gray-900">{{ $application->attempt_count }}/3</p>
+                        <p class="text-xs text-gray-500 mb-1">Attempts</p>
+                        @php($remaining = max(0, 3 - $application->attempt_count))
+                        <p class="text-sm font-medium text-gray-900">{{ $application->attempt_count }} of 3 ({{ $remaining }} left)</p>
                     </div>
                     @endif
 

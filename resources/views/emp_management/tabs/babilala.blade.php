@@ -1,14 +1,14 @@
 <!-- Page Title -->
-<div class="p-4 border-b border-gray-200">
-    <h2 class="text-xl font-bold text-[#A78BFA]">BabiLala Account</h2>
+<div class="px-4 md:px-6 pt-4 md:pt-6 pb-3 border-b border-gray-200">
+    <h2 class="text-xl font-bold text-[#B565D8]">Babilala Account</h2>
 </div>
 
 <!-- Search Filters -->
-<div class="p-6 border-b border-gray-200">
+<div class="px-4 md:px-6 py-3 border-b border-gray-200">
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
     </div>
-    <form method="GET" action="{{ route('employees.index') }}" class="flex justify-between items-center space-x-4">
+    <form method="GET" action="{{ route('employees.index') }}" id="babilalaFilterForm" class="flex justify-between items-center space-x-4">
         <input type="hidden" name="tab" value="babilala">
         
         <!-- Left side -->
@@ -20,17 +20,12 @@
               focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
               focus:ring-0 focus:shadow-xl">
             </div>
-            <select name="status" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
-                <option value="">Status</option>
-                <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
-                <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
-            </select>
         </div>
 
         <!-- Right side -->
         <div class="flex items-center space-x-4">
             <span class="text-sm text-gray-600">Available at:</span>
-            <select name="time_slot" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+            <select name="time_slot" onchange="document.getElementById('babilalaFilterForm').submit()" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
                 <option value="">Time Range</option>
                 <option value="7:00-8:00" {{ request('time_slot') == '7:00-8:00' ? 'selected' : '' }}>7:00-8:00</option>
                 <option value="8:00-9:00" {{ request('time_slot') == '8:00-9:00' ? 'selected' : '' }}>8:00-9:00</option>
@@ -48,7 +43,7 @@
                 <option value="20:00-21:00" {{ request('time_slot') == '20:00-21:00' ? 'selected' : '' }}>20:00-21:00</option>
                 <option value="21:00-22:00" {{ request('time_slot') == '21:00-22:00' ? 'selected' : '' }}>21:00-22:00</option>
             </select>
-            <select name="day" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+            <select name="day" id="filterBabilalaDay" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="document.getElementById('babilalaFilterForm').submit()">
                 <option value="">Day</option>
                 <option value="monday" {{ request('day') == 'monday' ? 'selected' : '' }}>Monday</option>
                 <option value="tuesday" {{ request('day') == 'tuesday' ? 'selected' : '' }}>Tuesday</option>
@@ -58,41 +53,53 @@
                 <option value="saturday" {{ request('day') == 'saturday' ? 'selected' : '' }}>Saturday</option>
                 <option value="sunday" {{ request('day') == 'sunday' ? 'selected' : '' }}>Sunday</option>
             </select>
-            <button type="submit" class="px-4 py-2 bg-[#A78BFA] text-white rounded-md text-sm hover:bg-[#A78BFA]/80">
-                Search
-            </button>
         </div>
     </form>
 </div>
 
 <!-- Employee Table -->
 <div class="overflow-x-auto">
-    <table class="w-full">
+    <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Hired</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tutor ID</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('employees.index', array_merge(request()->all(), ['tab' => 'babilala', 'sort' => 'name', 'direction' => request('sort') === 'name' && request('direction') === 'asc' ? 'desc' : 'asc'])) }}'">
+                    <div class="flex items-center gap-1">
+                        Name
+                        @if(request('sort') === 'name')
+                            <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                        @else
+                            <i class="fas fa-sort text-xs opacity-30"></i>
+                        @endif
+                    </div>
+                </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account Number</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account Name</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available Time</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('employees.index', array_merge(request()->all(), ['tab' => 'babilala', 'sort' => 'status', 'direction' => request('sort') === 'status' && request('direction') === 'asc' ? 'desc' : 'asc'])) }}'">
+                    <div class="flex items-center gap-1">
+                        Status
+                        @if(request('sort') === 'status')
+                            <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                        @else
+                            <i class="fas fa-sort text-xs opacity-30"></i>
+                        @endif
+                    </div>
+                </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200" id="babilalaTableBody">
             @forelse($tutors as $tutor)
                 @php
-                    $babilalaAccount = $tutor->accounts->where('account_name', 'Babilala')->first();
                     $paymentInfo = $tutor->paymentInformation;
                     $tutorDetails = $tutor->tutorDetails;
                 @endphp
                 <tr class="hover:bg-gray-50 babilala-row" data-searchable="{{ strtolower(($tutor->full_name ?? '') . ' ' . ($tutor->email ?? '') . ' ' . ($tutor->phone_number ?? '')) }}">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $tutor->created_at ? $tutor->created_at->format('M j, Y') : 'N/A' }}
-                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tutor->tutorID ? 'OGS-T' . str_pad($tutor->tutorID, 4, '0', STR_PAD_LEFT) : 'N/A' }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         <a href="#" class="text-black-600 hover:text-black-800">{{ $tutor->full_name }}</a>
                     </td>
@@ -106,37 +113,40 @@
                         {{ $paymentInfo->payment_method_uppercase ?? 'N/A' }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $babilalaAccount->account_number ?? 'N/A' }}
+                        {{ $tutor->tutorID ? 'OGS-T' . str_pad($tutor->tutorID, 4, '0', STR_PAD_LEFT) : 'N/A' }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $babilalaAccount->screen_name ?? $tutor->full_name }}
+                        {{ $tutor->full_name ?? 'N/A' }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        @if($babilalaAccount)
-                            {{ $babilalaAccount->getFormattedAvailableTimeAttribute() }}
+                        @if($tutor->workPreferences)
+                            {{ $tutor->formatted_available_time }}
                         @else
                             N/A
                         @endif
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $tutor->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                            {{ ucfirst($tutor->status) }}
-                        </span>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full {{ $tutor->status === 'active' ? 'bg-[#65DB7F]' : 'bg-[#F65353]' }}"></span>
+                            <span class="text-xs font-medium text-gray-500">
+                                {{ ucfirst($tutor->status) }}
+                            </span>
+                        </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                         <div class="flex space-x-2">
                         <button onclick="openEmployeeModal('tutor', '{{ $tutor->tutorID }}')" 
                                 class="w-8 h-8 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 inline-flex items-center justify-center transition-colors"
                                 title="View Details">
-                            <i class="fas fa-search text-xs"></i>
+                            <i class="fas fa-eye text-xs"></i>
                         </button>
                             @if($tutor->status === 'active')
-                                <button onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'inactive')" class="px-3 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors text-xs font-medium" title="Deactivate">
-                                    Deactivate
+                                <button onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'inactive')" class="w-8 h-8 bg-red-100 text-red-600 rounded hover:bg-red-200 inline-flex items-center justify-center transition-colors" title="Deactivate">
+                                    <i class="fas fa-user-slash text-xs"></i>
                                 </button>
                             @else
-                                <button onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'active')" class="px-3 py-1 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors text-xs font-medium" title="Activate">
-                                    Activate
+                                <button onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'active')" class="w-8 h-8 bg-green-100 text-green-600 rounded hover:bg-green-200 inline-flex items-center justify-center transition-colors" title="Activate">
+                                    <i class="fas fa-user-check text-xs"></i>
                                 </button>
                             @endif
                         </div>
@@ -144,8 +154,9 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="10" class="px-6 py-4 text-center text-sm text-gray-500">
-                        No tutors found with Babilala accounts.
+                    <td colspan="10" class="px-6 py-8 text-center text-gray-500">
+                        <i class="fas fa-users text-4xl mb-4 opacity-50"></i>
+                        <p class="text-lg font-medium">No Babilala tutors found</p>
                     </td>
                 </tr>
             @endforelse
@@ -175,6 +186,20 @@
 @endif
 
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.querySelector('input[name="search"]');
+        const form = document.getElementById('babilalaFilterForm');
+        
+        if (searchInput && form) {
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    form.submit();
+                }
+            });
+        }
+    });
+
     // Toggle tutor status (active/inactive)
     function toggleTutorStatus(tutorId, newStatus) {
         if (!tutorId) {
