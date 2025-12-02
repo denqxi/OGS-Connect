@@ -82,18 +82,19 @@ class EmployeeManagementController extends Controller
             $query->where('status', $request->get('status'));
         }
 
-        // Apply sorting
-        $sortField = $request->get('sort', 'tutorID');
+        // Apply sorting (three-state: asc → desc → default)
+        $sortField = $request->get('sort');
         $sortDirection = $request->get('direction', 'asc');
         
-        if ($sortField === 'name') {
+        if ($sortField === 'name' && $sortDirection) {
             $query->join('applicants', 'tutor.applicant_id', '=', 'applicants.applicant_id')
                 ->orderBy('applicants.first_name', $sortDirection)
                 ->select('tutor.*');
-        } elseif ($sortField === 'status') {
+        } elseif ($sortField === 'status' && $sortDirection) {
             $query->orderBy('tutor.status', $sortDirection);
         } else {
-            $query->orderBy('tutor.tutorID', $sortDirection);
+            // Default sort by tutorID ascending
+            $query->orderBy('tutor.tutorID', 'asc');
         }
 
         $tutors = $query->paginate(5)->withQueryString();
@@ -153,18 +154,19 @@ class EmployeeManagementController extends Controller
             $query->where('status', $request->get('status'));
         }
 
-        // Apply sorting
-        $sortField = $request->get('sort', 'tutorID');
+        // Apply sorting (three-state: asc → desc → default)
+        $sortField = $request->get('sort');
         $sortDirection = $request->get('direction', 'asc');
         
-        if ($sortField === 'name') {
+        if ($sortField === 'name' && $sortDirection) {
             $query->join('applicants', 'tutor.applicant_id', '=', 'applicants.applicant_id')
                 ->orderBy('applicants.first_name', $sortDirection)
                 ->select('tutor.*');
-        } elseif ($sortField === 'status') {
+        } elseif ($sortField === 'status' && $sortDirection) {
             $query->orderBy('tutor.status', $sortDirection);
         } else {
-            $query->orderBy('tutor.tutorID', $sortDirection);
+            // Default sort by tutorID ascending
+            $query->orderBy('tutor.tutorID', 'asc');
         }
 
         $tutors = $query->paginate(5)->withQueryString();
@@ -224,18 +226,19 @@ class EmployeeManagementController extends Controller
             $query->where('status', $request->get('status'));
         }
 
-        // Apply sorting
-        $sortField = $request->get('sort', 'tutorID');
+        // Apply sorting (three-state: asc → desc → default)
+        $sortField = $request->get('sort');
         $sortDirection = $request->get('direction', 'asc');
         
-        if ($sortField === 'name') {
+        if ($sortField === 'name' && $sortDirection) {
             $query->join('applicants', 'tutor.applicant_id', '=', 'applicants.applicant_id')
                 ->orderBy('applicants.first_name', $sortDirection)
                 ->select('tutor.*');
-        } elseif ($sortField === 'status') {
+        } elseif ($sortField === 'status' && $sortDirection) {
             $query->orderBy('tutor.status', $sortDirection);
         } else {
-            $query->orderBy('tutor.tutorID', $sortDirection);
+            // Default sort by tutorID ascending
+            $query->orderBy('tutor.tutorID', 'asc');
         }
 
         $tutors = $query->paginate(5)->withQueryString();
@@ -284,18 +287,19 @@ class EmployeeManagementController extends Controller
             $query->where('status', $request->get('status'));
         }
 
-        // Apply sorting
-        $sortField = $request->get('sort', 'tutorID');
+        // Apply sorting (three-state: asc → desc → default)
+        $sortField = $request->get('sort');
         $sortDirection = $request->get('direction', 'asc');
         
-        if ($sortField === 'name') {
+        if ($sortField === 'name' && $sortDirection) {
             $query->join('applicants', 'tutor.applicant_id', '=', 'applicants.applicant_id')
                 ->orderBy('applicants.first_name', $sortDirection)
                 ->select('tutor.*');
-        } elseif ($sortField === 'status') {
+        } elseif ($sortField === 'status' && $sortDirection) {
             $query->orderBy('tutor.status', $sortDirection);
         } else {
-            $query->orderBy('tutor.tutorID', $sortDirection);
+            // Default sort by tutorID ascending
+            $query->orderBy('tutor.tutorID', 'asc');
         }
 
         $tutors = $query->paginate(5)->withQueryString();
@@ -393,6 +397,9 @@ class EmployeeManagementController extends Controller
             'data' => [
                 'id' => $supervisor->supID,
                 'full_name' => $supervisor->full_name,
+                'first_name' => $supervisor->first_name,
+                'middle_name' => $supervisor->middle_name,
+                'last_name' => $supervisor->last_name,
                 'email' => $supervisor->email,
                 'phone_number' => $supervisor->contact_number,
                 'birth_date' => $supervisor->birth_date,
@@ -401,9 +408,96 @@ class EmployeeManagementController extends Controller
                 'status' => $supervisor->status ?? 'active',
                 'assigned_account' => $supervisor->assigned_account,
                 'role' => 'Supervisor',
-                'shift' => $supervisor->shift,
                 'ms_teams' => $supervisor->ms_teams,
+                // Work availability fields
+                'start_time' => $supervisor->start_time ? \Carbon\Carbon::parse($supervisor->start_time)->format('g:i A') : null,
+                'end_time' => $supervisor->end_time ? \Carbon\Carbon::parse($supervisor->end_time)->format('g:i A') : null,
+                'days_available' => $supervisor->days_available,
+                'timezone' => $supervisor->timezone,
             ]
         ]);
+    }
+
+    public function archive(Request $request)
+    {
+        $type = $request->input('type');
+        $id = $request->input('id');
+        $reason = $request->input('reason');
+        $notes = $request->input('notes', '');
+        $archivedBy = $request->input('archived_by', auth()->user()?->name ?? 'Unknown User');
+
+        try {
+            if ($type === 'supervisor') {
+                $supervisor = Supervisor::where('supID', $id)->firstOrFail();
+                
+                // Create archive record
+                $archiveRecord = \App\Models\Archive::create([
+                    'applicant_id' => null, // Not applicable for supervisors
+                    'archive_by' => $archivedBy,
+                    'notes' => $notes,
+                    'archive_date_time' => now(),
+                    'category' => 'supervisor',
+                    'status' => 'archived',
+                    'payload' => [
+                        'supervisor_id' => $supervisor->supervisor_id,
+                        'sup_id' => $supervisor->supID,
+                        'full_name' => $supervisor->full_name,
+                        'email' => $supervisor->email,
+                        'contact_number' => $supervisor->contact_number,
+                        'reason' => $reason,
+                        'archived_at' => now(),
+                        'original_status' => $supervisor->status,
+                    ]
+                ]);
+
+                // Delete the supervisor record
+                $supervisor->delete();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Supervisor '{$supervisor->full_name}' has been archived successfully."
+                ]);
+            } elseif ($type === 'tutor') {
+                $tutor = Tutor::where('tutorID', $id)->firstOrFail();
+                
+                // Create archive record
+                $archiveRecord = \App\Models\Archive::create([
+                    'applicant_id' => $tutor->applicant_id,
+                    'archive_by' => $archivedBy,
+                    'notes' => $notes,
+                    'archive_date_time' => now(),
+                    'category' => 'tutor',
+                    'status' => 'archived',
+                    'payload' => [
+                        'tutor_id' => $tutor->id,
+                        'tutor_id_formatted' => $tutor->tutorID,
+                        'full_name' => $tutor->applicant ? $tutor->applicant->full_name : 'Unknown',
+                        'email' => $tutor->email,
+                        'reason' => $reason,
+                        'archived_at' => now(),
+                        'original_status' => $tutor->status,
+                    ]
+                ]);
+
+                // Delete the tutor record
+                $tutor->delete();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Tutor has been archived successfully."
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid employee type'
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Archive error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while archiving the employee: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

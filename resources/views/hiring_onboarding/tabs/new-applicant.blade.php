@@ -117,7 +117,7 @@
             <thead class="bg-gray-50 border-b border-gray-200">
           
                 <tr>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" style="width: 12%;" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'new', 'sort' => 'created_at', 'direction' => request('sort') === 'created_at' && request('direction') === 'asc' ? 'desc' : 'asc'])) }}'">
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" style="width: 12%;" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'new', 'sort' => request('sort') === 'created_at' && request('direction') === 'desc' ? '' : 'created_at', 'direction' => request('sort') === 'created_at' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
                         <div class="flex items-center gap-1">
                             Date Applied
                             @if(request('sort') === 'created_at')
@@ -127,7 +127,7 @@
                             @endif
                         </div>
                     </th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" style="width: 12%;" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'new', 'sort' => 'first_name', 'direction' => request('sort') === 'first_name' && request('direction') === 'asc' ? 'desc' : 'asc'])) }}'">
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" style="width: 12%;" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'new', 'sort' => request('sort') === 'first_name' && request('direction') === 'desc' ? '' : 'first_name', 'direction' => request('sort') === 'first_name' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
                         <div class="flex items-center gap-1">
                             Applicant Name
                             @if(request('sort') === 'first_name')
@@ -140,7 +140,7 @@
                     {{-- <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 12%;">Phone</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 18%;">Email</th> --}}
                     <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 16%;">Work Availability</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" style="width: 12%;" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'new', 'sort' => 'interview_time', 'direction' => request('sort') === 'interview_time' && request('direction') === 'asc' ? 'desc' : 'asc'])) }}'">
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" style="width: 12%;" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'new', 'sort' => request('sort') === 'interview_time' && request('direction') === 'desc' ? '' : 'interview_time', 'direction' => request('sort') === 'interview_time' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
                         <div class="flex items-center gap-1">
                             Scheduled Interview
                             @if(request('sort') === 'interview_time')
@@ -150,7 +150,7 @@
                             @endif
                         </div>
                     </th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" style="width: 8%;" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'new', 'sort' => 'status', 'direction' => request('sort') === 'status' && request('direction') === 'asc' ? 'desc' : 'asc'])) }}'">
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" style="width: 8%;" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'new', 'sort' => request('sort') === 'status' && request('direction') === 'desc' ? '' : 'status', 'direction' => request('sort') === 'status' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
                         <div class="flex items-center gap-1">
                             Status
                             @if(request('sort') === 'status')

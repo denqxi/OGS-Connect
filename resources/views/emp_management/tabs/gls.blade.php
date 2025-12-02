@@ -84,7 +84,7 @@
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
                 <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tutor ID</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('employees.index', array_merge(request()->all(), ['tab' => 'gls', 'sort' => 'name', 'direction' => request('sort') === 'name' && request('direction') === 'asc' ? 'desc' : 'asc'])) }}'">
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('employees.index', array_merge(request()->all(), ['tab' => 'gls', 'sort' => request('sort') === 'name' && request('direction') === 'desc' ? '' : 'name', 'direction' => request('sort') === 'name' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
                     <div class="flex items-center gap-1">
                         Name
                         @if(request('sort') === 'name')
@@ -96,7 +96,7 @@
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available Time</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available Days</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('employees.index', array_merge(request()->all(), ['tab' => 'gls', 'sort' => 'status', 'direction' => request('sort') === 'status' && request('direction') === 'asc' ? 'desc' : 'asc'])) }}'">
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('employees.index', array_merge(request()->all(), ['tab' => 'gls', 'sort' => request('sort') === 'status' && request('direction') === 'desc' ? '' : 'status', 'direction' => request('sort') === 'status' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
                     <div class="flex items-center gap-1">
                         Status
                         @if(request('sort') === 'status')
@@ -195,6 +195,10 @@
                             <button class="w-8 h-8 bg-green-100 text-green-600 rounded hover:bg-green-200 inline-flex items-center justify-center transition-colors"
                                     onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'active')" title="Activate">
                                 <i class="fas fa-user-check text-xs"></i>
+                            </button>
+                            <button class="w-8 h-8 bg-orange-100 text-orange-600 rounded hover:bg-orange-200 inline-flex items-center justify-center transition-colors"
+                                    onclick="openArchiveModal('tutor', '{{ $tutor->tutorID }}', '{{ $tutor->full_name }}')" title="Archive">
+                                <i class="fas fa-archive text-xs"></i>
                             </button>
                         @endif
                     </div>
@@ -295,9 +299,9 @@
     function proceedWithStatusUpdate(tutorId, newStatus, tutorName, button) {
         console.log('Proceeding with status update:', { tutorId, newStatus, tutorName });
         
-        const originalText = button.textContent;
+        const originalHTML = button.innerHTML;
         button.disabled = true;
-        button.textContent = 'Updating...';
+        button.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i>';
 
         // Make AJAX request
         fetch(`/tutors/${tutorId}/toggle-status`, {
@@ -334,7 +338,7 @@
                 
                 // Restore button state
                 button.disabled = false;
-                button.textContent = originalText;
+                button.innerHTML = originalHTML;
             }
         })
         .catch(error => {
@@ -343,7 +347,7 @@
             
             // Restore button state
             button.disabled = false;
-            button.textContent = originalText;
+            button.innerHTML = originalHTML;
         });
     }
 

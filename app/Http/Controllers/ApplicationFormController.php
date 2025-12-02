@@ -327,21 +327,26 @@ class ApplicationFormController extends Controller
             }
         }
         
-        // Sorting
-        $sortField = $request->get('sort', 'created_at');
+        // Sorting - Three-state: no sort → asc → desc → no sort
+        $sortField = $request->get('sort');
         $sortDirection = $request->get('direction', 'asc');
         
         // Handle different sort fields
-        if ($sortField === 'first_name') {
+        if ($sortField === 'first_name' && $sortDirection) {
             $query->join('applicants', 'application.applicant_id', '=', 'applicants.applicant_id')
                   ->orderBy('applicants.first_name', $sortDirection)
                   ->select('application.*');
-        } elseif ($sortField === 'interview_time') {
+        } elseif ($sortField === 'interview_time' && $sortDirection) {
             $query->join('applicants', 'application.applicant_id', '=', 'applicants.applicant_id')
                   ->orderBy('applicants.interview_time', $sortDirection)
                   ->select('application.*');
+        } elseif ($sortField === 'status' && $sortDirection) {
+            $query->orderBy('status', $sortDirection);
+        } elseif ($sortField === 'created_at' && $sortDirection) {
+            $query->orderBy('created_at', $sortDirection);
         } else {
-            $query->orderBy($sortField, $sortDirection);
+            // Default: newest first
+            $query->orderBy('created_at', 'desc');
         }
         
         $applicants = $query->paginate(5)->withQueryString();
@@ -410,25 +415,28 @@ class ApplicationFormController extends Controller
             }
         }
 
-        // Sorting
-        $sortField = $request->get('sort', 'screening_date_time');
+        // Sorting - Three-state: no sort → asc → desc → no sort
+        $sortField = $request->get('sort');
         $sortDirection = $request->get('direction', 'asc');
         
         // Handle different sort fields
-        if ($sortField === 'first_name') {
+        if ($sortField === 'first_name' && $sortDirection) {
             $query->join('applicants', 'screening.applicant_id', '=', 'applicants.applicant_id')
                   ->orderBy('applicants.first_name', $sortDirection)
                   ->select('screening.*');
-        } elseif ($sortField === 'assigned_account') {
+        } elseif ($sortField === 'assigned_account' && $sortDirection) {
             $query->leftJoin('accounts', 'screening.account_id', '=', 'accounts.account_id')
                   ->orderBy('accounts.account_name', $sortDirection)
                   ->select('screening.*');
-        } elseif ($sortField === 'status') {
+        } elseif ($sortField === 'status' && $sortDirection) {
             $query->orderBy('phase', $sortDirection);
-        } elseif ($sortField === 'created_at') {
+        } elseif ($sortField === 'created_at' && $sortDirection) {
             $query->orderBy('created_at', $sortDirection);
+        } elseif ($sortField === 'screening_date_time' && $sortDirection) {
+            $query->orderBy('screening_date_time', $sortDirection);
         } else {
-            $query->orderBy($sortField, $sortDirection);
+            // Default: newest first
+            $query->orderBy('created_at', 'desc');
         }
         
         $screenings = $query->paginate(5)->withQueryString();
@@ -476,23 +484,26 @@ class ApplicationFormController extends Controller
             }
         }
 
-        // Sorting
-        $sortField = $request->get('sort', 'archive_date_time');
+        // Sorting - Three-state: no sort → asc → desc → no sort
+        $sortField = $request->get('sort');
         $sortDirection = $request->get('direction', 'asc');
         
         // Handle different sort fields
-        if ($sortField === 'first_name') {
+        if ($sortField === 'first_name' && $sortDirection) {
             $query->join('applicants', 'archive.applicant_id', '=', 'applicants.applicant_id')
                   ->orderBy('applicants.first_name', $sortDirection)
                   ->select('archive.*');
-        } elseif ($sortField === 'archived_at') {
+        } elseif ($sortField === 'archived_at' && $sortDirection) {
             $query->orderBy('archive_date_time', $sortDirection);
-        } elseif ($sortField === 'interview_time') {
+        } elseif ($sortField === 'interview_time' && $sortDirection) {
             $query->join('applicants', 'archive.applicant_id', '=', 'applicants.applicant_id')
                   ->orderBy('applicants.interview_time', $sortDirection)
                   ->select('archive.*');
+        } elseif ($sortField === 'status' && $sortDirection) {
+            $query->orderBy('status', $sortDirection);
         } else {
-            $query->orderBy($sortField, $sortDirection);
+            // Default: most recently archived first
+            $query->orderBy('archive_date_time', 'desc');
         }
         
         $archives = $query->paginate(5)->withQueryString();
@@ -878,27 +889,30 @@ class ApplicationFormController extends Controller
             }
         }
     
-        // Sorting
-        $sortField = $request->get('sort', 'onboarding_date_time');
+        // Sorting (three-state: asc → desc → default)
+        $sortField = $request->get('sort');
         $sortDirection = $request->get('direction', 'asc');
         
         // Handle different sort fields
-        if ($sortField === 'first_name') {
+        if ($sortField === 'first_name' && $sortDirection) {
             $query->join('applicants', 'onboardings.applicant_id', '=', 'applicants.applicant_id')
                   ->orderBy('applicants.first_name', $sortDirection)
                   ->select('onboardings.*');
-        } elseif ($sortField === 'assigned_account') {
+        } elseif ($sortField === 'assigned_account' && $sortDirection) {
             $query->leftJoin('accounts', 'onboardings.account_id', '=', 'accounts.account_id')
                   ->orderBy('accounts.account_name', $sortDirection)
                   ->select('onboardings.*');
-        } elseif ($sortField === 'interview_time') {
+        } elseif ($sortField === 'interview_time' && $sortDirection) {
             $query->join('applicants', 'onboardings.applicant_id', '=', 'applicants.applicant_id')
                   ->orderBy('applicants.interview_time', $sortDirection)
                   ->select('onboardings.*');
-        } elseif ($sortField === 'created_at') {
+        } elseif ($sortField === 'created_at' && $sortDirection) {
             $query->orderBy('created_at', $sortDirection);
+        } elseif ($sortField === 'status' && $sortDirection) {
+            $query->orderBy('status', $sortDirection);
         } else {
-            $query->orderBy($sortField, $sortDirection);
+            // Default sort by created_at descending (newest first)
+            $query->orderBy('created_at', 'desc');
         }
         
         $onboardings = $query->paginate(5)->withQueryString();

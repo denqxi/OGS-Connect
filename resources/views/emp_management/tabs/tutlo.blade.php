@@ -19,6 +19,7 @@
 
                     <input type="text" 
                            name="search"
+                           placeholder="Search tutors..."
                            value="{{ request('search') }}"
                            id="tutloSearch"
                            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm 
@@ -82,7 +83,7 @@
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
                 <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tutor ID</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('employees.index', array_merge(request()->all(), ['tab' => 'tutlo', 'sort' => 'name', 'direction' => request('sort') === 'name' && request('direction') === 'asc' ? 'desc' : 'asc'])) }}'">
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('employees.index', array_merge(request()->all(), ['tab' => 'tutlo', 'sort' => request('sort') === 'name' && request('direction') === 'desc' ? '' : 'name', 'direction' => request('sort') === 'name' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
                     <div class="flex items-center gap-1">
                         Name
                         @if(request('sort') === 'name')
@@ -92,15 +93,8 @@
                         @endif
                     </div>
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ESL Teaching Experience</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work Setup</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Day of Teaching</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Educational Attainment</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available Time</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available Days</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('employees.index', array_merge(request()->all(), ['tab' => 'tutlo', 'sort' => 'status', 'direction' => request('sort') === 'status' && request('direction') === 'asc' ? 'desc' : 'asc'])) }}'">
                     <div class="flex items-center gap-1">
                         Status
@@ -121,39 +115,59 @@
                     $tutorDetails = $tutor->tutorDetails;
                 @endphp
                 <tr class="hover:bg-gray-50 tutlo-row" data-searchable="{{ strtolower(($tutor->full_name ?? '') . ' ' . ($tutor->email ?? '') . ' ' . ($tutor->phone_number ?? '')) }}">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tutor->tutorID ? 'OGS-T' . str_pad($tutor->tutorID, 4, '0', STR_PAD_LEFT) : 'N/A' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tutor->tutorID ? str_pad($tutor->tutorID, 4, '0', STR_PAD_LEFT) : 'N/A' }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        <a href="#" class="text-black-600 hover:text-black-800">{{ $tutor->full_name }}</a>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $tutor->phone_number ?? 'N/A' }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $tutor->email ?? 'N/A' }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $tutorDetails->address ?? 'N/A' }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $tutorDetails->esl_experience ?? 'N/A' }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $paymentInfo->payment_method_uppercase ?? 'N/A' }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $tutorDetails->work_setup ?? 'N/A' }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $tutorDetails->formatted_first_day_teaching ?? 'N/A' }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $tutorDetails->formatted_educational_attainment ?? 'N/A' }}
+                        {{ $tutor->full_name ?? 'N/A' }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         @if($tutor->workPreferences)
-                            {{ $tutor->formatted_available_time }}
+                            <div class="flex flex-col">
+                                <span class="font-medium text-gray-700">
+                                    {{ $tutor->workPreferences->start_time ? \Carbon\Carbon::parse($tutor->workPreferences->start_time)->format('g:i A') : 'N/A' }} - 
+                                    {{ $tutor->workPreferences->end_time ? \Carbon\Carbon::parse($tutor->workPreferences->end_time)->format('g:i A') : 'N/A' }}
+                                    <span class="text-xs text-gray-500">({{ $tutor->workPreferences->timezone ?? 'UTC' }})</span>
+                                </span>
+                            </div>
                         @else
-                            N/A
+                            <span class="text-red-500 text-sm">Not set</span>
+                        @endif
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-700">
+                        @if($tutor->workPreferences && $tutor->workPreferences->days_available)
+                            @php
+                                $days = is_array($tutor->workPreferences->days_available) 
+                                    ? $tutor->workPreferences->days_available 
+                                    : json_decode($tutor->workPreferences->days_available, true);
+                                $dayMap = [
+                                    'monday' => 'Mon', 'mon' => 'Mon',
+                                    'tuesday' => 'Tue', 'tue' => 'Tue',
+                                    'wednesday' => 'Wed', 'wed' => 'Wed',
+                                    'thursday' => 'Thu', 'thur' => 'Thu', 'thu' => 'Thu',
+                                    'friday' => 'Fri', 'fri' => 'Fri',
+                                    'saturday' => 'Sat', 'sat' => 'Sat',
+                                    'sunday' => 'Sun', 'sun' => 'Sun'
+                                ];
+                                $allDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                                $normalizedDays = array_map('strtolower', $days);
+                                
+                                $weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+                                $isAllWeekdays = count(array_intersect($normalizedDays, $weekdays)) === 5 && count($normalizedDays) === 5;
+                                $isAllDays = count(array_intersect($normalizedDays, $allDays)) === 7;
+                                
+                                if ($isAllDays) {
+                                    $displayText = 'Mon-Sun';
+                                } elseif ($isAllWeekdays) {
+                                    $displayText = 'Mon-Fri';
+                                } else {
+                                    $abbrevDays = array_map(function($day) use ($dayMap) {
+                                        return $dayMap[strtolower($day)] ?? ucfirst(substr($day, 0, 3));
+                                    }, $days);
+                                    $displayText = implode(', ', $abbrevDays);
+                                }
+                            @endphp
+                            <span class="font-medium">{{ $displayText }}</span>
+                        @else
+                            <span class="text-red-500 text-sm">Not set</span>
                         @endif
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
@@ -172,12 +186,18 @@
                                 <i class="fas fa-eye text-xs"></i>
                             </button>
                             @if($tutor->status === 'active')
-                                <button onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'inactive')" class="w-8 h-8 bg-red-100 text-red-600 rounded hover:bg-red-200 inline-flex items-center justify-center transition-colors" title="Deactivate">
+                                <button class="w-8 h-8 bg-red-100 text-red-600 rounded hover:bg-red-200 inline-flex items-center justify-center transition-colors"
+                                        onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'inactive')" title="Deactivate">
                                     <i class="fas fa-user-slash text-xs"></i>
                                 </button>
                             @else
-                                <button onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'active')" class="w-8 h-8 bg-green-100 text-green-600 rounded hover:bg-green-200 inline-flex items-center justify-center transition-colors" title="Activate">
+                                <button class="w-8 h-8 bg-green-100 text-green-600 rounded hover:bg-green-200 inline-flex items-center justify-center transition-colors"
+                                        onclick="toggleTutorStatus('{{ $tutor->tutorID }}', 'active')" title="Activate">
                                     <i class="fas fa-user-check text-xs"></i>
+                                </button>
+                                <button class="w-8 h-8 bg-orange-100 text-orange-600 rounded hover:bg-orange-200 inline-flex items-center justify-center transition-colors"
+                                        onclick="openArchiveModal('tutor', '{{ $tutor->tutorID }}', '{{ $tutor->full_name }}')" title="Archive">
+                                    <i class="fas fa-archive text-xs"></i>
                                 </button>
                             @endif
                         </div>
@@ -185,9 +205,10 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="13" class="px-6 py-8 text-center text-gray-500">
+                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
                         <i class="fas fa-users text-4xl mb-4 opacity-50"></i>
                         <p class="text-lg font-medium">No Tutlo tutors found</p>
+                        <p class="text-sm">Try adjusting your search criteria</p>
                     </td>
                 </tr>
             @endforelse
@@ -217,11 +238,27 @@
 @endif
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.querySelector('input[name="search"]');
-        const form = document.getElementById('tutloFilterForm');
+    window.tutloTotalResults = @json(isset($tutors) && method_exists($tutors, 'total') ? $tutors->total() : 0);
+    
+    function handletutloFilterChange(changed) {
+        // Time slot and day are mutually exclusive, but status works with both
+        if (changed === 'time_slot') {
+            document.getElementById('filtertutloDay').value = '';
+        } else if (changed === 'day') {
+            document.getElementById('filtertutloTimeSlot').value = '';
+        }
         
-        if (searchInput && form) {
+        // Submit the form to apply filters
+        document.getElementById('tutloFilterForm').submit();
+    }
+
+    // Handle search input - submit form on Enter
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('tutloSearch');
+        const form = document.getElementById('tutloFilterForm');
+
+        if (searchInput) {
+            // Handle Enter key
             searchInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -230,5 +267,144 @@
             });
         }
     });
+
+    // Toggle tutor status (active/inactive)
+    function toggleTutorStatus(tutorId, newStatus) {
+        if (!tutorId) {
+            showNotification('Unable to identify the tutor. Please refresh the page and try again.', 'error');
+            return;
+        }
+
+        // Get tutor name and button reference for better user experience
+        const button = event.target.closest('button');
+        const tutorRow = button.closest('tr');
+        const tutorName = tutorRow ? tutorRow.querySelector('td:nth-child(2)').textContent.trim() : 'this tutor';
+
+        // Show custom confirmation modal
+        const action = newStatus === 'active' ? 'activate' : 'deactivate';
+        const actionText = newStatus === 'active' ? 'activate and make available for class assignments' : 'deactivate and remove from class assignments';
+        
+        showConfirmationModal(
+            `Are you sure you want to ${action} ${tutorName}?`,
+            `This will ${actionText}.`,
+            () => {
+                proceedWithStatusUpdate(tutorId, newStatus, tutorName, button);
+            }
+        );
+    }
+
+    // Function to proceed with status update after confirmation
+    function proceedWithStatusUpdate(tutorId, newStatus, tutorName, button) {
+        const originalHTML = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i>';
+
+        fetch(`/tutors/${tutorId}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({ status: newStatus })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const successMessage = newStatus === 'active' 
+                    ? `${tutorName} has been activated and is now available for class assignments.`
+                    : `${tutorName} has been deactivated and will no longer receive class assignments.`;
+                
+                showNotification(successMessage, 'success');
+                setTimeout(() => window.location.reload(), 2000);
+            } else {
+                showNotification(`Failed to update ${tutorName}'s status. ${data.message || 'Please try again.'}`, 'error');
+                button.disabled = false;
+                button.innerHTML = originalHTML;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification(`An unexpected error occurred while updating ${tutorName}'s status.`, 'error');
+            button.disabled = false;
+            button.innerHTML = originalHTML;
+        });
+    }
+
+    // Custom confirmation modal function
+    function showConfirmationModal(title, message, onConfirm) {
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center';
+        
+        const modal = document.createElement('div');
+        modal.className = 'bg-white rounded-lg shadow-xl max-w-md w-full mx-4';
+        modal.innerHTML = `
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-lg font-medium text-gray-900">${title}</h3>
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <p class="text-sm text-gray-500">${message}</p>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="cancel-btn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+                    <button type="button" id="confirm-btn" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700">Confirm</button>
+                </div>
+            </div>
+        `;
+        
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        
+        document.getElementById('cancel-btn').addEventListener('click', () => document.body.removeChild(overlay));
+        document.getElementById('confirm-btn').addEventListener('click', () => {
+            document.body.removeChild(overlay);
+            onConfirm();
+        });
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) document.body.removeChild(overlay);
+        });
+    }
+
+    // Toast notification function
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.className = `fixed bottom-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg text-white font-medium transition-all duration-300 transform translate-x-full opacity-0 ${
+            type === 'success' ? 'bg-green-500' : 'bg-red-500'
+        }`;
+        
+        notification.innerHTML = `
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                        ${type === 'success' 
+                            ? '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>'
+                            : '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>'
+                        }
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium">${message}</p>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        setTimeout(() => notification.classList.remove('translate-x-full', 'opacity-0'), 100);
+        
+        const duration = type === 'success' ? 3000 : 4000;
+        setTimeout(() => {
+            notification.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => {
+                if (document.body.contains(notification)) document.body.removeChild(notification);
+            }, 300);
+        }, duration);
+    }
 </script>
 

@@ -1,34 +1,32 @@
 
 <!-- Search Filters -->
 <div class="px-4 md:px-6 pt-4 md:pt-6 pb-3 border-b border-gray-200">
-    <div class="flex items-center justify-between mb-4">
-        <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
-    </div>
-    
-    <div class="flex justify-between items-center space-x-4">
-        <!-- Left side -->
-        <div class="flex items-center space-x-4 flex-1 max-w-lg">
-            <div class="relative flex-1">
-                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                <input type="text" 
-                       id="searchInput"
-                       placeholder="Search full name, email, phone..."
-                       class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md text-sm 
-                              focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
-                              focus:ring-0 focus:shadow-xl">
-                <button type="button" id="clearSearch" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
+    <div class="flex items-center gap-x-4">
+        <!-- Left label -->
+        <h3 class="text-sm font-medium text-gray-700 whitespace-nowrap">
+            Search Filters
+        </h3>
 
-            <select id="filterReason" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
-                <option value="">All Reasons</option>
-                <option value="Resigned">Resigned</option>
-                <option value="Terminated">Terminated</option>
-                <option value="Inactive">Inactive</option>
-                <option value="Retired">Retired</option>
-            </select>
+        <!-- Search Input -->
+        <div class="relative" style="max-width: 250px; width: 100%;">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+            <input type="text" 
+                   id="searchInput"
+                   placeholder="Search archived employees..."
+                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm 
+                          focus:outline-none focus:border-[#2A5382] focus:ring-1 focus:ring-[#2A5382]/50">
         </div>
+
+        <!-- Reason Filter -->
+        <select id="filterReason"
+                class="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white
+                       focus:border-[#2A5382] focus:ring-1 focus:ring-[#2A5382]/50">
+            <option value="">All Reasons</option>
+            <option value="Resigned">Resigned</option>
+            <option value="Terminated">Terminated</option>
+            <option value="Inactive">Inactive</option>
+            <option value="Retired">Retired</option>
+        </select>
     </div>
 </div>
 
@@ -89,7 +87,6 @@
     const nextBtn = document.getElementById("nextBtn");
     const searchInput = document.getElementById("searchInput");
     const filterReason = document.getElementById("filterReason");
-    const clearSearch = document.getElementById("clearSearch");
 
     function renderTable() {
         tableBody.innerHTML = "";
@@ -157,15 +154,10 @@
         );
         currentPage = 1;
         renderTable();
-        clearSearch.classList.toggle("hidden", query === "");
     }
 
     searchInput.addEventListener("input", updateFilter);
     filterReason.addEventListener("change", updateFilter);
-    clearSearch.addEventListener("click", () => {
-        searchInput.value = "";
-        updateFilter();
-    });
 
     prevBtn.addEventListener("click", () => {
         if (currentPage > 1) {

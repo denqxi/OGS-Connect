@@ -68,6 +68,7 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
         Route::get('/', [EmployeeManagementController::class, 'index'])->name('index');
         Route::get('/tutor/{tutor}', [EmployeeManagementController::class, 'viewTutor'])->name('tutor.view');
         Route::get('/supervisor/{supervisor}', [EmployeeManagementController::class, 'viewSupervisor'])->name('supervisor.view');
+        Route::post('/archive', [EmployeeManagementController::class, 'archive'])->name('archive');
     });
     
     // ------------------------------------------------------------------------
