@@ -422,9 +422,16 @@ class EmployeeManagementController extends Controller
     {
         $type = $request->input('type');
         $id = $request->input('id');
-        $reason = $request->input('reason');
-        $notes = $request->input('notes', '');
-        $archivedBy = $request->input('archived_by', auth()->user()?->name ?? 'Unknown User');
+        $reason = $request->input('reason'); // This will be: resigned, terminated, or retired
+        $notes = $request->input('notes', '') ?: ''; // Ensure notes is never null
+        $archivedBy = $request->input('archived_by', auth('supervisor')->user()?->supID ?? auth()->user()?->name ?? 'Unknown User');
+
+        \Log::info('Archive request received', [
+            'type' => $type,
+            'id' => $id,
+            'reason' => $reason,
+            'archived_by' => $archivedBy
+        ]);
 
         try {
             if ($type === 'supervisor') {
@@ -436,15 +443,17 @@ class EmployeeManagementController extends Controller
                     'archive_by' => $archivedBy,
                     'notes' => $notes,
                     'archive_date_time' => now(),
-                    'category' => 'supervisor',
+                    'category' => $reason, // Use the archive reason as category
                     'status' => 'archived',
                     'payload' => [
+                        'employee_type' => 'supervisor', // Add employee type to payload
                         'supervisor_id' => $supervisor->supervisor_id,
                         'sup_id' => $supervisor->supID,
                         'full_name' => $supervisor->full_name,
                         'email' => $supervisor->email,
                         'contact_number' => $supervisor->contact_number,
-                        'reason' => $reason,
+                        'archive_reason' => $reason, // Store the reason: resigned, terminated, retired
+                        'reason_notes' => $notes,
                         'archived_at' => now(),
                         'original_status' => $supervisor->status,
                     ]
@@ -458,24 +467,54 @@ class EmployeeManagementController extends Controller
                     'message' => "Supervisor '{$supervisor->full_name}' has been archived successfully."
                 ]);
             } elseif ($type === 'tutor') {
-                $tutor = Tutor::where('tutorID', $id)->firstOrFail();
+                $tutor = Tutor::where('tutorID', $id)
+                    ->with(['applicant.qualification', 'applicant.requirement', 'applicant.workPreference', 'workPreferences', 'account'])
+                    ->firstOrFail();
                 
-                // Create archive record
+                // Create archive record with complete applicant data
                 $archiveRecord = \App\Models\Archive::create([
                     'applicant_id' => $tutor->applicant_id,
                     'archive_by' => $archivedBy,
                     'notes' => $notes,
                     'archive_date_time' => now(),
-                    'category' => 'tutor',
+                    'category' => $reason, // Use the archive reason as category
                     'status' => 'archived',
                     'payload' => [
+                        'employee_type' => 'tutor',
                         'tutor_id' => $tutor->id,
                         'tutor_id_formatted' => $tutor->tutorID,
-                        'full_name' => $tutor->applicant ? $tutor->applicant->full_name : 'Unknown',
+                        'username' => $tutor->username ?? '',
+                        'first_name' => $tutor->applicant?->first_name ?? '',
+                        'middle_name' => $tutor->applicant?->middle_name ?? '',
+                        'last_name' => $tutor->applicant?->last_name ?? '',
+                        'full_name' => $tutor->applicant ? trim(($tutor->applicant->first_name ?? '') . ' ' . ($tutor->applicant->middle_name ?? '') . ' ' . ($tutor->applicant->last_name ?? '')) : 'Unknown',
                         'email' => $tutor->email,
-                        'reason' => $reason,
+                        'personal_email' => $tutor->applicant?->email ?? '',
+                        'contact_number' => $tutor->applicant?->contact_number ?? '',
+                        'date_of_birth' => $tutor->applicant?->birth_date ? \Carbon\Carbon::parse($tutor->applicant->birth_date)->format('M j, Y') : '',
+                        'sex' => $tutor->applicant?->sex ?? '',
+                        'address' => $tutor->applicant?->address ?? '',
+                        'ms_teams' => $tutor->applicant?->ms_teams ?? '',
+                        'educational_attainment' => $tutor->applicant?->qualification?->education ?? '',
+                        'esl_teaching_experience' => $tutor->applicant?->qualification?->esl_experience ?? '',
+                        'work_setup' => $tutor->applicant?->requirement?->work_type ?? '',
+                        'resume_link' => $tutor->applicant?->requirement?->resume_link ?? '',
+                        'intro_video' => $tutor->applicant?->requirement?->intro_video ?? '',
+                        'speedtest' => $tutor->applicant?->requirement?->speedtest ?? '',
+                        'main_devices' => $tutor->applicant?->requirement?->main_devices ?? '',
+                        'backup_devices' => $tutor->applicant?->requirement?->backup_devices ?? '',
+                        'account_name' => $tutor->account?->account_name ?? '',
+                        'start_time' => $tutor->workPreferences?->start_time ? \Carbon\Carbon::parse($tutor->workPreferences->start_time)->format('g:i A') : '',
+                        'end_time' => $tutor->workPreferences?->end_time ? \Carbon\Carbon::parse($tutor->workPreferences->end_time)->format('g:i A') : '',
+                        'timezone' => $tutor->workPreferences?->timezone ?? '',
+                        'days_available' => $tutor->workPreferences?->days_available ?? [],
+                        'platform' => $tutor->applicant?->workPreference?->platform ?? [],
+                        'can_teach' => $tutor->applicant?->workPreference?->can_teach ?? [],
+                        'archive_reason' => $reason,
+                        'reason_notes' => $notes,
                         'archived_at' => now(),
                         'original_status' => $tutor->status,
+                        'created_at' => $tutor->created_at ? $tutor->created_at->format('M j, Y') : '',
                     ]
                 ]);
 
@@ -493,10 +532,64 @@ class EmployeeManagementController extends Controller
                 ], 400);
             }
         } catch (\Exception $e) {
-            \Log::error('Archive error: ' . $e->getMessage());
+            \Log::error('Archive error: ' . $e->getMessage(), [
+                'exception' => $e,
+                'type' => $type,
+                'id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred while archiving the employee: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getArchivedEmployees(Request $request)
+    {
+        try {
+            $archives = \App\Models\Archive::with('applicant')
+                ->where('status', 'archived')
+                ->whereIn('category', ['resigned', 'terminated', 'retired'])
+                ->orderBy('archive_date_time', 'desc')
+                ->get();
+
+            $archivedEmployees = $archives->map(function ($archive) {
+                $payload = $archive->payload;
+                $employeeType = $payload['employee_type'] ?? 'Unknown';
+                
+                // Get name from applicant relationship if available, otherwise from payload
+                $name = 'Unknown';
+                if ($archive->applicant) {
+                    $name = $archive->applicant->full_name ?? 
+                            ($archive->applicant->first_name . ' ' . $archive->applicant->last_name);
+                } elseif (isset($payload['full_name'])) {
+                    $name = $payload['full_name'];
+                }
+                
+                return [
+                    'archive_id' => $archive->archive_id,
+                    'applicant_id' => $archive->applicant_id,
+                    'date' => $archive->archive_date_time->format('M d, Y'),
+                    'name' => $name,
+                    'reason' => ucfirst($archive->category), // This is now the reason
+                    'status' => 'Archived',
+                    'employee_type' => $employeeType,
+                    'notes' => $archive->notes ?? '',
+                    'payload' => $payload
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $archivedEmployees
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Get archived employees error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch archived employees'
             ], 500);
         }
     }

@@ -4,7 +4,7 @@
 
 @section('content')
     <!-- Header -->
-    @include('layouts.header', ['pageTitle' => 'GLS Scheduling'])
+    @include('layouts.header', ['pageTitle' => 'Scheduling'])
 
 <style>
     /* Fix dropdown z-index conflicts */

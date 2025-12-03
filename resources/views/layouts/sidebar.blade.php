@@ -4,7 +4,7 @@
     <!-- Logo Section -->
     <div class="p-4 border-b border-gray-200 flex items-center">
         <div class="flex-shrink-0 flex items-center justify-center">
-            <img src="{{ asset('images/logo.png') }}" alt="GLS Scheduling"
+            <img src="{{ asset('images/logo.png') }}" alt="Scheduling"
                 class="h-12 w-12 object-contain transition-all duration-500 ease-in-out">
         </div>
 
@@ -62,7 +62,7 @@
                     </span>
                 </a>
             </li>
-            <!-- GLS Scheduling -->
+            <!-- Scheduling -->
             <li class="min-h-[56px] flex items-center">
                 <a href="{{ route('schedules.index', ['tab' => 'class']) }}"
                     class="sidebar-nav-item sidebar-hover-effect flex items-center space-x-3 w-full px-4 py-3 rounded-lg transition-all duration-300 
@@ -71,7 +71,7 @@
                     <i class="sidebar-icon fas fa-calendar-alt text-m items-center"></i>
                     <span
                         class="font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out whitespace-nowrap overflow-hidden">
-                        GLS Scheduling
+                        Scheduling
                     </span>
                 </a>
             </li>

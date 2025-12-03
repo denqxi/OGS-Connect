@@ -117,7 +117,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         // Login successful
-        Auth::guard('supervisor')->login($supervisor, $request->boolean('remember'));
+        Auth::guard('supervisor')->login($supervisor);
         $request->session()->regenerate();
         session([
             'supervisor_logged_in' => true,
@@ -160,7 +160,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         // Login successful
-        Auth::guard('tutor')->login($tutor, $request->boolean('remember'));
+        Auth::guard('tutor')->login($tutor);
         $request->session()->regenerate();
         session([
             'supervisor_logged_in' => false,

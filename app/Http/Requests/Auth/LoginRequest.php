@@ -66,7 +66,7 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
         // This method is not used for supervisor/tutor login anymore, but keep fallback for email login
-        if (! Auth::attempt(['email' => $this->input('login_id'), 'password' => $this->input('password')], $this->boolean('remember'))) {
+        if (! Auth::attempt(['email' => $this->input('login_id'), 'password' => $this->input('password')])) {
             RateLimiter::hit($this->throttleKey());
             throw ValidationException::withMessages([
                 'login_id' => trans('auth.failed'),

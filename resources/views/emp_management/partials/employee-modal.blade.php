@@ -203,26 +203,31 @@
                         <p class="text-lg font-semibold text-gray-900" id="archive-employee-name">N/A</p>
                     </div>
 
-                    <!-- Archive Reason -->
+                    <!-- Archive Reason Dropdown -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Reason for Archive <span class="text-red-500">*</span></label>
-                        <textarea id="archive-reason" 
-                                placeholder="Please provide the reason why this employee is being archived..."
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Archive Reason <span class="text-red-500">*</span></label>
+                        <select id="archive-reason-type" 
                                 class="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 
-                                       focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50
-                                       resize-none" rows="4"></textarea>
-                        <p class="text-xs text-gray-500 mt-1">Maximum 500 characters</p>
+                                       focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50">
+                            <option value="">-- Select Reason --</option>
+                            <option value="resigned">Resigned</option>
+                            <option value="terminated">Terminated</option>
+                            <option value="retired">Retired</option>
+                        </select>
                     </div>
 
-                    <!-- Archived By (Auto-filled) -->
+                    <!-- Archived By (Auto-filled Read-only) -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Archived By</label>
-                        <input type="text" id="archive-by" 
+                        <input type="text" id="archive-by-name" 
                                readonly
                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-900 
                                       focus:outline-none cursor-default">
-                        <p class="text-xs text-gray-500 mt-1">Auto-filled with current user</p>
+                        <p class="text-xs text-gray-500 mt-1">Current supervisor</p>
                     </div>
+
+                    <!-- Archived By ID (Hidden) -->
+                    <input type="hidden" id="archive-by">
 
                     <!-- Additional Notes -->
                     <div>
@@ -253,6 +258,98 @@
         </div>
     </div>
 </x-modal>
+
+<!-- Archive Confirmation Modal -->
+<div id="archiveConfirmationModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 70;"
+    class="flex justify-center items-center w-full h-full bg-black bg-opacity-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4">
+        <!-- Header -->
+        <div class="bg-orange-600 rounded-t-xl px-6 py-4">
+            <h3 class="text-white text-xl font-bold text-center" id="archiveConfirmationTitle">Confirm Archive</h3>
+        </div>
+        
+        <!-- Body -->
+        <div class="p-6">
+            <!-- Icon -->
+            <div class="flex justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 text-orange-500" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+            </div>
+            
+            <!-- Message -->
+            <div class="text-center mb-4">
+                <p class="text-gray-700 text-sm leading-relaxed" id="archiveConfirmationMessage">
+                    Please confirm your action.
+                </p>
+            </div>
+            
+            <!-- Warning Message -->
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+                <div class="flex items-start">
+                    <svg class="w-5 h-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    <p class="text-sm text-red-700 font-medium">
+                        Warning: This action cannot be undone. The employee will be moved to the archive.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Buttons -->
+        <div class="flex justify-center gap-4 px-6 pb-6">
+            <button onclick="hideArchiveConfirmation()"
+                class="bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg font-semibold hover:bg-gray-300 transition-colors">
+                Cancel
+            </button>
+            <button onclick="confirmArchiveEmployee()"
+                class="bg-orange-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-orange-700 transition-colors">
+                Confirm Archive
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Validation Error Modal -->
+<div id="validationErrorModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 70;"
+    class="flex justify-center items-center w-full h-full bg-black bg-opacity-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4">
+        <!-- Header -->
+        <div class="bg-red-600 rounded-t-xl px-6 py-4">
+            <h3 class="text-white text-xl font-bold text-center">Validation Error</h3>
+        </div>
+        
+        <!-- Body -->
+        <div class="p-6">
+            <!-- Icon -->
+            <div class="flex justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 text-red-500" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            
+            <!-- Message -->
+            <div class="text-center mb-4">
+                <p class="text-gray-700 text-sm leading-relaxed" id="validationErrorMessage">
+                    Please correct the errors before proceeding.
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer Button -->
+        <div class="flex justify-center px-6 pb-6">
+            <button onclick="hideValidationError()"
+                class="bg-red-600 text-white px-8 py-2.5 rounded-lg font-semibold hover:bg-red-700 transition-colors">
+                OK
+            </button>
+        </div>
+    </div>
+</div>
 
 <script>
 let currentTutorData = null;
@@ -909,12 +1006,15 @@ function openArchiveModal(type, id, name) {
         // Populate employee name
         document.getElementById('archive-employee-name').textContent = name || 'N/A';
         
-        // Auto-fill archived by with current user (get from page if available)
-        const currentUser = document.querySelector('meta[name="current-user"]')?.getAttribute('content') || 'Current User';
-        document.getElementById('archive-by').value = currentUser;
+        // Auto-fill archived by with current supervisor ID and name
+        const currentSupervisorDbId = document.querySelector('meta[name="supervisor-db-id"]')?.getAttribute('content') || null;
+        const currentSupervisorName = document.querySelector('meta[name="supervisor-name"]')?.getAttribute('content') || 'Unknown';
+        
+        document.getElementById('archive-by').value = currentSupervisorDbId;
+        document.getElementById('archive-by-name').value = currentSupervisorName;
         
         // Clear form fields
-        document.getElementById('archive-reason').value = '';
+        document.getElementById('archive-reason-type').value = '';
         document.getElementById('archive-notes').value = '';
     }, 100);
 }
@@ -926,35 +1026,86 @@ function closeArchiveModal() {
 }
 
 function submitArchive() {
-    const reason = document.getElementById('archive-reason').value.trim();
+    const reasonType = document.getElementById('archive-reason-type').value.trim();
     const notes = document.getElementById('archive-notes').value.trim();
     const archivedBy = document.getElementById('archive-by').value;
     
     // Validation
-    if (!reason) {
-        alert('Please provide a reason for archiving');
+    if (!reasonType) {
+        showValidationError('Please select a reason for archiving');
         return;
     }
     
-    if (reason.length > 500) {
-        alert('Reason must not exceed 500 characters');
+    if (!archivedBy) {
+        showValidationError('Error: Supervisor information not found');
         return;
     }
     
     if (!archiveData.id) {
-        alert('Error: Employee ID not found');
+        showValidationError('Error: Employee ID not found');
         return;
     }
     
-    // Show confirmation
-    if (!confirm(`Are you sure you want to archive ${archiveData.name}? This action cannot be easily undone.`)) {
-        return;
+    // Show confirmation modal
+    showArchiveConfirmation(reasonType, notes);
+}
+
+function showValidationError(message) {
+    document.getElementById('validationErrorMessage').textContent = message;
+    document.getElementById('validationErrorModal').style.display = 'flex';
+}
+
+function hideValidationError() {
+    document.getElementById('validationErrorModal').style.display = 'none';
+}
+
+function showArchiveConfirmation(reasonType, notes) {
+    const messageElement = document.getElementById('archiveConfirmationMessage');
+    const titleElement = document.getElementById('archiveConfirmationTitle');
+    
+    // Get reason label
+    let reasonLabel = '';
+    switch(reasonType) {
+        case 'resigned':
+            reasonLabel = 'Resigned';
+            break;
+        case 'terminated':
+            reasonLabel = 'Terminated';
+            break;
+        case 'retired':
+            reasonLabel = 'Retired';
+            break;
+        default:
+            reasonLabel = reasonType;
     }
     
-    // Disable button to prevent double submission
-    const submitBtn = event.target;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Archiving...';
+    titleElement.textContent = `Archive Employee - ${reasonLabel}`;
+    messageElement.innerHTML = `
+        <strong class="text-gray-900">${archiveData.name}</strong> will be archived with the reason: <span class="font-bold text-orange-600">${reasonLabel}</span>
+        ${notes ? `<br><br><strong class="text-gray-800">Notes:</strong> <span class="text-gray-700">${notes}</span>` : ''}
+    `;
+    
+    document.getElementById('archiveConfirmationModal').style.display = 'flex';
+}
+
+function hideArchiveConfirmation() {
+    document.getElementById('archiveConfirmationModal').style.display = 'none';
+}
+
+function confirmArchiveEmployee() {
+    // Hide confirmation modal
+    hideArchiveConfirmation();
+    
+    const reasonType = document.getElementById('archive-reason-type').value.trim();
+    const notes = document.getElementById('archive-notes').value.trim();
+    const archivedBy = document.getElementById('archive-by').value;
+    
+    // Disable archive button in the main modal
+    const submitBtn = document.querySelector('#archive-modal button[onclick="submitArchive()"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Archiving...';
+    }
     
     // Make AJAX request
     fetch(`/employees/archive`, {
@@ -966,36 +1117,56 @@ function submitArchive() {
         body: JSON.stringify({
             type: archiveData.type,
             id: archiveData.id,
-            reason: reason,
+            reason: reasonType,
             notes: notes,
             archived_by: archivedBy
         })
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+    .then(async response => {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Non-JSON response:', text);
+            throw new Error('Server returned an invalid response. Please check the logs.');
         }
-        return response.json();
+        
+        const data = await response.json();
+        console.log('Archive response:', data);
+        
+        if (!response.ok) {
+            throw new Error(data.message || `Server error: ${response.status}`);
+        }
+        return data;
     })
     .then(data => {
         if (data.success) {
-            alert(data.message || 'Employee archived successfully');
             closeArchiveModal();
             // Reload page to reflect changes
             setTimeout(() => {
                 window.location.reload();
             }, 500);
         } else {
-            alert(data.message || 'Failed to archive employee');
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-archive"></i> Archive Employee';
+            showValidationError(data.message || 'Failed to archive employee');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-archive"></i> Archive Employee';
+            }
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while archiving the employee: ' + error.message);
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<i class="fas fa-archive"></i> Archive Employee';
+        console.error('Archive error details:', error);
+        console.error('Archive data sent:', {
+            type: archiveData.type,
+            id: archiveData.id,
+            reason: document.getElementById('archive-reason-type').value.trim(),
+            notes: document.getElementById('archive-notes').value.trim(),
+            archived_by: document.getElementById('archive-by').value
+        });
+        showValidationError('An error occurred while archiving the employee. Check the browser console for details.');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-archive"></i> Archive Employee';
+        }
     });
 }
 </script>

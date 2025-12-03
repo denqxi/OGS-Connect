@@ -184,29 +184,16 @@
                                     $decoded = json_decode($days, true);
                                     $days = is_array($decoded) ? $decoded : [];
                                 }
-                                $hasDays = !empty($days) && is_array($days);
                                 $hasTimes = !empty($applicant->start_time) && !empty($applicant->end_time);
                             @endphp
 
-                            @if($hasDays && $hasTimes)
+                            @if(!empty($days) && $hasTimes)
                                 @php
-                                    // Create day abbreviations
-                                    $dayAbbreviations = [
-                                        'monday' => 'Mon',
-                                        'tuesday' => 'Tue', 
-                                        'wednesday' => 'Wed',
-                                        'thursday' => 'Thu',
-                                        'friday' => 'Fri',
-                                        'saturday' => 'Sat',
-                                        'sunday' => 'Sun'
-                                    ];
-                                    $abbreviatedDays = collect($days)->map(function($d) use ($dayAbbreviations) {
-                                        $normalized = strtolower(str_replace(['_','-'], '', $d));
-                                        return $dayAbbreviations[$normalized] ?? substr(ucfirst($d), 0, 3);
-                                    })->join(', ');
+                                    // Format days using helper
+                                    $formattedDays = \App\Helpers\DateHelper::formatDaysAvailable($days);
                                 @endphp
-                                <div title="{{ collect($days)->map(function($d){ return \Illuminate\Support\Str::title(str_replace(['_','-'], ' ', $d)); })->join(', ') }} | {{ $applicant->start_time }} - {{ $applicant->end_time }}">
-                                    {{ $abbreviatedDays }} | 
+                                <div>
+                                    {{ $formattedDays }} | 
                                     {{ \Carbon\Carbon::parse($applicant->start_time)->format('g:i A') }}
                                     -
                                     {{ \Carbon\Carbon::parse($applicant->end_time)->format('g:i A') }}

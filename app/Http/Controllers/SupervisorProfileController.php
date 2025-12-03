@@ -18,7 +18,8 @@ class SupervisorProfileController extends Controller
         
         
         // Load payment information and security questions relationships
-        $supervisor->load(['paymentInformation', 'securityQuestions']);
+        // TODO: Uncomment when tables are ready
+        // $supervisor->load(['paymentInformation', 'securityQuestions']);
         
         return view('profile_management.supervisor', compact('supervisor'));
     }
