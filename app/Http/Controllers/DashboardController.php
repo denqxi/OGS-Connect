@@ -9,7 +9,7 @@ use App\Models\Supervisor;
 use App\Models\ScheduleHistory;
 use App\Models\Application;
 use App\Models\Demo;
-use App\Models\ArchivedApplication;
+use App\Models\Archive;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -101,10 +101,8 @@ class DashboardController extends Controller
      */
     private function getExistingEmployees()
     {
-        // Count all tutors that have active accounts (same logic as employee management)
-        return Tutor::whereHas('accounts', function($query) {
-            $query->where('status', 'active');
-        })->count();
+        // Count all tutors that have active status
+        return Tutor::where('status', 'active')->count();
     }
 
     /**
@@ -216,10 +214,10 @@ class DashboardController extends Controller
      */
     private function getHiringStats($month)
     {
-        // Get hiring stats from ArchivedApplication model - same data as archive.blade.php
-        $notRecommended = ArchivedApplication::where('status', 'not_recommended')->count();
-        $noAnswer = ArchivedApplication::where('status', 'no_answer_3_attempts')->count();
-        $declined = ArchivedApplication::where('status', 'declined')->count();
+        // Get hiring stats from Archive model - same data as archive.blade.php
+        $notRecommended = Archive::where('status', 'not_recommended')->count();
+        $noAnswer = Archive::where('status', 'no_answer_3_attempts')->count();
+        $declined = Archive::where('status', 'declined')->count();
         
         return [
             'not_recommended' => $notRecommended,
@@ -233,9 +231,10 @@ class DashboardController extends Controller
      */
     private function getActiveTutorsCount()
     {
-        return Tutor::whereHas('accounts', function($query) {
-            $query->where('account_name', 'GLS')->where('status', 'active');
-        })->count();
+        return Tutor::where('status', 'active')
+            ->whereHas('account', function($query) {
+                $query->where('account_name', 'GLS');
+            })->count();
     }
 
     /**

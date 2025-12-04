@@ -25,10 +25,10 @@
                 <input type="text" 
                     name="interviewer"
                     id="interviewer"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent bg-gray-100"
                     placeholder="Enter interviewer name"
                     value="{{ Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : '' }}"
-                    required disabled>
+                    required readonly>
             </div>
             
             <!-- Special Status Field -->
@@ -208,13 +208,14 @@ function updateConfirmationModal(status, interviewer, notes, interviewTime) {
             
         case 'no_answer':
             const currentAttempts = getCurrentAttemptCount();
-            const remainingAttempts = 3 - currentAttempts;
+            const nextAttemptNumber = currentAttempts + 1; // this attempt about to be recorded
+            const remainingAttempts = Math.max(0, 3 - nextAttemptNumber);
             
             titleElement.textContent = 'No Answer';
             messageElement.innerHTML = `
-                This call attempt has been recorded. 
+                This call attempt (#${nextAttemptNumber}) will be recorded.
                 <br><br>
-                <span class="font-bold text-blue-800">${remainingAttempts} attempts remaining</span> before automatic archiving.
+                <span class="font-bold text-blue-800">${remainingAttempts} attempt${remainingAttempts === 1 ? '' : 's'} remaining</span> before automatic archiving.
                 <br><br>
             `;
             iconElement.innerHTML = `

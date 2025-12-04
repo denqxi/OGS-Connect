@@ -110,7 +110,7 @@
 
         <!-- GLS Scheduling Reports -->
         <div class="bg-white rounded-lg shadow-md p-6 flex flex-col">
-            <h2 class="text-lg font-semibold text-[#0E335D] mb-4">GLS Scheduling Reports</h2>
+            <h2 class="text-lg font-semibold text-[#0E335D] mb-4">OGS Scheduling Reports</h2>
 
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div class="text-center">

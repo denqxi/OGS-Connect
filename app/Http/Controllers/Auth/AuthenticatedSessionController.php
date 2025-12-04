@@ -117,7 +117,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         // Login successful
-        Auth::guard('supervisor')->login($supervisor, $request->boolean('remember'));
+        Auth::guard('supervisor')->login($supervisor);
         $request->session()->regenerate();
         session([
             'supervisor_logged_in' => true,
@@ -140,6 +140,11 @@ class AuthenticatedSessionController extends Controller
             $tutor = Tutor::where('tutorID', $loginId)->first();
         }
         
+        // Try by username if not found
+        if (!$tutor) {
+            $tutor = Tutor::where('username', $loginId)->first();
+        }
+        
         // Try by email if not found
         if (!$tutor) {
             $tutor = Tutor::where('email', $loginId)->first();
@@ -149,16 +154,25 @@ class AuthenticatedSessionController extends Controller
             return null;
         }
 
-        // Check password
-        if (!$tutor->tpassword || !Hash::check($password, $tutor->tpassword)) {
+        // Check password (updated to use 'password' field)
+        if (!$tutor->password || !Hash::check($password, $tutor->password)) {
             return null;
         }
 
         // Login successful
-        Auth::guard('tutor')->login($tutor, $request->boolean('remember'));
+        Auth::guard('tutor')->login($tutor);
         $request->session()->regenerate();
-        session(['supervisor_logged_in' => false]);
+        session([
+            'supervisor_logged_in' => false,
+            'tutor_id' => $tutor->tutorID,
+            'tutor_username' => $tutor->username
+        ]);
         $request->session()->forget('url.intended');
+
+        Log::info('Tutor logged in successfully', [
+            'tutorID' => $tutor->tutorID,
+            'username' => $tutor->username
+        ]);
 
         return redirect()->intended('/tutor_portal');
     }

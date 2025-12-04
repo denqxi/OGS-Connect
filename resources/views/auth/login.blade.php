@@ -130,7 +130,7 @@
                       d="M3 8l7.89 7.89a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
               </svg>
             </div>
-            <input type="text" name="login_id" id="login_id" placeholder="ID (OGS-S####/OGS-T####) or Email" required
+            <input type="text" name="login_id" id="login_id" placeholder="OGS ID or Email" required
                     class="w-full pl-10 pr-4 py-2.5 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all duration-200 text-sm @error('login_id') border-red-500 @enderror"
                     value="{{ old('login_id') }}"
                     pattern="^(OGS-[ST]\d{4}|[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})$"
@@ -150,26 +150,17 @@
             </div>
             <input type="password" name="password" id="password" placeholder="Password" required
                     class="w-full pl-10 pr-10 py-2.5 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all duration-200 text-sm @error('password') border-red-500 @enderror">
-            <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
-              <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" onclick="togglePasswordField(this)">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                </svg>
-              </button>
-            </div>
+            <button type="button" class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-auto text-gray-400 hover:text-gray-600 transition-colors" onclick="togglePasswordField(this)">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+              </svg>
+            </button>
           </div>
           
-            <div class="flex items-center justify-between">
-              <div class="flex items-center">
-                <input type="checkbox" name="remember" id="remember" 
-                       class="w-3.5 h-3.5 text-mint bg-gray-100 border-gray-300 rounded focus:ring-mint focus:ring-2">
-                <label for="remember" class="ml-2 text-xs text-gray-700">
-                  Remember me
-                </label>
-              </div>
+            <div class="flex items-center justify-end">
               <button type="button" onclick="switchToResetMode()" class="text-ogs-navy font-semibold text-xs hover:underline">
                 <i class="fas fa-key mr-1"></i>
                 Forgot Password?
@@ -452,7 +443,8 @@
     }
 
     function togglePasswordField(btn) {
-      const input = btn.parentElement.parentElement.querySelector('input[type="password"], input[type="text"]');
+      const container = btn.closest('.relative');
+      const input = container.querySelector('input[type="password"], input[type="text"]');
       if (input.type === 'password') {
         input.type = 'text';
         btn.querySelector('svg').classList.add('text-mint');

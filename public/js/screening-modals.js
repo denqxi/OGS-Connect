@@ -28,6 +28,35 @@ const availableAccounts = ['gls', 'talk915', 'babilala', 'tutlo'];
 // ============================================================================
 
 /**
+ * Format date to readable format (e.g., "November 7, 2025, 2:30 PM")
+ */
+function formatDateToWords(dateString) {
+    if (!dateString) return '';
+    
+    // If it's already formatted (contains month name), return as is
+    if (dateString.match(/^[A-Z][a-z]+ \d{1,2}, \d{4}/)) {
+        return dateString;
+    }
+    
+    // Replace " - " with space for proper parsing
+    const cleanedDate = dateString.replace(' - ', ' ');
+    
+    const date = new Date(cleanedDate);
+    if (isNaN(date.getTime())) return dateString;
+    
+    const options = {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    };
+    
+    return date.toLocaleString('en-US', options);
+}
+
+/**
  * Get CSRF token from page
  */
 function getCsrfToken() {
@@ -141,7 +170,10 @@ function openEditModal(demoId, data) {
     
     // Populate form fields
     document.getElementById('editForm').action = `/demo/${demoId}`;
-    document.getElementById('modal_interviewer').value = data.interviewer || '';
+    // Only set interviewer if data has it, otherwise keep the server-rendered value
+    if (data.interviewer) {
+        document.getElementById('modal_interviewer').value = data.interviewer;
+    }
     document.getElementById('modal_email').value = data.email || '';
     
     // Set assigned account
@@ -183,13 +215,13 @@ function openEditModal(demoId, data) {
     document.getElementById('modal_hiring_status').value = data.hiring_status || '';
     document.getElementById('modal_notes').value = data.notes || '';
     
-    // Handle schedule
+    // Handle schedule - display as formatted text
     const schedule = data.schedule || data.demo_schedule || data.interview_time || '';
+    const scheduleInput = document.getElementById('modal_schedule');
     if (schedule) {
-        const date = new Date(schedule);
-        if (!isNaN(date.getTime())) {
-            document.getElementById('modal_schedule').value = date.toISOString().slice(0, 16);
-        }
+        scheduleInput.value = formatDateToWords(schedule);
+    } else {
+        scheduleInput.value = '';
     }
     
     showModal('editModal');
@@ -336,11 +368,6 @@ function updatePassConfirmationModal(interviewer, assignedAccount, nextStatus, s
         This applicant has <span class="font-bold text-green-600">passed</span> and will be moved to the next stage.
         <br><br>
         <strong>Next Action:</strong> ${nextActionText}
-        <br><strong>Assigned Account:</strong> ${assignedAccount}
-        ${schedule ? `<br><strong>Schedule:</strong> ${new Date(schedule).toLocaleString()}` : ''}
-        <br><br>
-        <strong>Interviewer:</strong> ${interviewer}
-        ${notes ? `<br><strong>Notes:</strong> ${notes}` : ''}
     `;
 }
 
@@ -442,7 +469,7 @@ function showFailOptionsModal() {
     // Reset styling
     const failModalHeader = document.getElementById('failModalHeader');
     const failSubmitButton = document.getElementById('failSubmitButton');
-    if (failModalHeader) failModalHeader.className = 'flex justify-between items-center px-6 py-3 bg-[#F65353] rounded-t-lg';
+    if (failModalHeader) failModalHeader.className = 'flex justify-between items-center px-6 py-3 bg-[#0E335D] rounded-t-lg';
     if (failSubmitButton) failSubmitButton.className = 'bg-[#F65353] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition';
     
     // Pre-filter accounts for transfer
@@ -470,13 +497,19 @@ function toggleFailFields() {
     newInterviewTimeSection.style.display = 'none';
     transferAccountSection.style.display = 'none';
     
-    // Change colors based on fail reason
+    // Change colors and button text based on fail reason
     if (failReason === 'transfer_account') {
-        if (failModalHeader) failModalHeader.className = 'flex justify-between items-center px-6 py-3 bg-blue-500 rounded-t-lg';
-        if (failSubmitButton) failSubmitButton.className = 'bg-blue-500 text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition';
+        if (failModalHeader) failModalHeader.className = 'flex justify-between items-center px-6 py-3 bg-[#2A5382] rounded-t-lg flex-shrink-0';
+        if (failSubmitButton) {
+            failSubmitButton.className = 'bg-[#0E335D] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition';
+            failSubmitButton.textContent = 'Transfer';
+        }
     } else {
-        if (failModalHeader) failModalHeader.className = 'flex justify-between items-center px-6 py-3 bg-[#F65353] rounded-t-lg';
-        if (failSubmitButton) failSubmitButton.className = 'bg-[#F65353] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition';
+        if (failModalHeader) failModalHeader.className = 'flex justify-between items-center px-6 py-3 bg-[#0E335D] rounded-t-lg flex-shrink-0';
+        if (failSubmitButton) {
+            failSubmitButton.className = 'bg-[#F65353] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition';
+            failSubmitButton.textContent = 'Fail';
+        }
     }
     
     // Show relevant section
@@ -561,33 +594,24 @@ function updateFailConfirmationModal(failReason, interviewer, notes) {
             const newInterviewTime = document.getElementById('new_interview_time').value;
             titleElement.textContent = 'Confirm Missed Interview';
             messageElement.innerHTML = `
-                This applicant has <span class="font-bold text-orange-600">missed</span> their interview.
-                <br><br>
-                <strong>Action:</strong> Reschedule interview
-                ${newInterviewTime ? `<br><strong>New Time:</strong> ${new Date(newInterviewTime).toLocaleString()}` : ''}
-                <br><br>
-                <strong>Interviewer:</strong> ${interviewer}
-                ${notes ? `<br><strong>Notes:</strong> ${notes}` : ''}
+                Are you sure you want to mark this applicant as <span class="font-bold text-red-600">missed interview</span>?
+                <br>
             `;
             break;
             
         case 'declined':
             titleElement.textContent = 'Confirm Declined';
             messageElement.innerHTML = `
-                This applicant has been <span class="font-bold text-red-600">declined</span> and will be moved to the Archive.
-                <br><br>
-                <strong>Interviewer:</strong> ${interviewer}
-                ${notes ? `<br><strong>Notes:</strong> ${notes}` : ''}
+                Are you sure you want to mark this applicant as <span class="font-bold text-red-600">declined</span>?
+                <br>
             `;
             break;
             
         case 'not_recommended':
             titleElement.textContent = 'Confirm Not Recommended';
             messageElement.innerHTML = `
-                This applicant has been marked as <span class="font-bold text-red-600">not recommended</span> and will be moved to the Archive.
-                <br><br>
-                <strong>Interviewer:</strong> ${interviewer}
-                ${notes ? `<br><strong>Notes:</strong> ${notes}` : ''}
+                Are you sure you want to mark this applicant as <span class="font-bold text-red-600">not recommended</span>?
+                <br>
             `;
             break;
             
@@ -597,14 +621,8 @@ function updateFailConfirmationModal(failReason, interviewer, notes) {
             const schedule = document.getElementById('transfer_schedule').value;
             titleElement.textContent = 'Confirm Account Transfer';
             messageElement.innerHTML = `
-                This applicant will be <span class="font-bold text-blue-600">transferred</span> to a different account.
-                <br><br>
-                <strong>New Account:</strong> ${assignedAccount}
-                <br><strong>New Status:</strong> ${newStatus}
-                ${schedule ? `<br><strong>Schedule:</strong> ${new Date(schedule).toLocaleString()}` : ''}
-                <br><br>
-                <strong>Interviewer:</strong> ${interviewer}
-                ${notes ? `<br><strong>Notes:</strong> ${notes}` : ''}
+                Are you sure you want to <span class="font-bold text-red-600">transfer</span> this applicant to a different account?
+                <br>
             `;
             break;
             
@@ -612,7 +630,6 @@ function updateFailConfirmationModal(failReason, interviewer, notes) {
             titleElement.textContent = 'Confirm Fail Action';
             messageElement.innerHTML = `
                 This applicant has <span class="font-bold text-red-600">failed</span> the current stage.
-                ${notes ? `<br><br><strong>Notes:</strong> ${notes}` : ''}
             `;
     }
 }
@@ -751,19 +768,50 @@ function hideDemoConfirmationModal() {
 }
 
 function showDemoFailConfirmation() {
-    const failReason = document.getElementById('demo_fail_reason').value;
-    const interviewer = document.getElementById('demo_fail_interviewer').value;
+    // Preserve the demo ID
+    const preservedId = currentDemoId;
+    const preservedApplicantId = currentDemoApplicantId;
     
-    if (!failReason) {
-        alert('Please select a failure reason');
-        return;
+    // Hide the main demo confirmation modal
+    hideModal('demoConfirmationModal');
+    
+    // Restore IDs
+    currentDemoId = preservedId;
+    currentDemoApplicantId = preservedApplicantId;
+    
+    // Store current account
+    const currentAccount = window.currentDemoApplicantData?.account || '';
+    const currentAccountField = document.getElementById('demo_current_account');
+    if (currentAccountField) {
+        currentAccountField.value = currentAccount;
     }
     
-    if (!interviewer) {
-        alert('Please enter interviewer name');
-        return;
+    // Filter out current account from dropdown
+    const accountDropdown = document.getElementById('demo_transfer_account');
+    if (accountDropdown && currentAccount) {
+        const options = accountDropdown.querySelectorAll('option');
+        options.forEach(option => {
+            if (option.value && option.value.toLowerCase().replace(/\s+/g, '_') === currentAccount.toLowerCase().replace(/\s+/g, '_')) {
+                option.style.display = 'none';
+            } else {
+                option.style.display = '';
+            }
+        });
     }
     
+    // Reset the fail form
+    const failReasonSelect = document.getElementById('demo_fail_reason');
+    const notesField = document.getElementById('demo_fail_notes');
+    if (failReasonSelect) failReasonSelect.value = '';
+    if (notesField) notesField.value = '';
+    
+    // Hide conditional sections
+    const newTimeSection = document.getElementById('demo_new_time_section');
+    const transferSection = document.getElementById('demo_transfer_section');
+    if (newTimeSection) newTimeSection.style.display = 'none';
+    if (transferSection) transferSection.style.display = 'none';
+    
+    // Show the fail modal
     showModal('demoFailConfirmationModal');
 }
 
@@ -773,37 +821,71 @@ function hideDemoFailConfirmation() {
 
 function toggleDemoFailFields() {
     const failReason = document.getElementById('demo_fail_reason').value;
-    const newDemoTimeSection = document.getElementById('demo_new_demo_time_section');
+    const newTimeSection = document.getElementById('demo_new_time_section');
+    const transferSection = document.getElementById('demo_transfer_section');
     
-    if (failReason === 'missed' && newDemoTimeSection) {
-        newDemoTimeSection.style.display = 'block';
-    } else if (newDemoTimeSection) {
-        newDemoTimeSection.style.display = 'none';
+    // Show/hide new demo time section
+    if (newTimeSection) {
+        newTimeSection.style.display = (failReason === 'missed') ? 'block' : 'none';
+    }
+    
+    // Show/hide transfer account section
+    if (transferSection) {
+        transferSection.style.display = (failReason === 'transfer_account') ? 'block' : 'none';
     }
 }
 
 async function submitDemoFailAction() {
     const failReason = document.getElementById('demo_fail_reason').value;
-    const interviewer = document.getElementById('demo_fail_interviewer').value;
     const notes = document.getElementById('demo_fail_notes').value;
     
+    if (!failReason) {
+        alert('Please select a failure reason');
+        return;
+    }
+    
     try {
+        console.log('Submitting demo fail for ID:', currentDemoId, 'Reason:', failReason);
+        
         let requestData = {
+            status: 'failed',
             fail_reason: failReason,
-            interviewer: interviewer,
-            notes: notes
+            notes: notes || 'Demo failed - ' + failReason
         };
         
+        // Handle missed demo - reschedule
         if (failReason === 'missed') {
-            const newDemoTime = document.getElementById('demo_new_demo_time').value;
+            const newDemoTime = document.getElementById('demo_new_time').value;
             if (!newDemoTime) {
                 alert('Please select a new demo time');
                 return;
             }
-            requestData.new_demo_time = newDemoTime;
+            // Keep status as demo but update schedule
+            requestData.status = 'demo';
+            requestData.next_status = 'demo';
+            requestData.next_schedule = newDemoTime;
+            requestData.notes = notes || 'Demo missed - rescheduled';
         }
         
-        const response = await fetch(`/demo/${currentDemoId}/fail`, {
+        // Handle transfer account
+        if (failReason === 'transfer_account') {
+            const transferAccount = document.getElementById('demo_transfer_account').value;
+            const transferStatus = document.getElementById('demo_transfer_status').value;
+            const transferSchedule = document.getElementById('demo_transfer_schedule').value;
+            
+            if (!transferAccount || !transferStatus || !transferSchedule) {
+                alert('Please fill all transfer account fields');
+                return;
+            }
+            
+            requestData.status = transferStatus;
+            requestData.assigned_account = transferAccount;
+            requestData.next_status = transferStatus;
+            requestData.next_schedule = transferSchedule;
+            requestData.notes = notes || `Transferred to ${transferAccount} account - ${transferStatus}`;
+        }
+        
+        const response = await fetch(`/demo/${currentDemoId}/status`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -820,9 +902,9 @@ async function submitDemoFailAction() {
 
         const data = await response.json();
         if (data.success) {
+            console.log('Demo fail action successful, reloading page...');
             hideDemoFailConfirmation();
             hideDemoConfirmationModal();
-            closeEditModal();
             window.location.reload();
         } else {
             throw new Error(data.message || 'Failed to process failure action');
@@ -851,6 +933,8 @@ function hideDemoPassConfirmation() {
 
 async function confirmDemoPass() {
     try {
+        console.log('Confirming demo pass for ID:', currentDemoId);
+        
         const response = await fetch(`/demo/${currentDemoId}/status`, {
             method: 'PATCH',
             headers: {
@@ -859,7 +943,9 @@ async function confirmDemoPass() {
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
-                action: 'demo_pass'
+                phase: 'onboarding',
+                status: 'passed',
+                notes: 'Demo passed - moved to onboarding stage'
             })
         });
 
@@ -870,8 +956,9 @@ async function confirmDemoPass() {
 
         const data = await response.json();
         if (data.success) {
+            console.log('Demo pass successful, reloading page...');
             hideDemoPassConfirmation();
-            closeEditModal();
+            hideDemoConfirmationModal();
             window.location.reload();
         } else {
             throw new Error(data.message || 'Failed to process demo pass');
@@ -1076,15 +1163,76 @@ function proceedToApplicantDetails() {
 }
 
 // ============================================================================
+// DEMO PASS/FAIL MODAL (Review Demo)
+// ============================================================================
+
+function showDemoPassFailModal(demoId, applicantName, email, phone, account, schedule, notes) {
+    console.log('showDemoPassFailModal called with:', { demoId, applicantName, email, phone, account, schedule, notes });
+    
+    currentDemoId = demoId;
+    currentDemoApplicantId = demoId;
+    
+    // Populate the demo confirmation modal with applicant info
+    const nameEl = document.getElementById('demoApplicantName');
+    const emailEl = document.getElementById('demoApplicantEmail');
+    const accountEl = document.getElementById('demoApplicantAccount');
+    const scheduleEl = document.getElementById('demoApplicantSchedule');
+    const notesEl = document.getElementById('demoApplicantNotes');
+    
+    console.log('Elements found:', { nameEl, emailEl, accountEl, scheduleEl, notesEl });
+    
+    if (nameEl) nameEl.textContent = applicantName || 'N/A';
+    if (emailEl) emailEl.textContent = email || 'N/A';
+    if (accountEl) accountEl.textContent = account || 'N/A';
+    if (scheduleEl) scheduleEl.textContent = schedule ? formatDateToWords(schedule) : 'N/A';
+    if (notesEl) notesEl.textContent = notes || 'No notes available';
+    
+    // Store data for later use
+    window.currentDemoApplicantData = {
+        id: demoId,
+        name: applicantName,
+        email: email,
+        account: account,
+        schedule: schedule,
+        notes: notes
+    };
+    
+    console.log('About to show modal: demoConfirmationModal');
+    showModal('demoConfirmationModal');
+}
+
+function hideDemoPassFailModal() {
+    hideModal('demoConfirmationModal');
+    currentDemoId = null;
+    currentDemoApplicantId = null;
+}
+
+// ============================================================================
 // ONBOARDING PASS/FAIL MODAL
 // ============================================================================
 
-function showOnboardingPassFailModal(onboardingId, applicantName, account, schedule, email) {
+function showOnboardingPassFailModal(onboardingId, applicantName, email, phone, account, schedule, notes) {
+    console.log('Opening onboarding pass/fail modal for:', applicantName);
     currentOnboardingId = onboardingId;
     
+    // Populate applicant info
     document.getElementById('onboardingApplicantName').textContent = applicantName;
-    document.getElementById('onboardingAccount').textContent = account || '—';
-    document.getElementById('onboardingSchedule').textContent = schedule || '—';
+    document.getElementById('onboardingApplicantEmail').textContent = email || '—';
+    document.getElementById('onboardingApplicantAccount').textContent = account || '—';
+    document.getElementById('onboardingApplicantSchedule').textContent = schedule ? formatDateToWords(schedule) : '—';
+    
+    const notesEl = document.getElementById('onboardingApplicantNotes');
+    if (notesEl) notesEl.textContent = notes || 'No notes available';
+    
+    // Store data for later use
+    window.currentOnboardingApplicantData = {
+        id: onboardingId,
+        name: applicantName,
+        email: email,
+        account: account,
+        schedule: schedule,
+        notes: notes
+    };
     
     window.currentApplicantInfo = {
         id: onboardingId,
@@ -1122,7 +1270,135 @@ function toggleOnboardingFailFields() {
     const failReason = document.getElementById('onboarding_fail_reason').value;
     const newDemoTimeSection = document.getElementById('onboarding_new_demo_time_section');
     
-    newDemoTimeSection.style.display = failReason === 'missed' ? 'block' : 'none';
+    if (newDemoTimeSection) {
+        newDemoTimeSection.style.display = failReason === 'missed' ? 'block' : 'none';
+    }
+    
+    // Update modal header and button based on action
+    const modalHeader = document.querySelector('#onboardingFailModal .bg-\\[\\#0E335D\\]');
+    const submitButton = document.querySelector('#onboardingFailModal button[onclick="confirmOnboardingFailSubmit()"]');
+    
+    if (failReason === 'missed') {
+        // Change to reschedule styling
+        if (modalHeader) {
+            modalHeader.className = 'flex justify-between items-center px-6 py-3 bg-[#2A5382] rounded-t-lg';
+            const headerText = modalHeader.querySelector('h2');
+            if (headerText) headerText.textContent = 'Reschedule Onboarding';
+        }
+        if (submitButton) {
+            submitButton.className = 'bg-[#2A5382] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition';
+            submitButton.textContent = 'Reschedule';
+        }
+    } else if (failReason === 'declined') {
+        // Change to declined styling
+        if (modalHeader) {
+            modalHeader.className = 'flex justify-between items-center px-6 py-3 bg-[#0E335D] rounded-t-lg';
+            const headerText = modalHeader.querySelector('h2');
+            if (headerText) headerText.textContent = 'Archive Applicant';
+        }
+        if (submitButton) {
+            submitButton.className = 'bg-red-500 text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition';
+            submitButton.textContent = 'Archive';
+        }
+    } else {
+        // Default styling
+        if (modalHeader) {
+            modalHeader.className = 'flex justify-between items-center px-6 py-3 bg-[#0E335D] rounded-t-lg';
+            const headerText = modalHeader.querySelector('h2');
+            if (headerText) headerText.textContent = 'Onboarding Action';
+        }
+        if (submitButton) {
+            submitButton.className = 'bg-red-500 text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition';
+            submitButton.textContent = 'Submit';
+        }
+    }
+}
+
+function showOnboardingFailErrorMessage(message) {
+    const errorDiv = document.getElementById('onboardingFailErrorMessage');
+    const errorText = document.getElementById('onboardingFailErrorText');
+    if (errorDiv && errorText) {
+        errorText.textContent = message;
+        errorDiv.style.display = 'block';
+    }
+}
+
+function hideOnboardingFailErrorMessage() {
+    const errorDiv = document.getElementById('onboardingFailErrorMessage');
+    if (errorDiv) {
+        errorDiv.style.display = 'none';
+    }
+}
+
+function confirmOnboardingFailSubmit() {
+    // Hide any previous errors
+    hideOnboardingFailErrorMessage();
+    
+    // Validate form
+    const failReason = document.getElementById('onboarding_fail_reason').value;
+    const interviewer = document.getElementById('onboarding_fail_interviewer').value;
+    
+    if (!failReason) {
+        showOnboardingFailErrorMessage('Please select an action');
+        return;
+    }
+    
+    if (!interviewer) {
+        showOnboardingFailErrorMessage('Please provide an interviewer name');
+        return;
+    }
+    
+    // If missed, validate new interview time
+    if (failReason === 'missed') {
+        const newInterviewTime = document.getElementById('onboarding_new_interview_time');
+        if (newInterviewTime && !newInterviewTime.value) {
+            showOnboardingFailErrorMessage('Please select a new onboarding date/time');
+            return;
+        }
+    }
+    
+    // Update confirmation message and styling based on action
+    const confirmationText = document.getElementById('onboardingConfirmationText');
+    const confirmationModal = document.getElementById('onboardingFailConfirmationModal');
+    const confirmationHeader = confirmationModal?.querySelector('.bg-\\[\\#0E335D\\]');
+    const confirmButton = confirmationModal?.querySelector('button[onclick="submitOnboardingFail()"]');
+    
+    if (confirmationText) {
+        if (failReason === 'missed') {
+            confirmationText.innerHTML = 'Are you sure you want to <strong>RESCHEDULE</strong> this onboarding to a new date/time?';
+            
+            // Update confirmation modal styling for reschedule
+            if (confirmationHeader) {
+                confirmationHeader.className = 'flex justify-between items-center px-6 py-3 bg-[#2A5382] rounded-t-lg';
+                const headerText = confirmationHeader.querySelector('h2');
+                if (headerText) headerText.textContent = 'Confirm Reschedule';
+            }
+            if (confirmButton) {
+                confirmButton.className = 'bg-[#2A5382] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition';
+                confirmButton.textContent = 'Confirm Reschedule';
+            }
+        } else if (failReason === 'declined') {
+            confirmationText.innerHTML = 'Are you sure you want to mark this onboarding as <strong>DECLINED</strong> and archive the applicant?';
+            
+            // Update confirmation modal styling for declined
+            if (confirmationHeader) {
+                confirmationHeader.className = 'flex justify-between items-center px-6 py-3 bg-[#0E335D] rounded-t-lg';
+                const headerText = confirmationHeader.querySelector('h2');
+                if (headerText) headerText.textContent = 'Confirm Archive';
+            }
+            if (confirmButton) {
+                confirmButton.className = 'bg-red-500 text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition';
+                confirmButton.textContent = 'Confirm Archive';
+            }
+        }
+    }
+    
+    // Show confirmation modal
+    showModal('onboardingFailConfirmationModal');
+}
+
+function hideOnboardingFailConfirmation() {
+    hideModal('onboardingFailConfirmationModal');
 }
 
 function showOnboardingPassModal() {
@@ -1131,12 +1407,28 @@ function showOnboardingPassModal() {
     currentOnboardingId = preservedId;
     
     if (window.currentApplicantInfo) {
-        document.getElementById('pass_email').value = window.currentApplicantInfo.email || '';
-        document.getElementById('pass_account').value = window.currentApplicantInfo.account || '';
+        // Populate display fields
+        const nameEl = document.getElementById('passTutorName');
+        const emailEl = document.getElementById('passTutorEmail');
+        const accountEl = document.getElementById('passAssignedAccount');
+        
+        if (nameEl) nameEl.textContent = window.currentApplicantInfo.name || '—';
+        if (emailEl) emailEl.textContent = window.currentApplicantInfo.email || '—';
+        if (accountEl) accountEl.textContent = window.currentApplicantInfo.account || '—';
+        
+        // Populate form fields if they exist
+        const passEmailInput = document.getElementById('pass_email');
+        const passAccountInput = document.getElementById('pass_account');
+        if (passEmailInput) passEmailInput.value = window.currentApplicantInfo.email || '';
+        if (passAccountInput) passAccountInput.value = window.currentApplicantInfo.account || '';
     }
     
-    generatePassUsername();
+    // Generate system ID and default password
     generateLocalCredentials();
+    
+    // Auto-generate unique username and email from backend
+    generateUniqueUsername();
+    generateUniqueEmail();
     
     showModal('onboardingPassModal');
 }
@@ -1179,30 +1471,165 @@ async function generatePassUsername() {
         
         const data = await response.json();
         
-        if (data.system_id) document.getElementById('pass_system_id').value = data.system_id;
-        if (data.username) document.getElementById('pass_username').value = data.username;
-        if (data.password) document.getElementById('pass_password').value = data.password;
+        const systemIdEl = document.getElementById('pass_system_id');
+        const usernameEl = document.getElementById('pass_username');
+        const passwordEl = document.getElementById('pass_password');
+        
+        if (systemIdEl && data.system_id) systemIdEl.value = data.system_id;
+        if (usernameEl && data.username) usernameEl.value = data.username;
+        if (passwordEl && data.password) passwordEl.value = data.password;
     } catch (error) {
         console.error('Error generating username:', error);
         generateLocalCredentials();
     }
 }
 
-function generateLocalCredentials() {
-    const timestamp = Date.now();
-    const systemId = 'OGS-T' + String(timestamp).slice(-4);
+async function generateLocalCredentials() {
+    const passwordEl = document.getElementById('pass_password');
+    if (passwordEl) passwordEl.value = 'OGSConnect2025';
     
-    let username = '';
-    if (window.currentApplicantInfo && window.currentApplicantInfo.name) {
-        const names = window.currentApplicantInfo.name.trim().split(' ');
-        username = names.map(n => n.charAt(0).toLowerCase()).join('') + String(timestamp).slice(-3);
-    } else {
-        username = 'user' + String(timestamp).slice(-4);
+    // Generate system ID from backend
+    await generateSystemId();
+}
+
+async function generateSystemId() {
+    const systemIdEl = document.getElementById('pass_system_id');
+    if (!systemIdEl) return;
+    
+    systemIdEl.value = 'Generating...';
+    
+    try {
+        const response = await fetch('/demos/generate-tutor-id', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken()
+            },
+            credentials: 'same-origin'
+        });
+        
+        if (!response.ok) throw new Error('Failed to generate system ID');
+        
+        const data = await response.json();
+        
+        if (data.success && data.tutorID) {
+            systemIdEl.value = data.tutorID;
+        } else {
+            throw new Error(data.error || 'Failed to generate system ID');
+        }
+    } catch (error) {
+        console.error('Error generating system ID:', error);
+        // Fallback to timestamp-based ID
+        const timestamp = Date.now();
+        systemIdEl.value = 'OGS-T' + String(timestamp).slice(-4);
+    }
+}
+
+async function generateUniqueUsername() {
+    if (!currentOnboardingId) {
+        console.error('No onboarding ID available');
+        return;
     }
     
-    document.getElementById('pass_system_id').value = systemId;
-    document.getElementById('pass_username').value = username;
-    document.getElementById('pass_password').value = 'OGS2024!';
+    const usernameEl = document.getElementById('pass_username');
+    if (!usernameEl) return;
+    
+    // Show loading state
+    const originalValue = usernameEl.value;
+    usernameEl.value = 'Generating...';
+    usernameEl.disabled = true;
+    
+    try {
+        // Send current username to avoid generating the same one
+        const requestBody = {
+            current_username: originalValue || null
+        };
+        
+        const response = await fetch(`/demos/${currentOnboardingId}/generate-unique-username`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken()
+            },
+            body: JSON.stringify(requestBody),
+            credentials: 'same-origin'
+        });
+        
+        if (!response.ok) throw new Error('Failed to generate username');
+        
+        const data = await response.json();
+        
+        if (data.success && data.username) {
+            usernameEl.value = data.username;
+            console.log('Generated unique username:', data.username);
+        } else {
+            throw new Error(data.error || 'Failed to generate username');
+        }
+    } catch (error) {
+        console.error('Error generating username:', error);
+        usernameEl.value = originalValue;
+        alert('Failed to generate username. Please try again or enter manually.');
+    } finally {
+        usernameEl.disabled = false;
+    }
+}
+
+async function generateUniqueEmail() {
+    if (!currentOnboardingId) {
+        console.error('No onboarding ID available');
+        return;
+    }
+    
+    const emailEl = document.getElementById('pass_company_email');
+    const usernameEl = document.getElementById('pass_username');
+    if (!emailEl) return;
+    
+    // Show loading state
+    const originalValue = emailEl.value;
+    emailEl.value = 'Generating...';
+    emailEl.disabled = true;
+    
+    try {
+        // Send current email and username to avoid generating the same one
+        const requestBody = {
+            current_email: originalValue || null
+        };
+        
+        // Send current username if available
+        if (usernameEl && usernameEl.value && usernameEl.value !== 'Generating...') {
+            requestBody.username = usernameEl.value;
+        }
+        
+        const response = await fetch(`/demos/${currentOnboardingId}/generate-unique-email`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken()
+            },
+            body: JSON.stringify(requestBody),
+            credentials: 'same-origin'
+        });
+        
+        if (!response.ok) throw new Error('Failed to generate email');
+        
+        const data = await response.json();
+        
+        if (data.success && data.email) {
+            emailEl.value = data.email;
+            console.log('Generated unique email:', data.email);
+        } else {
+            throw new Error(data.error || 'Failed to generate email');
+        }
+    } catch (error) {
+        console.error('Error generating email:', error);
+        emailEl.value = originalValue;
+        alert('Failed to generate email. Please try again or enter manually.');
+    } finally {
+        emailEl.disabled = false;
+    }
 }
 
 // ============================================================================
@@ -1228,9 +1655,8 @@ async function submitOnboardingPassForm() {
         const formData = {
             system_id: document.getElementById('pass_system_id').value,
             username: document.getElementById('pass_username').value,
+            company_email: document.getElementById('pass_company_email').value,
             password: document.getElementById('pass_password').value,
-            personal_email: document.getElementById('pass_email').value,
-            assigned_account: document.getElementById('pass_account').value,
             interviewer: document.getElementById('onboarding_pass_interviewer').value,
             notes: document.getElementById('pass_notes').value,
             _token: getCsrfToken()
@@ -1269,8 +1695,11 @@ async function submitOnboardingPassForm() {
 }
 
 async function submitOnboardingFail() {
+    // Hide confirmation modal
+    hideOnboardingFailConfirmation();
+    
     if (!currentOnboardingId) {
-        alert('Error: No onboarding ID available');
+        showOnboardingFailErrorMessage('Error: No onboarding ID available');
         return;
     }
     
@@ -1279,7 +1708,7 @@ async function submitOnboardingFail() {
     const notes = document.getElementById('onboarding_fail_notes').value;
     
     if (!failReason || !interviewer) {
-        alert('Please fill in all required fields');
+        showOnboardingFailErrorMessage('Please fill in all required fields');
         return;
     }
     
@@ -1292,7 +1721,10 @@ async function submitOnboardingFail() {
         };
         
         if (failReason === 'missed') {
-            formData.new_demo_time = document.getElementById('onboarding_new_demo_time').value;
+            const newInterviewTime = document.getElementById('onboarding_new_interview_time');
+            if (newInterviewTime) {
+                formData.new_demo_time = newInterviewTime.value;
+            }
         }
         
         const response = await fetch(`/demo/${currentOnboardingId}/fail`, {
@@ -1305,20 +1737,21 @@ async function submitOnboardingFail() {
             body: JSON.stringify(formData)
         });
         
-        if (!response.ok) throw new Error('Failed to process failure');
-        
         const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to process failure');
+        }
         
         if (data.success) {
             hideOnboardingFailModal();
-            alert('Onboarding failure processed successfully');
             window.location.reload();
         } else {
             throw new Error(data.message || 'Failed to process failure');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error: ' + error.message);
+        showOnboardingFailErrorMessage('Error: ' + error.message);
     }
 }
 

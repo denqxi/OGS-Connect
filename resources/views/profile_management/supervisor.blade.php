@@ -234,7 +234,9 @@
             </div>
 
             @php
-                $paymentInfo = $supervisor->paymentInformation ?? null;
+                // TODO: Uncomment when employee_payment_information table is ready
+                // $paymentInfo = $supervisor->paymentInformation ?? null;
+                $paymentInfo = null;
             @endphp
 
             <!-- Payment Information Display -->
@@ -557,6 +559,13 @@
                     Please choose questions and answers that only you would know.
                 </p>
 
+                @php
+                    // TODO: Uncomment when security_questions table is ready
+                    // $securityQuestions = $supervisor->securityQuestions;
+                    $securityQuestion1 = null;
+                    $securityQuestion2 = null;
+                @endphp
+
                 <form method="POST" action="{{ route('supervisor.security-questions.update') }}" id="securityQuestionsForm" class="space-y-4">
                     @csrf
 
@@ -567,28 +576,28 @@
                                 class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
                                 <option value="">Select a security question</option>
                                 <option value="What is your mother's maiden name?"
-                                    {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == "What is your mother's maiden name?" ? 'selected' : '' }}>
+                                    {{ old('security_question1', $securityQuestion1 ?? '') == "What is your mother's maiden name?" ? 'selected' : '' }}>
                                     What is your mother's maiden name?</option>
                                 <option value="What was the name of your first pet?"
-                                    {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == 'What was the name of your first pet?' ? 'selected' : '' }}>
+                                    {{ old('security_question1', $securityQuestion1 ?? '') == 'What was the name of your first pet?' ? 'selected' : '' }}>
                                     What was the name of your first pet?</option>
                                 <option value="What city were you born in?"
-                                    {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == 'What city were you born in?' ? 'selected' : '' }}>
+                                    {{ old('security_question1', $securityQuestion1 ?? '') == 'What city were you born in?' ? 'selected' : '' }}>
                                     What city were you born in?</option>
                                 <option value="What was your favorite subject in school?"
-                                    {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == 'What was your favorite subject in school?' ? 'selected' : '' }}>
+                                    {{ old('security_question1', $securityQuestion1 ?? '') == 'What was your favorite subject in school?' ? 'selected' : '' }}>
                                     What was your favorite subject in school?</option>
                                 <option value="What is the name of your childhood best friend?"
-                                    {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == 'What is the name of your childhood best friend?' ? 'selected' : '' }}>
+                                    {{ old('security_question1', $securityQuestion1 ?? '') == 'What is the name of your childhood best friend?' ? 'selected' : '' }}>
                                     What is the name of your childhood best friend?</option>
                                 <option value="What was your first car?"
-                                    {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == 'What was your first car?' ? 'selected' : '' }}>
+                                    {{ old('security_question1', $securityQuestion1 ?? '') == 'What was your first car?' ? 'selected' : '' }}>
                                     What was your first car?</option>
                                 <option value="What is your favorite color?"
-                                    {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == 'What is your favorite color?' ? 'selected' : '' }}>
+                                    {{ old('security_question1', $securityQuestion1 ?? '') == 'What is your favorite color?' ? 'selected' : '' }}>
                                     What is your favorite color?</option>
                                 <option value="What was the name of your elementary school?"
-                                    {{ old('security_question1', $supervisor->securityQuestions->first()->question ?? '') == 'What was the name of your elementary school?' ? 'selected' : '' }}>
+                                    {{ old('security_question1', $securityQuestion1 ?? '') == 'What was the name of your elementary school?' ? 'selected' : '' }}>
                                     What was the name of your elementary school?</option>
                             </select>
                             @error('security_question1')
@@ -612,28 +621,28 @@
                                 class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent">
                                 <option value="">Select a security question</option>
                                 <option value="What is your mother's maiden name?"
-                                    {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == "What is your mother's maiden name?" ? 'selected' : '' }}>
+                                    {{ old('security_question2', $securityQuestion2 ?? '') == "What is your mother's maiden name?" ? 'selected' : '' }}>
                                     What is your mother's maiden name?</option>
                                 <option value="What was the name of your first pet?"
-                                    {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == 'What was the name of your first pet?' ? 'selected' : '' }}>
+                                    {{ old('security_question2', $securityQuestion2 ?? '') == 'What was the name of your first pet?' ? 'selected' : '' }}>
                                     What was the name of your first pet?</option>
                                 <option value="What city were you born in?"
-                                    {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == 'What city were you born in?' ? 'selected' : '' }}>
+                                    {{ old('security_question2', $securityQuestion2 ?? '') == 'What city were you born in?' ? 'selected' : '' }}>
                                     What city were you born in?</option>
                                 <option value="What was your favorite subject in school?"
-                                    {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == 'What was your favorite subject in school?' ? 'selected' : '' }}>
+                                    {{ old('security_question2', $securityQuestion2 ?? '') == 'What was your favorite subject in school?' ? 'selected' : '' }}>
                                     What was your favorite subject in school?</option>
                                 <option value="What is the name of your childhood best friend?"
-                                    {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == 'What is the name of your childhood best friend?' ? 'selected' : '' }}>
+                                    {{ old('security_question2', $securityQuestion2 ?? '') == 'What is the name of your childhood best friend?' ? 'selected' : '' }}>
                                     What is the name of your childhood best friend?</option>
                                 <option value="What was your first car?"
-                                    {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == 'What was your first car?' ? 'selected' : '' }}>
+                                    {{ old('security_question2', $securityQuestion2 ?? '') == 'What was your first car?' ? 'selected' : '' }}>
                                     What was your first car?</option>
                                 <option value="What is your favorite color?"
-                                    {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == 'What is your favorite color?' ? 'selected' : '' }}>
+                                    {{ old('security_question2', $securityQuestion2 ?? '') == 'What is your favorite color?' ? 'selected' : '' }}>
                                     What is your favorite color?</option>
                                 <option value="What was the name of your elementary school?"
-                                    {{ old('security_question2', $supervisor->securityQuestions->skip(1)->first()->question ?? '') == 'What was the name of your elementary school?' ? 'selected' : '' }}>
+                                    {{ old('security_question2', $securityQuestion2 ?? '') == 'What was the name of your elementary school?' ? 'selected' : '' }}>
                                     What was the name of your elementary school?</option>
                             </select>
                             @error('security_question2')

@@ -33,8 +33,8 @@
                         </div>
                     </div>
                     <div class="text-right">
-                        <div class="text-2xl font-bold">{{ $tutor->accounts->count() }}</div>
-                        <div class="text-blue-100">Active Accounts</div>
+                        <div class="text-2xl font-bold">{{ $tutor->account ? 1 : 0 }}</div>
+                        <div class="text-blue-100">Primary Account</div>
                     </div>
                 </div>
             </div>
@@ -123,47 +123,47 @@
                 <div class="mt-8">
                     <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-briefcase mr-2 text-purple-600"></i>
-                        Account Information
+                        Account & Availability
                     </h2>
-                    @if($tutor->accounts->count() > 0)
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            @foreach($tutor->accounts as $account)
-                                <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                                    <div class="flex items-center justify-between mb-4">
-                                        <h3 class="text-lg font-semibold text-gray-800">{{ $account->account_name }}</h3>
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                                            {{ $account->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                            {{ ucfirst($account->status) }}
-                                        </span>
-                                    </div>
-                                    
-                                    <div class="space-y-2">
-                                        @if($account->account_name === 'GLS')
-                                            <div class="flex justify-between">
-                                                <span class="text-gray-600">GLS ID:</span>
-                                                <span class="font-medium">{{ $account->gls_id ?? 'N/A' }}</span>
-                                            </div>
-                                        @endif
-                                        
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600">Available Time:</span>
-                                            <span class="font-medium">{{ $account->formatted_available_time ?? 'N/A' }}</span>
-                                        </div>
-                                        
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600">Available Days:</span>
-                                            <span class="font-medium">{{ $account->formatted_available_days ?? 'N/A' }}</span>
-                                        </div>
-                                        
-                                        @if($account->account_name === 'Talk915')
-                                            <div class="flex justify-between">
-                                                <span class="text-gray-600">MS Teams ID:</span>
-                                                <span class="font-medium">{{ $account->ms_teams_id ?? 'N/A' }}</span>
-                                            </div>
-                                        @endif
+                    @if($tutor->account)
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Primary Account -->
+                            <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-lg font-semibold text-gray-800">{{ $tutor->account->account_name }}</h3>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                        {{ $tutor->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                        {{ ucfirst($tutor->status) }}
+                                    </span>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Account ID:</span>
+                                        <span class="font-medium">{{ $tutor->account->account_id ?? 'N/A' }}</span>
                                     </div>
                                 </div>
-                            @endforeach
+                            </div>
+
+                            <!-- Availability -->
+                            @if($tutor->workPreferences)
+                            <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                                <h3 class="text-lg font-semibold text-gray-800 mb-4">Availability</h3>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Available Time:</span>
+                                        <span class="font-medium">{{ $tutor->formatted_available_time ?? 'N/A' }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Available Days:</span>
+                                        <span class="font-medium">{{ implode(', ', $tutor->workPreferences->days_available ?? []) }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Timezone:</span>
+                                        <span class="font-medium">{{ $tutor->workPreferences->timezone ?? 'UTC' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            @endif
                         </div>
                     @else
                         <p class="text-gray-500 italic">No account information available</p>

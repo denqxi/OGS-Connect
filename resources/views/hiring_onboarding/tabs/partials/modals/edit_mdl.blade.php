@@ -55,12 +55,12 @@
                 <!-- Interviewer -->
                 <div>
                     <label class="block text-gray-700 text-sm font-medium mb-2">Interviewer:</label>
-                    <input type="text" name="interviewer" id="modal_interviewer" disabled readonly
+                    <input type="text" name="interviewer" id="modal_interviewer" required readonly
                         class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed"
                         placeholder="Enter interviewer name"
-                        value="{{ Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : '' }}">
+                        value="{{ Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : (Auth::check() ? Auth::user()->name : 'N/A') }}">
                 </div>
-
+                
                 <!-- Email (hidden, for data passing) -->
                 <input type="hidden" name="email" id="modal_email">
 
@@ -91,8 +91,9 @@
                 <!-- Schedule (hidden for onboarding applicants) -->
                 <div id="scheduleSection">
                     <label class="block text-gray-700 text-sm font-medium mb-2">Schedule:</label>
-                    <input type="datetime-local" name="schedule" id="modal_schedule" disabled
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed">
+                    <input type="text" name="schedule" id="modal_schedule" disabled readonly
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed"
+                        placeholder="No schedule set">
                 </div>
 
                 <!-- Notes (hidden for onboarding applicants) -->
@@ -107,11 +108,11 @@
                 <div class="flex justify-center pt-2 space-x-4">
                     <button type="button" onclick="showFailOptionsModal()"
                         class="bg-[#F65353] text-white px-8 py-2 rounded-full font-bold hover:opacity-90 transition-opacity">
-                        FAILED
+                        Fail
                     </button>
                     <button type="button" onclick="showPassModal()"
                         class="bg-[#65DB7F] text-white px-8 py-2 rounded-full font-bold hover:opacity-90 transition-opacity">
-                        PASSED
+                        Pass
                     </button>
                 </div>
             </div>
@@ -162,7 +163,7 @@
     class="flex justify-center items-center w-full h-full bg-black bg-opacity-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto relative">
         <!-- Header -->
-        <div class="flex justify-between items-center px-6 py-3 bg-[#65DB7F] rounded-t-xl">
+        <div class="flex justify-between items-center px-6 py-3 bg-[#0E335D] rounded-t-xl">
             <h2 class="text-white text-lg font-bold">Confirm Pass</h2>
             <button type="button" onclick="hidePassModal()" class="text-white text-2xl font-bold hover:opacity-75">&times;</button>
         </div>
@@ -193,7 +194,7 @@
                 <input type="text" name="interviewer" id="pass_interviewer" required readonly
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none bg-gray-50 text-gray-700 cursor-not-allowed"
                     placeholder="Enter interviewer name"
-                    value="{{ Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : (auth()->user()->name ?? 'Unknown') }}">
+                    value="{{ Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : (Auth::check() ? Auth::user()->name : 'N/A') }}">
             </div>
 
 
@@ -269,6 +270,10 @@
 
         <!-- Footer Buttons -->
         <div class="flex justify-center gap-4 pb-6">
+            <button onclick="hidePassConfirmation()"
+                class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">
+                Cancel
+            </button>
             <button onclick="submitPassForm()"
                 class="bg-[#65DB7F] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">
                 Confirm
@@ -506,9 +511,9 @@
 {{-- FAIL OPTIONS MODAL                                                       --}}
 {{-- ======================================================================== --}}
 <div id="failOptionsModal" style="display: none; position: fixed; inset: 0; z-index: 10005;"
-    class="flex justify-center items-center w-full h-full bg-black bg-opacity-50">
-    <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
-        <div id="failModalHeader" class="flex justify-between items-center px-6 py-3 bg-[#F65353] rounded-t-lg">
+    class="flex justify-center items-center w-full h-full bg-black bg-opacity-50 p-4">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] flex flex-col">
+        <div id="failModalHeader" class="flex justify-between items-center px-6 py-3 bg-[#0E335D] rounded-t-lg flex-shrink-0">
             <h2 class="text-white font-bold text-lg">Select Failure Reason</h2>
             <button onclick="hideFailOptionsModal()" class="text-white text-2xl font-bold hover:opacity-75">&times;</button>
         </div>
@@ -529,21 +534,21 @@
             </div>
         </div>
 
-        <div class="px-6 py-6 space-y-4">
+        <div class="px-6 pb-5 space-y-4 overflow-y-auto flex-grow">
             <!-- Interviewer Field - Always visible at the top -->
             <div>
                 <label class="block text-gray-700 text-sm font-medium mb-2">Interviewer: <span class="text-red-500">*</span></label>
                 <input type="text" id="fail_interviewer" name="fail_interviewer" required readonly
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none bg-gray-50 text-gray-700 cursor-not-allowed"
                     placeholder="Enter interviewer name"
-                    value="{{ Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : (auth()->user()->name ?? 'Unknown') }}">
+                    value="{{ Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : (Auth::check() ? Auth::user()->name : 'N/A') }}">
             </div>
 
             <!-- Failure Reason Selection -->
             <div>
                 <label class="block text-gray-700 text-sm font-medium mb-2">Failure Reason:</label>
                 <select id="fail_reason" name="fail_reason" onchange="toggleFailFields()"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F65353]">
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2">
                     <option value="" disabled selected>Select a reason</option>
                     <option value="missed">Missed Interview</option>
                     <option value="declined">Declined</option>
@@ -556,7 +561,7 @@
             <div id="new_interview_time_section" style="display: none;">
                 <label class="block text-gray-700 text-sm font-medium mb-2">New Interview Time:</label>
                 <input type="datetime-local" id="new_interview_time" name="new_interview_time"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F65353]"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
                     min="{{ now()->format('Y-m-d\TH:i') }}">
             </div>
 
@@ -597,7 +602,7 @@
             <div>
                 <label class="block text-gray-700 text-sm font-medium mb-2">Notes:</label>
                 <textarea id="fail_notes" name="fail_notes" rows="3"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F65353] resize-none"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 resize-none"
                     placeholder="Enter notes about the failure reason..."></textarea>
             </div>
 
@@ -609,7 +614,7 @@
                 </button>
                 <button id="failSubmitButton" type="button" onclick="showFailConfirmation()"
                     class="bg-[#F65353] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">
-                    Submit
+                    Fail
                 </button>
             </div>
         </div>
@@ -656,47 +661,55 @@
     class="flex justify-center items-center w-full h-full bg-black bg-opacity-50">
     <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl">
         <div class="flex justify-between items-center px-6 py-3 bg-[#2A5382] rounded-t-lg">
-            <h2 class="text-white font-bold text-lg">Review Demo & Confirm Final Decision</h2>
+            <h2 class="text-white font-bold text-lg">Review Demo Performance</h2>
             <button onclick="hideDemoConfirmationModal()" class="text-white text-2xl font-bold hover:opacity-75">&times;</button>
         </div>
 
         <div class="px-6 py-6">
-            <!-- Applicant Info -->
-            <div class="mb-6 p-4 bg-gray-50 rounded-lg">
-                <h3 class="font-semibold text-lg text-gray-800 mb-2" id="demoApplicantName">Applicant Name</h3>
-                <div class="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                        <span class="font-medium text-gray-600">Email:</span>
-                        <span class="text-gray-800" id="demoApplicantEmail">-</span>
+            <!-- Applicant Information Card -->
+            <div class="bg-gray-50 rounded-lg p-5 mb-6">
+                <h3 class="font-semibold text-lg text-gray-800 mb-4" id="demoApplicantName">Applicant Name</h3>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Left Column -->
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Email Address</label>
+                            <p class="text-sm text-gray-800" id="demoApplicantEmail">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Assigned Account</label>
+                            <p class="text-sm text-gray-800" id="demoApplicantAccount">-</p>
+                        </div>
                     </div>
-                    <div>
-                        <span class="font-medium text-gray-600">Phone:</span>
-                        <span class="text-gray-800" id="demoApplicantPhone">-</span>
-                    </div>
-                    <div>
-                        <span class="font-medium text-gray-600">Account:</span>
-                        <span class="text-gray-800" id="demoApplicantAccount">-</span>
-                    </div>
-                    <div>
-                        <span class="font-medium text-gray-600">Demo Schedule:</span>
-                        <span class="text-gray-800" id="demoApplicantSchedule">-</span>
+                    
+                    <!-- Right Column -->
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Demo Schedule</label>
+                            <p class="text-sm text-gray-800" id="demoApplicantSchedule">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+                            <p class="text-sm text-gray-800" id="demoApplicantNotes">-</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Decision Buttons -->
+            <!-- Decision Section -->
             <div class="text-center">
                 <p class="text-gray-600 text-sm mb-4">
                     Review the applicant's demo performance and make your final hiring decision.
                 </p>
                 <div class="flex justify-center gap-4">
                     <button type="button" onclick="showDemoFailConfirmation()"
-                        class="bg-[#F65353] text-white px-8 py-3 rounded-full font-bold hover:opacity-90 transition-opacity">
-                        FAILED
+                        class="bg-[#F65353] text-white px-10 py-2 rounded-full font-bold hover:opacity-90 transition">
+                        Fail
                     </button>
                     <button type="button" onclick="showDemoPassConfirmation()"
-                        class="bg-[#2A5382] text-white px-8 py-3 rounded-full font-bold hover:opacity-90 transition-opacity">
-                        PASSED TO ONBOARDING
+                        class="bg-[#2A5382] text-white px-10 py-2 rounded-full font-bold hover:opacity-90 transition">
+                        Pass
                     </button>
                 </div>
             </div>
@@ -721,6 +734,7 @@
         </div>
 
         <div class="flex justify-center gap-4 pb-6">
+            <button onclick="hideDemoPassConfirmation()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">Cancel</button>
             <button onclick="confirmDemoPass()" class="bg-[#2A5382] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">Confirm</button>
         </div>
     </div>
@@ -730,32 +744,54 @@
 {{-- DEMO FAIL CONFIRMATION MODAL                                             --}}
 {{-- ======================================================================== --}}
 <div id="demoFailConfirmationModal" style="display: none; position: fixed; inset: 0; z-index: 10006;"
-    class="flex justify-center items-center w-full h-full bg-black bg-opacity-50">
-    <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
-        <div class="flex justify-between items-center px-6 py-3 bg-[#F65353] rounded-t-lg">
-            <h2 class="text-white font-bold text-lg">Demo Failed - Reason</h2>
+    class="flex justify-center items-center w-full h-full bg-black bg-opacity-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+        <div class="flex justify-between items-center px-6 py-3 bg-[#234D7C] rounded-t-xl flex-shrink-0">
+            <h2 class="text-white font-bold text-lg">Demo Failed</h2>
             <button onclick="hideDemoFailConfirmation()" class="text-white text-2xl font-bold hover:opacity-75">&times;</button>
         </div>
 
-        <div class="px-6 py-6 space-y-4">
+        <div class="px-6 pb-5 space-y-4 overflow-y-auto flex-grow">
+            <!-- Hidden field to store current account -->
+            <input type="hidden" id="demo_current_account" name="demo_current_account">
+            
+            <!-- Interviewer Field -->
+            <div>
+                <label class="block text-gray-700 text-sm font-medium mb-2">Interviewer:</label>
+                <input type="text" 
+                    id="demo_interviewer"
+                    name="demo_interviewer"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent bg-gray-100"
+                    placeholder="Enter interviewer name"
+                    value="{{ Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : (Auth::check() ? Auth::user()->name : 'N/A') }}"
+                    required readonly>
+            </div>
+            
             <!-- Failure Reason -->
             <div>
-                <label class="block text-gray-700 text-sm font-medium mb-2">Failure Reason:</label>
-                <select id="demo_fail_reason" name="demo_fail_reason" onchange="toggleDemoFailFields()"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F65353]">
-                    <option value="" disabled selected>Select a reason</option>
-                    <option value="missed">Missed Demo</option>
-                    <option value="declined">Declined</option>
-                    <option value="not_recommended">Not Recommended</option>
-                    <option value="transfer_account">Transfer Account</option>
-                </select>
+                <label class="block text-gray-700 text-sm font-medium mb-2">Status:</label>
+                <div class="relative">
+                    <select id="demo_fail_reason" name="demo_fail_reason" onchange="toggleDemoFailFields()"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent appearance-none bg-white" required>
+                        <option value="" disabled selected>-Select Status-</option>
+                        <option value="missed">Missed Demo</option>
+                        <option value="declined">Declined</option>
+                        <option value="not_recommended">Not Recommended</option>
+                        <option value="transfer_account">Transfer Account</option>
+                    </select>
+                    <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                        <svg class="w-4 h-4 fill-current text-gray-400" viewBox="0 0 20 20">
+                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" fill-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </div>
             </div>
 
             <!-- New Demo Time (for missed) -->
             <div id="demo_new_time_section" style="display: none;">
                 <label class="block text-gray-700 text-sm font-medium mb-2">New Demo Time:</label>
                 <input type="datetime-local" id="demo_new_time" name="demo_new_time"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F65353]"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent"
                     min="{{ now()->format('Y-m-d\TH:i') }}">
             </div>
 
@@ -764,7 +800,7 @@
                 <div>
                     <label class="block text-gray-700 text-sm font-medium mb-2">New Assigned Account:</label>
                     <select id="demo_transfer_account" name="demo_transfer_account"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent">
                         <option value="" disabled selected>Select a different account</option>
                         @foreach ($accounts as $account)
                             <option value="{{ $account }}">{{ ucwords(str_replace('_', ' ', $account)) }}</option>
@@ -773,11 +809,12 @@
                 </div>
 
                 <div>
-                    <label class="block text-gray-700 text-sm font-medium mb-2">New Status:</label>
+                    <label class="block text-gray-700 text-sm font-medium mb-2">New Phase:</label>
                     <select id="demo_transfer_status" name="demo_transfer_status"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="" disabled selected>Select new status</option>
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent">
+                        <option value="" disabled selected>Select new phase</option>
                         <option value="screening">Screening</option>
+                        <option value="demo">Demo</option>
                         <option value="training">Training</option>
                     </select>
                 </div>
@@ -785,7 +822,7 @@
                 <div>
                     <label class="block text-gray-700 text-sm font-medium mb-2">New Schedule:</label>
                     <input type="datetime-local" id="demo_transfer_schedule" name="demo_transfer_schedule"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent"
                         min="{{ now()->format('Y-m-d\TH:i') }}">
                 </div>
             </div>
@@ -793,9 +830,9 @@
             <!-- Notes -->
             <div>
                 <label class="block text-gray-700 text-sm font-medium mb-2">Notes:</label>
-                <textarea id="demo_fail_notes" name="demo_fail_notes" rows="3"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F65353] resize-none"
-                    placeholder="Enter notes about the failure reason..."></textarea>
+                <textarea id="demo_fail_notes" name="demo_fail_notes" rows="4"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent resize-none"
+                    placeholder="Enter reason for the chosen status..."></textarea>
             </div>
 
             <!-- Action Buttons -->
@@ -806,7 +843,7 @@
                 </button>
                 <button type="button" onclick="submitDemoFailAction()"
                     class="bg-[#F65353] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">
-                    Submit
+                    Confirm
                 </button>
             </div>
         </div>
@@ -818,31 +855,60 @@
 {{-- ======================================================================== --}}
 <div id="onboardingPassFailModal" style="display: none; position: fixed; inset: 0; z-index: 10005;"
     class="flex justify-center items-center w-full h-full bg-black bg-opacity-50">
-    <div class="bg-white rounded-lg shadow-lg w-96">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl">
         <div class="flex justify-between items-center px-6 py-3 bg-[#2A5382] rounded-t-lg">
-            <h2 class="text-white font-bold text-lg">Update Hiring Stage</h2>
+            <h2 class="text-white font-bold text-lg">Review Onboarding Performance</h2>
             <button onclick="hideOnboardingPassFailModal()" class="text-white text-2xl font-bold hover:opacity-75">&times;</button>
         </div>
 
-        <div class="p-6 text-center">
-            <div class="flex justify-center mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-[#2A5382]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+        <div class="px-6 py-6">
+            <!-- Applicant Information Card -->
+            <div class="bg-gray-50 rounded-lg p-5 mb-6">
+                <h3 class="font-semibold text-lg text-gray-800 mb-4" id="onboardingApplicantName">Applicant Name</h3>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Left Column -->
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Email Address</label>
+                            <p class="text-sm text-gray-800" id="onboardingApplicantEmail">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Assigned Account</label>
+                            <p class="text-sm text-gray-800" id="onboardingApplicantAccount">-</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column -->
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Onboarding Schedule</label>
+                            <p class="text-sm text-gray-800" id="onboardingApplicantSchedule">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+                            <p class="text-sm text-gray-800" id="onboardingApplicantNotes">-</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <h3 class="font-bold text-lg text-[#2A5382] mb-2" id="onboardingApplicantName">Applicant Name</h3>
-            <div class="text-left bg-gray-50 p-4 rounded-lg mb-4">
-                <p class="text-sm text-gray-600 mb-2"><strong>Account:</strong> <span id="onboardingAccount">—</span></p>
-                <p class="text-sm text-gray-600"><strong>Schedule:</strong> <span id="onboardingSchedule">—</span></p>
-            </div>
-            <p class="text-gray-600 mb-6">
-                Please select the final hiring decision for this applicant.
-            </p>
-        </div>
 
-        <div class="flex justify-center gap-4 pb-6">
-            <button onclick="showOnboardingFailModal()" class="bg-red-500 text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">Failed</button>
-            <button onclick="showOnboardingPassConfirmation()" class="bg-green-500 text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">Passed</button>
+            <!-- Decision Section -->
+            <div class="text-center">
+                <p class="text-gray-600 text-sm mb-4">
+                    Review the applicant's onboarding performance and make your final hiring decision.
+                </p>
+                <div class="flex justify-center gap-4">
+                    <button type="button" onclick="showOnboardingFailModal()"
+                        class="bg-[#F65353] text-white px-10 py-2 rounded-full font-bold hover:opacity-90 transition">
+                        Fail
+                    </button>
+                    <button type="button" onclick="showOnboardingPassConfirmation()"
+                        class="bg-[#65DB7F] text-white px-10 py-2 rounded-full font-bold hover:opacity-90 transition">
+                        Pass
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -886,7 +952,7 @@
 
         <div class="flex justify-center gap-4 pb-6">
             <button onclick="hideOnboardingPassConfirmation()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">Cancel</button>
-            <button onclick="confirmOnboardingPass()" class="bg-[#2A5382] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">Confirm Pass</button>
+            <button onclick="confirmOnboardingPass()" class="bg-[#2A5382] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">Confirm</button>
         </div>
     </div>
 </div>
@@ -897,50 +963,110 @@
 <div id="onboardingFailModal" style="display: none; position: fixed; inset: 0; z-index: 10006;"
     class="flex justify-center items-center w-full h-full bg-black bg-opacity-50">
     <div class="bg-white rounded-lg shadow-lg w-96">
-        <div class="flex justify-between items-center px-6 py-3 bg-red-500 rounded-t-lg">
-            <h2 class="text-white font-bold text-lg">Failed - Onboarding</h2>
+        <div class="flex justify-between items-center px-6 py-3 bg-[#0E335D] rounded-t-lg">
+            <h2 class="text-white font-bold text-lg">Onboarding Action</h2>
             <button onclick="hideOnboardingFailModal()" class="text-white text-2xl font-bold hover:opacity-75">&times;</button>
         </div>
 
         <form id="onboardingFailForm">
             <div class="p-6">
+                <!-- Error Message -->
+                <div id="onboardingFailErrorMessage" style="display: none;" class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-red-700" id="onboardingFailErrorText">
+                                An error occurred.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-medium mb-2">Interviewer: <span class="text-red-500">*</span></label>
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Interviewer:</label>
                             <input type="text" id="onboarding_fail_interviewer" name="onboarding_fail_interviewer" required readonly
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none bg-gray-50 text-gray-700 cursor-not-allowed"
                                 placeholder="Enter interviewer name"
-                                value="{{ Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : (auth()->user()->name ?? 'Unknown') }}">
+                                value="{{ Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : (Auth::check() ? Auth::user()->name : 'N/A') }}">
                         </div>
 
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-medium mb-2">Failure Reason: <span class="text-red-500">*</span></label>
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Action: <span class="text-red-500">*</span></label>
                             <select id="onboarding_fail_reason" name="onboarding_fail_reason" required onchange="toggleOnboardingFailFields()"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500">
-                                <option value="" disabled selected>Select failure reason</option>
-                                <option value="missed">Missed Onboarding</option>
-                                <option value="declined">Declined</option>
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent resize-none">
+                                <option value="" disabled selected>Select action</option>
+                                <option value="missed">Missed Onboarding - Reschedule</option>
+                                <option value="declined">Applicant Declined - Archive</option>
                             </select>
                         </div>
 
                 <div id="onboarding_new_demo_time_section" style="display: none;" class="mb-4">
-                    <label class="block text-gray-700 text-sm font-medium mb-2">New Demo Time: <span class="text-red-500">*</span></label>
+                    <label class="block text-gray-700 text-sm font-medium mb-2">New Onboarding Date/Time: <span class="text-red-500">*</span></label>
                     <input type="datetime-local" id="onboarding_new_interview_time" name="onboarding_new_interview_time" required
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
                         min="{{ now()->format('Y-m-d\TH:i') }}">
                 </div>
 
                 <div class="mb-4">
                     <label class="block text-gray-700 text-sm font-medium mb-2">Notes:</label>
                     <textarea id="onboarding_fail_notes" name="onboarding_fail_notes" rows="3"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent resize-none"
                         placeholder="Enter additional notes..."></textarea>
                 </div>
             </div>
         </form>
 
         <div class="flex justify-center gap-4 pb-6">
-            <button onclick="hideOnboardingFailModal()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">Cancel</button>
-            <button onclick="submitOnboardingFail()" class="bg-red-500 text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">Submit</button>
+            <button type="button" onclick="hideOnboardingFailModal()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">Cancel</button>
+            <button type="button" onclick="confirmOnboardingFailSubmit()" class="bg-red-500 text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">Submit</button>
+        </div>
+    </div>
+</div>
+
+{{-- ======================================================================== --}}
+{{-- ONBOARDING FAIL CONFIRMATION MODAL                                       --}}
+{{-- ======================================================================== --}}
+<div id="onboardingFailConfirmationModal" style="display: none; position: fixed; inset: 0; z-index: 10007;"
+    class="flex justify-center items-center w-full h-full bg-black bg-opacity-50">
+    <div class="bg-white rounded-lg shadow-lg w-96">
+        <div class="flex justify-between items-center px-6 py-3 bg-[#0E335D] rounded-t-lg">
+            <h2 class="text-white font-bold text-lg">Confirm Failure</h2>
+            <button onclick="hideOnboardingFailConfirmation()" class="text-white text-2xl font-bold hover:opacity-75">&times;</button>
+        </div>
+
+        <div class="p-6 text-center">
+            <div class="flex justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <h3 class="font-bold text-lg text-gray-800 mb-2">Confirm Action</h3>
+            <p class="text-gray-600 mb-4" id="onboardingConfirmationText">
+                Are you sure you want to proceed with this action?
+            </p>
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-yellow-700">
+                            <strong>Warning:</strong> This decision is <strong>FINAL</strong> and cannot be reversed.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-center gap-4 pb-6">
+            <button type="button" onclick="hideOnboardingFailConfirmation()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">Cancel</button>
+            <button type="button" onclick="submitOnboardingFail()" class="bg-red-500 text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">Confirm Failure</button>
         </div>
     </div>
 </div>
@@ -952,7 +1078,7 @@
     class="flex justify-center items-center w-full h-full bg-black bg-opacity-50 p-2 sm:p-4">
     <div class="bg-white rounded-lg shadow-lg w-full max-w-xs sm:max-w-md md:max-w-lg lg:max-w-2xl mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
         <div class="flex justify-between items-center px-6 py-3 bg-[#2A5382] rounded-t-lg">
-            <h2 class="text-white font-bold text-lg">Update Hiring Stage - Passed</h2>
+            <h2 class="text-white font-bold text-lg">Hiring Stage - Passed</h2>
             <button onclick="hideOnboardingPassModal()" class="text-white text-2xl font-bold hover:opacity-75">&times;</button>
         </div>
 
@@ -987,7 +1113,7 @@
                     <input type="text" id="onboarding_pass_interviewer" name="pass_interviewer" required readonly
                         class="w-full px-2 sm:px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none bg-gray-50 text-gray-700 cursor-not-allowed"
                         placeholder="Enter interviewer name"
-                        value="{{ Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : (auth()->user()->name ?? 'Unknown') }}">
+                        value="{{ Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : (Auth::check() ? Auth::user()->name : 'N/A') }}">
                 </div>
 
                 <!-- Tutor Registration Details -->
@@ -1002,12 +1128,32 @@
                         <p class="text-xs text-gray-500 mt-1">Auto-generated system ID (tutors table primary key)</p>
                     </div>
 
-                    <!-- Username (Auto-generated - Disabled) -->
+                    <!-- Username (Editable with Generator) -->
                     <div class="mb-3 sm:mb-4">
-                        <label class="block text-gray-700 text-sm font-medium mb-1 sm:mb-2">Username:</label>
-                        <input type="text" id="pass_username" name="pass_username" required readonly
-                            class="w-full px-2 sm:px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed">
-                        <p class="text-xs text-gray-500 mt-1">Auto-generated username for login</p>
+                        <label class="block text-gray-700 text-sm font-medium mb-1 sm:mb-2">Username: <span class="text-red-500">*</span></label>
+                        <div class="flex gap-2">
+                            <input type="text" id="pass_username" name="pass_username" required
+                                class="flex-1 px-2 sm:px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2A5382]">
+                            <button type="button" onclick="generateUniqueUsername()" 
+                                class="px-3 sm:px-4 py-2 bg-[#2A5382] text-white rounded-md hover:opacity-90 text-sm sm:text-base whitespace-nowrap">
+                                <i class="fas fa-sync-alt mr-1"></i> Generate
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Customize or auto-generate username based on applicant's name</p>
+                    </div>
+
+                    <!-- Company Email (Editable with Generator) -->
+                    <div class="mb-3 sm:mb-4">
+                        <label class="block text-gray-700 text-sm font-medium mb-1 sm:mb-2">Company Email: <span class="text-red-500">*</span></label>
+                        <div class="flex gap-2">
+                            <input type="email" id="pass_company_email" name="pass_company_email" required
+                                class="flex-1 px-2 sm:px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2A5382]">
+                            <button type="button" onclick="generateUniqueEmail()" 
+                                class="px-3 sm:px-4 py-2 bg-[#2A5382] text-white rounded-md hover:opacity-90 text-sm sm:text-base whitespace-nowrap">
+                                <i class="fas fa-sync-alt mr-1"></i> Generate
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Customize or auto-generate company email (format: username@ogsconnect.com)</p>
                     </div>
 
                     <!-- Password (Default - Disabled) -->

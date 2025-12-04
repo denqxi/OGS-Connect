@@ -262,12 +262,10 @@ class AvailabilityManager {
     getDefaultAccountData(accountName) {
         return {
             account_name: accountName,
-            status: 'active',
             available_days: [],
             available_times: {},
-            preferred_time_range: 'flexible',
             timezone: 'UTC',
-            availability_notes: null
+            notes: null
         };
     }
 
@@ -629,9 +627,8 @@ class AvailabilityManager {
                         account_name: account.account_name,
                         available_days: account.available_days,
                         available_times: account.available_times,
-                        preferred_time_range: account.preferred_time_range,
                         timezone: account.timezone,
-                        availability_notes: account.availability_notes
+                        notes: account.notes
                     }))
                 })
             });

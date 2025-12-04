@@ -1,5 +1,5 @@
 <!-- Search Filters -->
-<div class="pt-0 p-2 border-b border-gray-200">
+<div class="px-4 md:px-6 py-4 border-b border-gray-200">
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
     </div>
@@ -19,9 +19,7 @@
                 <option value="">Select Status</option>
                 <option value="declined" {{ request('status') == 'declined' ? 'selected' : '' }}>Declined</option>
                 <option value="not_recommended" {{ request('status') == 'not_recommended' ? 'selected' : '' }}>Not Recommended</option>
-                <option value="no_answer_3_attempts" {{ request('status') == 'no_answer_3_attempts' ? 'selected' : '' }}>No Answer 3 Attempts</option>
-                <option value="re_schedule" {{ request('status') == 're_schedule' ? 'selected' : '' }}>Re-schedule</option>
-                <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
+                <option value="no_answer" {{ request('status') == 'no_answer' ? 'selected' : '' }}>No Answer</option>
             </select>
         </div>
     </form>
@@ -32,13 +30,48 @@
     <table class="w-full">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Archived At</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interview Time</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'archive', 'sort' => request('sort') === 'archived_at' && request('direction') === 'desc' ? '' : 'archived_at', 'direction' => request('sort') === 'archived_at' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                    <div class="flex items-center gap-1">
+                        Archived At
+                        @if(request('sort') === 'archived_at')
+                            <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                        @else
+                            <i class="fas fa-sort text-xs opacity-30"></i>
+                        @endif
+                    </div>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'archive', 'sort' => request('sort') === 'first_name' && request('direction') === 'desc' ? '' : 'first_name', 'direction' => request('sort') === 'first_name' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                    <div class="flex items-center gap-1">
+                        Name
+                        @if(request('sort') === 'first_name')
+                            <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                        @else
+                            <i class="fas fa-sort text-xs opacity-30"></i>
+                        @endif
+                    </div>
+                </th>
+                {{-- <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th> --}}
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'archive', 'sort' => request('sort') === 'status' && request('direction') === 'desc' ? '' : 'status', 'direction' => request('sort') === 'status' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                    <div class="flex items-center gap-1">
+                        Status
+                        @if(request('sort') === 'status')
+                            <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                        @else
+                            <i class="fas fa-sort text-xs opacity-30"></i>
+                        @endif
+                    </div>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'archive', 'sort' => request('sort') === 'interview_time' && request('direction') === 'desc' ? '' : 'interview_time', 'direction' => request('sort') === 'interview_time' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                    <div class="flex items-center gap-1">
+                        Interview Time
+                        @if(request('sort') === 'interview_time')
+                            <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                        @else
+                            <i class="fas fa-sort text-xs opacity-30"></i>
+                        @endif
+                    </div>
+                </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
             </tr>
         </thead>
@@ -51,20 +84,18 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {{ $applicant->first_name }} {{ $applicant->last_name }}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $applicant->contact_number }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $applicant->email }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ Str::limit($applicant->notes ?? 'No notes', 50) }}
-                    </td>
+                    {{-- <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $applicant->contact_number }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $applicant->email }}</td> --}}
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center gap-2">
                             @php
                                 $statusColors = [
-                                    'declined' => 'bg-red-600',
-                                    'not_recommended' => 'bg-red-700',
-                                    'no_answer_3_attempts' => 'bg-gray-500',
-                                    're_schedule' => 'bg-purple-400',
-                                    'rejected' => 'bg-red-500',
+                                    'declined' => 'bg-[#E02F2F]',
+                                    'not_recommended' => 'bg-[#AA1B1B]',
+                                    'no_answer' => 'bg-[#FF7515]',
+                                    'no_answer_3_attempts' => 'bg-[#FF7515]',
+                                    're_schedule' => 'bg-[#A78BFA]',
+                                    'rejected' => 'bg-[#F65353]',
                                 ];
                                 $circleColor = $statusColors[$applicant->status] ?? 'bg-gray-500';
                             @endphp
@@ -82,16 +113,16 @@
                         @endif
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
-                        <a href="{{ route('hiring_onboarding.archived.show', $applicant->id) }}"
-                           class="w-8 h-8 flex items-center justify-center bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
-                           title="View Details">
+                                <a href="{{ route('hiring_onboarding.archived.show', $applicant->id) }}"
+                                    class="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
+                                    title="View Details">
                             <i class="fas fa-eye text-xs"></i>
                         </a>
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                    <td colspan="7" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                         No Archived Applicants Found!
                     </td>
                 </tr>
@@ -101,46 +132,61 @@
 </div>
 
 <!-- Pagination -->
-@if(isset($archivedApplicants))
+@if(isset($archivedApplicants) && $archivedApplicants->total() >= 6)
     <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
         <div class="text-sm text-gray-500">
             Showing {{ $archivedApplicants->firstItem() ?? 0 }} to {{ $archivedApplicants->lastItem() ?? 0 }} of {{ $archivedApplicants->total() }} results
         </div>
         @if($archivedApplicants->hasPages())
         <div class="flex items-center space-x-2">
+            @php
+                $params = [
+                    'tab' => 'archive',
+                    'sort' => request('sort'),
+                    'direction' => request('direction'),
+                    'search' => request('search'),
+                    'status' => request('status')
+                ];
+            @endphp
             {{-- Previous Page Link --}}
             @if ($archivedApplicants->onFirstPage())
                 <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
                     <i class="fas fa-chevron-left"></i>
                 </button>
             @else
-                <a href="{{ $archivedApplicants->previousPageUrl() }}&tab=archive" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
+                <a href="{{ $archivedApplicants->appends($params)->previousPageUrl() }}" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
                     <i class="fas fa-chevron-left"></i>
                 </a>
             @endif
 
             {{-- Pagination Elements --}}
-            @foreach ($archivedApplicants->getUrlRange(1, $archivedApplicants->lastPage()) as $page => $url)
+            @foreach ($archivedApplicants->appends($params)->getUrlRange(1, $archivedApplicants->lastPage()) as $page => $url)
                 @if ($page == $archivedApplicants->currentPage())
                     <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">{{ $page }}</button>
                 @else
-                    <a href="{{ $url }}&tab=archive" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">{{ $page }}</a>
+                    <a href="{{ $url }}" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">{{ $page }}</a>
                 @endif
             @endforeach
 
             {{-- Next Page Link --}}
             @if ($archivedApplicants->hasMorePages())
-                <a href="{{ $archivedApplicants->nextPageUrl() }}&tab=archive" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
+                <a href="{{ $archivedApplicants->appends($params)->nextPageUrl() }}" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
                     <i class="fas fa-chevron-right"></i>
                 </a>
             @else
                 <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
                     <i class="fas fa-chevron-right"></i>
                 </button>
-            @endif
-        </div>
         @endif
     </div>
+    @endif
+</div>
+@elseif(isset($archivedApplicants) && $archivedApplicants->total() > 0)
+<div class="px-6 py-4 border-t border-gray-200">
+    <div class="text-sm text-gray-500">
+        Showing {{ $archivedApplicants->firstItem() }} to {{ $archivedApplicants->lastItem() }} of {{ $archivedApplicants->total() }} results
+    </div>
+</div>
 @endif
 
 <script>

@@ -4,11 +4,12 @@
 @else
 
     <!-- Search Filters -->
-    <div class="pb-3 border-b border-gray-200">
+    <div class="px-4 md:px-6 py-4 border-b border-gray-200">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-medium text-gray-500">Search Filters</h3>
         </div>
         <form method="GET" action="{{ route('hiring_onboarding.index') }}" id="searchForm" class="flex justify-between items-center space-x-4">
+            <input type="hidden" name="tab" value="new">
             <!-- Left side -->
             <div class="flex items-center space-x-4 flex-1 max-w-lg">
                 <div class="relative flex-1">
@@ -22,11 +23,8 @@
                 <select name="status" id="statusSelect" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
                     <option value="">Select Status</option>
                     <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                    <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
                     <option value="no_answer" {{ request('status') == 'no_answer' ? 'selected' : '' }}>No Answer</option>
                     <option value="re_schedule" {{ request('status') == 're_schedule' ? 'selected' : '' }}>Re-schedule</option>
-                    <option value="declined" {{ request('status') == 'declined' ? 'selected' : '' }}>Declined</option>
-                    <option value="not_recommended" {{ request('status') == 'not_recommended' ? 'selected' : '' }}>Not Recommended</option>
                 </select>
                 <select name="source" id="sourceSelect" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
                     <option value="">Select Source</option>
@@ -119,13 +117,49 @@
             <thead class="bg-gray-50 border-b border-gray-200">
           
                 <tr>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 12%;">Date Applied</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 12%;">Applicant Name</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" style="width: 12%;" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'new', 'sort' => request('sort') === 'created_at' && request('direction') === 'desc' ? '' : 'created_at', 'direction' => request('sort') === 'created_at' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                        <div class="flex items-center gap-1">
+                            Date Applied
+                            @if(request('sort') === 'created_at')
+                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                            @else
+                                <i class="fas fa-sort text-xs opacity-30"></i>
+                            @endif
+                        </div>
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" style="width: 12%;" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'new', 'sort' => request('sort') === 'first_name' && request('direction') === 'desc' ? '' : 'first_name', 'direction' => request('sort') === 'first_name' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                        <div class="flex items-center gap-1">
+                            Applicant Name
+                            @if(request('sort') === 'first_name')
+                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                            @else
+                                <i class="fas fa-sort text-xs opacity-30"></i>
+                            @endif
+                        </div>
+                    </th>
                     {{-- <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 12%;">Phone</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 18%;">Email</th> --}}
                     <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 16%;">Work Availability</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 12%;">Scheduled Interview</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 8%;">Status</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" style="width: 12%;" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'new', 'sort' => request('sort') === 'interview_time' && request('direction') === 'desc' ? '' : 'interview_time', 'direction' => request('sort') === 'interview_time' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                        <div class="flex items-center gap-1">
+                            Scheduled Interview
+                            @if(request('sort') === 'interview_time')
+                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                            @else
+                                <i class="fas fa-sort text-xs opacity-30"></i>
+                            @endif
+                        </div>
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" style="width: 8%;" onclick="window.location.href='{{ route('hiring_onboarding.index', array_merge(request()->all(), ['tab' => 'new', 'sort' => request('sort') === 'status' && request('direction') === 'desc' ? '' : 'status', 'direction' => request('sort') === 'status' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                        <div class="flex items-center gap-1">
+                            Status
+                            @if(request('sort') === 'status')
+                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                            @else
+                                <i class="fas fa-sort text-xs opacity-30"></i>
+                            @endif
+                        </div>
+                    </th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 7%;">Actions</th>
                 </tr>
             </thead>
@@ -150,29 +184,16 @@
                                     $decoded = json_decode($days, true);
                                     $days = is_array($decoded) ? $decoded : [];
                                 }
-                                $hasDays = !empty($days) && is_array($days);
                                 $hasTimes = !empty($applicant->start_time) && !empty($applicant->end_time);
                             @endphp
 
-                            @if($hasDays && $hasTimes)
+                            @if(!empty($days) && $hasTimes)
                                 @php
-                                    // Create day abbreviations
-                                    $dayAbbreviations = [
-                                        'monday' => 'Mon',
-                                        'tuesday' => 'Tue', 
-                                        'wednesday' => 'Wed',
-                                        'thursday' => 'Thu',
-                                        'friday' => 'Fri',
-                                        'saturday' => 'Sat',
-                                        'sunday' => 'Sun'
-                                    ];
-                                    $abbreviatedDays = collect($days)->map(function($d) use ($dayAbbreviations) {
-                                        $normalized = strtolower(str_replace(['_','-'], '', $d));
-                                        return $dayAbbreviations[$normalized] ?? substr(ucfirst($d), 0, 3);
-                                    })->join(', ');
+                                    // Format days using helper
+                                    $formattedDays = \App\Helpers\DateHelper::formatDaysAvailable($days);
                                 @endphp
-                                <div title="{{ collect($days)->map(function($d){ return \Illuminate\Support\Str::title(str_replace(['_','-'], ' ', $d)); })->join(', ') }} | {{ $applicant->start_time }} - {{ $applicant->end_time }}">
-                                    {{ $abbreviatedDays }} | 
+                                <div>
+                                    {{ $formattedDays }} | 
                                     {{ \Carbon\Carbon::parse($applicant->start_time)->format('g:i A') }}
                                     -
                                     {{ \Carbon\Carbon::parse($applicant->end_time)->format('g:i A') }}
@@ -231,16 +252,26 @@
                             <div class="flex items-center space-x-2">
                                 <!-- View Button -->
                                 <a href="{{ route('hiring_onboarding.applicant.show', $applicant->application_id) }}"
-                                    class="w-8 h-8 flex items-center justify-center bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors">
+                                    class="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors" title="View Details">
                                     <i class="fas fa-eye text-xs"></i>
                                 </a>
                                 <!-- Archive Button -->
                                 <button
                                     onclick="openArchiveModal({{ $applicant->application_id }})"
-                                    class="w-8 h-8 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                                    class="w-8 h-8 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
                                     title="Archive Applicant">
                                     <i class="fas fa-archive text-xs"></i>
                                 </button>
+                                @if($applicant->status === 'onboarding')
+                                <!-- Onboarding Review Button -->
+                                <button 
+                                    type="button"
+                                    onclick="showOnboardingConfirmationModal({{ $applicant->application_id }}, '{{ $applicant->first_name }} {{ $applicant->last_name }}')"
+                                    class="w-8 h-8 flex items-center justify-center bg-purple-100 text-purple-600 rounded hover:bg-purple-200 transition-colors"
+                                    title="Review Onboarding">
+                                    <i class="fas fa-clipboard-check text-xs"></i>
+                                </button>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -257,25 +288,36 @@
     </div>
 
     <!-- Pagination -->
+    @if($applicants->total() >= 6)
     <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
         <div class="text-sm text-gray-500">
             Showing {{ $applicants->firstItem() ?? 0 }} to {{ $applicants->lastItem() ?? 0 }} of {{ $applicants->total() }} results
         </div>
         @if($applicants->hasPages())
         <div class="flex items-center space-x-2">
+            @php
+                $params = [
+                    'tab' => 'new',
+                    'sort' => request('sort'),
+                    'direction' => request('direction'),
+                    'search' => request('search'),
+                    'status' => request('status'),
+                    'source' => request('source')
+                ];
+            @endphp
             {{-- Previous Page Link --}}
             @if ($applicants->onFirstPage())
                 <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" disabled>
                     <i class="fas fa-chevron-left"></i>
                 </button>
             @else
-                <a href="{{ $applicants->appends(['tab' => 'new', 'search' => request('search'), 'status' => request('status'), 'source' => request('source')])->previousPageUrl() }}" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
+                <a href="{{ $applicants->appends($params)->previousPageUrl() }}" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
                     <i class="fas fa-chevron-left"></i>
                 </a>
             @endif
 
             {{-- Pagination Elements --}}
-            @foreach ($applicants->appends(['tab' => 'new', 'search' => request('search'), 'status' => request('status'), 'source' => request('source')])->getUrlRange(1, $applicants->lastPage()) as $page => $url)
+            @foreach ($applicants->appends($params)->getUrlRange(1, $applicants->lastPage()) as $page => $url)
                 @if ($page == $applicants->currentPage())
                     <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">{{ $page }}</button>
                 @else
@@ -285,7 +327,7 @@
 
             {{-- Next Page Link --}}
             @if ($applicants->hasMorePages())
-                <a href="{{ $applicants->appends(['tab' => 'new', 'search' => request('search'), 'status' => request('status'), 'source' => request('source')])->nextPageUrl() }}" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
+                <a href="{{ $applicants->appends($params)->nextPageUrl() }}" class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50">
                     <i class="fas fa-chevron-right"></i>
                 </a>
             @else
@@ -296,8 +338,15 @@
         </div>
         @endif
     </div>
-
-@endif
+    @elseif($applicants->total() > 0)
+    <div class="px-6 py-4 border-t border-gray-200">
+        <div class="text-sm text-gray-500">
+            Showing {{ $applicants->firstItem() }} to {{ $applicants->lastItem() }} of {{ $applicants->total() }} results
+        </div>
+    </div>
+    @endif
 
 <!-- Include Archive Modal -->
 @include('hiring_onboarding.tabs.partials.modals.archive_modal')
+
+@endif

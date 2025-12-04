@@ -13,4 +13,7 @@
         </div>
     </div>
 
+    <!-- Include Modals -->
+    @include('hiring_onboarding.tabs.partials.modals.edit_mdl')
+
 @endsection

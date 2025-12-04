@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use App\Models\Tutor;
 use App\Models\TutorAccount;
 
@@ -15,27 +16,13 @@ class AdditionalTutorAccountsSeeder extends Seeder
     {
         $this->command->info('🏢 Adding additional tutor accounts for existing tutors...');
         
-        // Company configurations with time restrictions
-        $companies = [
-            'Babilala' => [
-                'restricted_start_time' => '20:00:00',
-                'restricted_end_time' => '22:00:00',
-                'company_notes' => 'Babilala operates from 8:00 PM to 10:00 PM only',
-                'preferred_time_range' => 'evening'
-            ],
-            'Tutlo' => [
-                'restricted_start_time' => null,
-                'restricted_end_time' => null,
-                'company_notes' => 'Tutlo has open hours - no time restrictions',
-                'preferred_time_range' => 'flexible'
-            ],
-            'Talk915' => [
-                'restricted_start_time' => null,
-                'restricted_end_time' => null,
-                'company_notes' => 'Talk915 has open hours - no time restrictions',
-                'preferred_time_range' => 'flexible'
-            ]
-        ];
+        // Get account IDs from accounts table
+        $accountsData = DB::table('accounts')
+            ->select('account_id', 'account_name')
+            ->get()
+            ->keyBy('account_name');
+
+        $companies = ['Babilala', 'Tutlo', 'Talk915'];
 
         $tutors = Tutor::all();
         $accountCount = 0;
@@ -48,40 +35,25 @@ class AdditionalTutorAccountsSeeder extends Seeder
             $additionalCompanies = $this->getAdditionalCompaniesForTutor($tutor, $existingAccounts);
             
             foreach ($additionalCompanies as $companyName) {
-                $config = $companies[$companyName];
+                // Get account ID
+                $accountId = $accountsData[$companyName]->account_id ?? null;
+                if (!$accountId) {
+                    $this->command->warn("⚠️  Account {$companyName} not found in accounts table. Skipping.");
+                    continue;
+                }
                 
                 // Get personalized availability for this tutor and company
-                $personalizedAvailability = $this->getPersonalizedAvailability($tutor, $companyName, $config);
+                $personalizedAvailability = $this->getPersonalizedAvailability($tutor, $companyName, []);
                 
-                // Prepare base account data
+                // Prepare account data (simplified, removed account_name)
                 $accountData = [
                     'tutor_id' => $tutor->tutorID,
-                    'account_name' => $companyName,
+                    'account_id' => $accountId,
                     'available_days' => json_encode($personalizedAvailability['days']),
                     'available_times' => json_encode($personalizedAvailability['times']),
-                    'preferred_time_range' => $config['preferred_time_range'],
                     'timezone' => 'UTC',
-                    'restricted_start_time' => $config['restricted_start_time'],
-                    'restricted_end_time' => $config['restricted_end_time'],
-                    'company_notes' => $config['company_notes'],
-                    'availability_notes' => $personalizedAvailability['notes'],
-                    'status' => 'active'
+                    'notes' => $personalizedAvailability['notes'],
                 ];
-
-                // Add account-specific fields
-                if ($companyName === 'Babilala') {
-                    $accountData['username'] = strtolower($tutor->first_name) . '.' . strtolower($tutor->last_name);
-                    $accountData['screen_name'] = $tutor->first_name . ' ' . $tutor->last_name;
-                    $accountData['account_number'] = 'BAB-' . rand(100, 999) . '-' . rand(100, 999);
-                } elseif ($companyName === 'Tutlo') {
-                    $accountData['username'] = 'tutlo_' . strtolower($tutor->first_name) . strtolower(substr($tutor->last_name, 0, 3));
-                    $accountData['screen_name'] = $tutor->first_name . ' ' . $tutor->last_name;
-                    $accountData['account_number'] = 'TUT-' . rand(100000, 999999);
-                } elseif ($companyName === 'Talk915') {
-                    $accountData['username'] = strtolower($tutor->first_name) . strtolower(substr($tutor->last_name, 0, 2));
-                    $accountData['screen_name'] = $tutor->first_name . ' ' . $tutor->last_name;
-                    $accountData['account_number'] = 'T915-' . rand(10000, 99999);
-                }
 
                 TutorAccount::create($accountData);
                 $accountCount++;
@@ -128,7 +100,7 @@ class AdditionalTutorAccountsSeeder extends Seeder
     /**
      * Get personalized availability for a tutor based on company rules and tutor preferences
      */
-    private function getPersonalizedAvailability($tutor, string $companyName, array $config): array
+    private function getPersonalizedAvailability($tutor, string $companyName, array $config = []): array
     {
         // Create a more varied seed based on tutor ID and company name
         $seed = crc32($tutor->tutorID . $companyName . $tutor->first_name . 'additional');

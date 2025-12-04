@@ -9,39 +9,13 @@ use App\Services\AccountTimeSlotConfig;
 
 class TutorAccount extends Model
 {
-    // Accessor for glsID (maps to gls_id DB field) - only for camelCase access
-    public function getGlsIDAttribute()
-    {
-        return $this->attributes['gls_id'] ?? '';
-    }
-
-    // Accessor for glsUsername (maps to username DB field)
-    public function getGlsUsernameAttribute()
-    {
-        return $this->username ?? '';
-    }
-
-    // Accessor for glsScreenName (maps to screen_name DB field)
-    public function getGlsScreenNameAttribute()
-    {
-        return $this->screen_name ?? '';
-    }
     protected $fillable = [
         'tutor_id',
-        'account_name',
-        'gls_id',          // GLS numeric ID
-        'account_number',  // Account number for all account types
-        'username',        // Added username field
-        'screen_name',     // Added screen_name field
+        'account_id',
         'available_days',
-        'available_times', 
-        'preferred_time_range',
+        'available_times',
         'timezone',
-        'restricted_start_time',
-        'restricted_end_time',
-        'company_notes',
-        'availability_notes',
-        'status'
+        'notes',
     ];
 
     protected $casts = [
@@ -54,6 +28,43 @@ class TutorAccount extends Model
     public function tutor(): BelongsTo
     {
         return $this->belongsTo(Tutor::class, 'tutor_id', 'tutorID');
+    }
+
+    // Relationship to account (company)
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'account_id', 'account_id');
+    }
+
+    // Get formatted available days
+    public function getFormattedAvailableDaysAttribute()
+    {
+        if (!$this->available_days) {
+            return 'No days set';
+        }
+
+        // Handle case where available_days might be a string instead of array
+        $availableDays = $this->available_days;
+        if (is_string($availableDays)) {
+            $availableDays = json_decode($availableDays, true) ?? [];
+        }
+
+        if (empty($availableDays)) {
+            return 'No days set';
+        }
+
+        // Sort available_days in chronological order
+        $dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        $availableDays = array_values(array_intersect($dayOrder, $availableDays));
+
+        return implode(', ', $availableDays);
+    }
+
+    // Get MS Teams ID (for Talk915 account)
+    public function getMsTeamsIdAttribute()
+    {
+        // Get MS Teams from the tutor's applicant
+        return $this->tutor?->applicant?->ms_teams ?? null;
     }
 
     // Get formatted availability for this account
@@ -163,13 +174,17 @@ class TutorAccount extends Model
     // Scope to filter by account
     public function scopeForAccount($query, $accountName)
     {
-        return $query->where('account_name', $accountName);
+        return $query->whereHas('account', function($q) use ($accountName) {
+            $q->where('account_name', $accountName);
+        });
     }
 
-    // Scope to get active accounts
+    // Scope to get active accounts (based on tutor status)
     public function scopeActive($query)
     {
-        return $query->where('status', 'active');
+        return $query->whereHas('tutor', function($q) {
+            $q->where('status', 'active');
+        });
     }
 
     /**
@@ -177,8 +192,8 @@ class TutorAccount extends Model
      */
     public function validateTimeSlots(): array
     {
-        if (!$this->account_name) {
-            return ['Account name is required for validation'];
+        if (!$this->account) {
+            return ['Account is required for validation'];
         }
 
         // Handle case where available_times might be a string instead of array
@@ -191,7 +206,7 @@ class TutorAccount extends Model
             return []; // No time slots to validate
         }
 
-        return AccountTimeSlotConfig::validateTimeSlots($this->account_name, $availableTimes);
+        return AccountTimeSlotConfig::validateTimeSlots($this->account->account_name, $availableTimes);
     }
 
     /**
@@ -199,8 +214,8 @@ class TutorAccount extends Model
      */
     public function validateAvailableDays(): array
     {
-        if (!$this->account_name) {
-            return ['Account name is required for validation'];
+        if (!$this->account) {
+            return ['Account is required for validation'];
         }
 
         // Handle case where available_days might be a string instead of array
@@ -278,18 +293,18 @@ class TutorAccount extends Model
     }
 
     /**
-     * Check if a time is within the company's restricted hours
+     * Check if a time is within the company's operating hours
      */
     public function isTimeWithinRestrictions(string $time): bool
     {
         // If no restrictions, allow any time
-        if (!$this->restricted_start_time || !$this->restricted_end_time) {
+        if (!$this->account || !$this->account->operating_start_time || !$this->account->operating_end_time) {
             return true;
         }
 
         $timeCarbon = Carbon::createFromFormat('H:i:s', $time);
-        $startTime = Carbon::createFromFormat('H:i:s', $this->restricted_start_time);
-        $endTime = Carbon::createFromFormat('H:i:s', $this->restricted_end_time);
+        $startTime = Carbon::createFromFormat('H:i:s', $this->account->operating_start_time);
+        $endTime = Carbon::createFromFormat('H:i:s', $this->account->operating_end_time);
 
         return $timeCarbon->between($startTime, $endTime);
     }
@@ -299,12 +314,12 @@ class TutorAccount extends Model
      */
     public function getTimeRestrictionsString(): string
     {
-        if (!$this->restricted_start_time || !$this->restricted_end_time) {
+        if (!$this->account || !$this->account->operating_start_time || !$this->account->operating_end_time) {
             return 'Open hours (no restrictions)';
         }
 
-        $start = Carbon::createFromFormat('H:i:s', $this->restricted_start_time)->format('g:i A');
-        $end = Carbon::createFromFormat('H:i:s', $this->restricted_end_time)->format('g:i A');
+        $start = Carbon::createFromFormat('H:i:s', $this->account->operating_start_time)->format('g:i A');
+        $end = Carbon::createFromFormat('H:i:s', $this->account->operating_end_time)->format('g:i A');
         
         return "{$start} - {$end}";
     }

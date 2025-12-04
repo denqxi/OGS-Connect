@@ -21,18 +21,22 @@ class Supervisor extends Authenticatable
         'contact_number',
         'assigned_account',
         'ms_teams',
-        'shift',
+        'start_time',
+        'end_time',
+        'days_available',
+        'timezone',
         'password',
         'status',
+    ];
+
+    protected $casts = [
+        'password' => 'hashed',
+        'days_available' => 'array',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
-    ];
-
-    protected $casts = [
-        'password' => 'hashed',
     ];
 
     // Automatically generate formatted ID when creating new supervisors
@@ -60,6 +64,14 @@ class Supervisor extends Authenticatable
             $nextId = 1;
         }
         return 'OGS-S' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Get the route key name for Laravel model binding.
+     */
+    public function getRouteKeyName()
+    {
+        return 'supID';
     }
 
     /**
@@ -160,9 +172,54 @@ class Supervisor extends Authenticatable
         return $this->ms_teams;
     }
 
-    public function getSshiftAttribute()
+    /**
+     * Get formatted available time
+     */
+    public function getFormattedAvailableTimeAttribute()
     {
-        return $this->shift;
+        if ($this->start_time && $this->end_time) {
+            $start = \Carbon\Carbon::parse($this->start_time)->format('g:i A');
+            $end = \Carbon\Carbon::parse($this->end_time)->format('g:i A');
+            return "{$start} - {$end}";
+        }
+        return 'Not set';
+    }
+
+    /**
+     * Get formatted available days
+     */
+    public function getFormattedAvailableDaysAttribute()
+    {
+        if ($this->days_available && is_array($this->days_available)) {
+            $dayMap = [
+                'monday' => 'Mon', 'mon' => 'Mon',
+                'tuesday' => 'Tue', 'tue' => 'Tue',
+                'wednesday' => 'Wed', 'wed' => 'Wed',
+                'thursday' => 'Thu', 'thur' => 'Thu', 'thu' => 'Thu',
+                'friday' => 'Fri', 'fri' => 'Fri',
+                'saturday' => 'Sat', 'sat' => 'Sat',
+                'sunday' => 'Sun', 'sun' => 'Sun'
+            ];
+            
+            $normalizedDays = array_map('strtolower', $this->days_available);
+            $allDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            $weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+            
+            $isAllDays = count(array_intersect($normalizedDays, $allDays)) === 7;
+            $isAllWeekdays = count(array_intersect($normalizedDays, $weekdays)) === 5 && count($normalizedDays) === 5;
+            
+            if ($isAllDays) {
+                return 'Mon-Sun';
+            } elseif ($isAllWeekdays) {
+                return 'Mon-Fri';
+            } else {
+                $abbrevDays = array_map(function($day) use ($dayMap) {
+                    return $dayMap[strtolower($day)] ?? ucfirst(substr($day, 0, 3));
+                }, $this->days_available);
+                return implode(', ', $abbrevDays);
+            }
+        }
+        return 'Not set';
     }
 
     /**

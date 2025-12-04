@@ -15,6 +15,7 @@ class WorkPreference extends Model
         'start_time',
         'end_time',
         'days_available',
+        'timezone',
         'platform',
         'can_teach',
     ];

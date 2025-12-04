@@ -8,10 +8,14 @@ use App\Models\Tutor;
 use App\Models\TutorAccount;
 use App\Models\TutorDetails;
 use App\Models\Notification;
+use App\Mail\ApplicantPassedMail;
+use App\Mail\ApplicantFailedMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class ApplicationController extends Controller
@@ -25,109 +29,161 @@ class ApplicationController extends Controller
      */
     public function registerTutor(Request $request, $id)
     {
-        \Log::info('=== registerTutor called ===');
-        \Log::info('Request data:', ['data' => $request->all()]);
-        \Log::info('Demo ID:', ['id' => $id]);
+        Log::info('=== registerTutor called ===');
+        Log::info('Request data:', ['data' => $request->all()]);
+        Log::info('Demo ID:', ['id' => $id]);
         
         try {
             // Check if this is from onboarding pass (different field names)
             $isOnboardingPass = $request->has('interviewer'); // Changed from pass_interviewer
             
-            \Log::info('Is onboarding pass:', ['isOnboardingPass' => $isOnboardingPass]);
+            Log::info('Is onboarding pass:', ['isOnboardingPass' => $isOnboardingPass]);
             
             if ($isOnboardingPass) {
                 // Validation for onboarding pass
                 $request->validate([
+                    'system_id' => 'required|string',
+                    'username' => 'required|string',
+                    'company_email' => 'required|email',
                     'interviewer' => 'required|string|max:255',
                     'password' => 'required|string',
                     'notes' => 'nullable|string',
                 ]);
 
-                $demo = Demo::findOrFail($id);
-                \Log::info('Demo found:', ['demo' => $demo->toArray()]);
+                // Try to find onboarding record first
+                $onboarding = \App\Models\Onboarding::find($id);
                 
-                if ($demo->status === 'hired') {
-                    throw new \Exception('This demo has already been hired.');
+                if (!$onboarding) {
+                    // Fallback to demo/screening table
+                    $demo = Demo::findOrFail($id);
+                    Log::info('Demo found (fallback):', ['demo' => $demo->toArray()]);
+                    
+                    if ($demo->phase === 'onboarding') {
+                        throw new \Exception('This record should be in the onboarding table. Please refresh the page.');
+                    }
+                } else {
+                    Log::info('Onboarding found:', ['onboarding' => $onboarding->toArray()]);
+                    // Get the demo data through relationships
+                    $demo = $onboarding;
                 }
 
                 // Check if tutor with this email already exists
-                $existingTutor = Tutor::where('email', $demo->email)->first();
+                $existingTutor = Tutor::where('email', $request->company_email)->first();
                 if ($existingTutor) {
-                    throw new \Exception('A tutor with email ' . $demo->email . ' already exists (Tutor ID: ' . $existingTutor->tutorID . '). Please use a different email or contact the administrator.');
+                    throw new \Exception('A tutor with email ' . $request->company_email . ' already exists (Tutor ID: ' . $existingTutor->tutorID . '). Please use a different email.');
+                }
+                
+                // Check if tutor with this username already exists
+                $existingUsername = Tutor::where('username', $request->username)->first();
+                if ($existingUsername) {
+                    throw new \Exception('A tutor with username ' . $request->username . ' already exists (Tutor ID: ' . $existingUsername->tutorID . '). Please use a different username.');
                 }
 
                 // Use database transaction to ensure data integrity
-                $tutor = DB::transaction(function () use ($demo, $request, $id) {
-                    // Generate system ID (tutorID) using the Tutor model method - OGS-T0001 format
-                    $systemId = Tutor::generateFormattedId();
-                    $username = Tutor::generateUsername($demo->first_name, $demo->last_name);
+                $tutor = DB::transaction(function () use ($demo, $request, $id, $onboarding) {
+                    // Use system ID from request (already generated from frontend)
+                    $systemId = $request->system_id;
                     
-                    // Get tutor data from demo
-                    $tutorEmail = $demo->email;
-                    $defaultPassword = $request->password; // Use password from form
+                    // Use username and email from request
+                    $username = $request->username;
+                    $tutorEmail = $request->company_email;
+                    $defaultPassword = $request->password;
 
+                    // Get applicant and account info
+                    $applicant = $demo->applicant ?? null;
+                    $account = $demo->account ?? null;
+                    
                     $tutor = Tutor::create([
                         'tutorID' => $systemId,
-                        'first_name' => $demo->first_name,
-                        'last_name' => $demo->last_name,
+                        'applicant_id' => $demo->applicant_id ?? null,
+                        'account_id' => $demo->account_id ?? null,
                         'email' => $tutorEmail,
-                        'tpassword' => Hash::make($defaultPassword),
-                        'tusername' => $username,
-                        'phone_number' => $demo->contact_number,
-                        'sex' => null, // Will be filled later if needed
-                        'status' => 'active'
+                        'password' => Hash::make($defaultPassword),
+                        'username' => $username,
+                        'status' => 'active',
+                        'hire_date_time' => now()
                     ]);
                     
-                    \Log::info('Tutor created:', ['tutor' => $tutor->toArray()]);
+                    Log::info('Tutor created:', ['tutor' => $tutor->toArray()]);
                     
                     // Create notification for successful tutor registration
-                    $tutorName = trim($demo->first_name . ' ' . $demo->last_name);
+                    $tutorName = $applicant 
+                        ? trim($applicant->first_name . ' ' . $applicant->last_name)
+                        : trim(($demo->first_name ?? '') . ' ' . ($demo->last_name ?? ''));
+                        
                     $this->createNotification(
                         'success',
                         'New Tutor Registered',
-                        "{$tutorName} has been successfully registered as a tutor and is ready for onboarding.",
+                        "{$tutorName} has been successfully registered as a tutor.",
                         'fas fa-user-plus',
                         'green'
                     );
 
-                    // Create tutor account record with time availability from demos table
+                    // Create tutor account record with time availability
+                    $accountName = $account ? $account->account_name : ($demo->assigned_account ?? 'Unknown');
+                    
                     $tutorAccount = TutorAccount::create([
-                        'tutor_id' => $tutor->tutorID, // Use tutorID as foreign key
-                        'account_name' => $demo->assigned_account,
-                        'account_number' => null, // Will be filled later
+                        'tutor_id' => $tutor->tutorID,
+                        'account_name' => $accountName,
+                        'account_number' => null,
                         'username' => $username,
                         'screen_name' => $tutorName,
                         'available_days' => $demo->days ?? [],
                         'available_times' => [
-                            'start_time' => $demo->start_time,
-                            'end_time' => $demo->end_time,
-                            'interview_time' => $demo->interview_time ? $demo->interview_time->format('Y-m-d H:i:s') : null,
-                            'demo_schedule' => $demo->demo_schedule ? $demo->demo_schedule->format('Y-m-d H:i:s') : null
+                            'interview_time' => $applicant ? $applicant->interview_time : null,
                         ],
-                        'preferred_time_range' => $this->determineTimeRange($demo->start_time, $demo->end_time),
+                        'preferred_time_range' => 'flexible',
                         'timezone' => 'UTC',
-                        'availability_notes' => $demo->notes,
+                        'availability_notes' => $request->notes ?? $demo->notes,
                         'status' => 'active'
                     ]);
                     
-                    \Log::info('TutorAccount created:', ['tutorAccount' => $tutorAccount->toArray()]);
+                    Log::info('TutorAccount created:', ['tutorAccount' => $tutorAccount->toArray()]);
 
-                    // Create tutor details record with comprehensive data from demos table
-                    $tutorDetail = TutorDetails::create([
-                        'tutor_id' => $tutor->tutorID, // Use tutorID as foreign key
-                        'address' => $demo->address,
-                        'esl_experience' => $demo->esl_experience,
-                        'work_setup' => $this->mapWorkSetup($demo->work_type),
-                        'first_day_teaching' => $demo->interview_time ? $demo->interview_time->format('Y-m-d') : now()->addDays(7),
-                        'educational_attainment' => $this->mapEducation($demo->education),
-                        'additional_notes' => $this->buildAdditionalNotes($demo, $request->notes)
-                    ]);
+                    // TODO: Create tutor details record with comprehensive data from demos table
+                    // Commented out until tutor_details table is created
+                    // $tutorDetail = TutorDetails::create([
+                    //     'tutor_id' => $tutor->tutorID,
+                    //     'address' => $demo->address,
+                    //     'esl_experience' => $demo->esl_experience,
+                    //     'work_setup' => $this->mapWorkSetup($demo->work_type),
+                    //     'first_day_teaching' => $demo->interview_time ? $demo->interview_time->format('Y-m-d') : now()->addDays(7),
+                    //     'educational_attainment' => $this->mapEducation($demo->education),
+                    //     'additional_notes' => $this->buildAdditionalNotes($demo, $request->notes)
+                    // ]);
                     
-                    \Log::info('TutorDetail created:', ['tutorDetail' => $tutorDetail->toArray()]);
+                    // Log::info('TutorDetail created:', ['tutorDetail' => $tutorDetail->toArray()]);
 
-                    // Delete the demo record since the tutor is now registered
-                    $demo->delete();
-                    \Log::info('Demo record deleted after successful tutor registration');
+                    // Send email with employee credentials
+                    $applicantEmail = $applicant ? $applicant->email : $demo->email;
+                    if ($applicantEmail) {
+                        try {
+                            Mail::to($applicantEmail)->send(new ApplicantPassedMail(
+                                $tutorName,
+                                $applicantEmail,
+                                'onboarding',
+                                null, // no next phase, they're now hired
+                                null, // no next schedule
+                                $request->interviewer,
+                                $request->notes,
+                                $tutorEmail, // company email
+                                $defaultPassword // temporary password
+                            ));
+                            Log::info('Employee credentials email sent to: ' . $applicantEmail);
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send employee credentials email: ' . $e->getMessage());
+                            // Don't fail the registration if email fails
+                        }
+                    }
+
+                    // Delete the onboarding/demo record since the tutor is now registered
+                    if ($onboarding) {
+                        $onboarding->delete();
+                        Log::info('Onboarding record deleted after successful tutor registration');
+                    } else {
+                        $demo->delete();
+                        Log::info('Demo record deleted after successful tutor registration');
+                    }
 
                     return $tutor;
                 });
@@ -154,23 +210,31 @@ class ApplicationController extends Controller
                     throw new \Exception('A tutor with email ' . $request->personal_email . ' already exists (Tutor ID: ' . $existingTutor->tutorID . '). Please use a different email or contact the administrator.');
                 }
 
+                // Generate tutorID
+                $systemId = Tutor::generateFormattedId();
+                
+                // Use company email if provided, otherwise generate from username
+                $companyEmail = $request->has('company_email') && $request->company_email
+                    ? $request->company_email
+                    : Tutor::generateCompanyEmail($request->username);
+
                 $tutor = Tutor::create([
-                    'name' => $request->name,
-                    'email' => $request->personal_email,
+                    'tutorID' => $systemId,
+                    'applicant_id' => $demo->applicant_id ?? null,
+                    'account_id' => $demo->account_id ?? null,
+                    'email' => $companyEmail,
                     'password' => Hash::make($request->password),
                     'username' => $request->username,
-                    'assigned_account' => $request->assigned_account,
                     'status' => 'active',
-                    'demo_id' => $id,
-                    'registered_at' => now()
+                    'hire_date_time' => now()
                 ]);
 
                 // Delete the demo record since the tutor is now registered
                 $demo->delete();
-                \Log::info('Demo record deleted after successful tutor registration (non-onboarding)');
+                Log::info('Demo record deleted after successful tutor registration (non-onboarding)');
             }
 
-            \Log::info('Tutor registration completed successfully');
+            Log::info('Tutor registration completed successfully');
             
             return response()->json([
                 'success' => true,
@@ -183,7 +247,7 @@ class ApplicationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Tutor registration error: ' . $e->getMessage());
+            Log::error('Tutor registration error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error registering tutor: ' . $e->getMessage()
@@ -214,7 +278,7 @@ class ApplicationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Username generation error: ' . $e->getMessage());
+            Log::error('Username generation error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error generating username: ' . $e->getMessage()
@@ -233,91 +297,310 @@ class ApplicationController extends Controller
     {
         try {
             $demo = Demo::findOrFail($id);
-            $currentStatus = $demo->status;
+            $currentResults = $demo->results;
+            $currentPhase = $demo->phase;
 
-            // Validate the request based on current status
-            if ($request->has('status')) {
-                // Direct status update (e.g., fail/hired)
-                $newStatus = $request->status;
-                $demo->update([
-                    'status' => $newStatus,
-                    'notes' => $request->notes,
-                    'finalized_at' => in_array($newStatus, ['hired', 'not_hired']) ? now() : null,
-                    'moved_to_onboarding_at' => $newStatus === 'onboarding' ? now() : null
-                ]);
+            // Handle phase update (moving between phases)
+            if ($request->has('phase')) {
+                $newPhase = $request->phase;
                 
-                // Create notification for status change
+                // Special handling for onboarding phase - move to onboarding table
+                if ($newPhase === 'onboarding') {
+                    // Get the current supervisor
+                    $supervisorId = Auth::guard('supervisor')->check() 
+                        ? Auth::guard('supervisor')->user()->supervisor_id 
+                        : $demo->supervisor_id;
+                    
+                    // Create onboarding record
+                    $onboarding = \App\Models\Onboarding::create([
+                        'applicant_id' => $demo->applicant_id,
+                        'account_id' => $demo->account_id,
+                        'assessed_by' => $supervisorId,
+                        'phase' => 'onboarding',
+                        'notes' => $request->notes ?? 'Passed demo - moved to onboarding',
+                        'onboarding_date_time' => $request->next_schedule ?? $demo->screening_date_time ?? now(),
+                    ]);
+                    
+                    // Sync with applicant's interview_time
+                    if ($demo->applicant && ($request->next_schedule ?? $demo->screening_date_time)) {
+                        $demo->applicant->update(['interview_time' => $request->next_schedule ?? $demo->screening_date_time]);
+                    }
+                    
+                    // Delete from screening table
+                    $demo->delete();
+                    
+                    // Send email notification to applicant
+                    $applicantEmail = $demo->applicant ? $demo->applicant->email : $demo->email;
+                    if ($applicantEmail) {
+                        try {
+                            Mail::to($applicantEmail)->send(new ApplicantPassedMail(
+                                $demo->first_name . ' ' . $demo->last_name,
+                                $applicantEmail,
+                                $currentPhase, // phase they just passed
+                                'onboarding', // next phase
+                                $request->next_schedule ?? $demo->screening_date_time,
+                                $supervisorId ? (\App\Models\Supervisor::find($supervisorId)->full_name ?? 'Supervisor') : 'Supervisor',
+                                $request->notes ?? 'Congratulations on passing!'
+                            ));
+                            Log::info('Pass notification email sent to: ' . $applicantEmail);
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send pass notification email: ' . $e->getMessage());
+                        }
+                    }
+                    
+                    // Create notification for phase change
+                    $this->createNotification(
+                        'success',
+                        'Moved to Onboarding',
+                        "Application for {$demo->first_name} {$demo->last_name} has been moved to onboarding phase.",
+                        'fas fa-check-circle',
+                        'green',
+                        [
+                            'onboarding_id' => $onboarding->onboarding_id,
+                            'applicant_name' => $demo->first_name . ' ' . $demo->last_name,
+                            'old_phase' => $currentPhase,
+                            'new_phase' => 'onboarding',
+                            'assigned_account' => $demo->assigned_account,
+                            'updated_at' => now()->toISOString()
+                        ]
+                    );
+                } else {
+                    // Regular phase update within screening table
+                    $updateData = [
+                        'phase' => $newPhase,
+                    ];
+                    
+                    // Update notes if provided
+                    if ($request->has('notes') && $request->notes) {
+                        $updateData['notes'] = $request->notes;
+                    }
+                    
+                    // Update schedule if provided and sync with applicant's interview_time
+                    if ($request->has('next_schedule') && $request->next_schedule) {
+                        $updateData['screening_date_time'] = $request->next_schedule;
+                        // Sync with applicant's interview_time
+                        if ($demo->applicant) {
+                            $demo->applicant->update(['interview_time' => $request->next_schedule]);
+                        }
+                    }
+                    
+                    // Update results if provided
+                    if ($request->has('results')) {
+                        $updateData['results'] = $request->results;
+                    }
+                    
+                    $demo->update($updateData);
+                    
+                    // Send email notification to applicant when moving forward
+                    $applicantEmail = $demo->applicant ? $demo->applicant->email : $demo->email;
+                    if ($applicantEmail && $newPhase !== 'archive') {
+                        try {
+                            Mail::to($applicantEmail)->send(new ApplicantPassedMail(
+                                $demo->first_name . ' ' . $demo->last_name,
+                                $applicantEmail,
+                                $currentPhase, // phase they just passed
+                                $newPhase, // next phase
+                                $request->next_schedule,
+                                Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : 'Supervisor',
+                                $request->notes ?? "Congratulations! You've been moved to the {$newPhase} phase."
+                            ));
+                            Log::info('Pass notification email sent to: ' . $applicantEmail);
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send pass notification email: ' . $e->getMessage());
+                        }
+                    }
+                    
+                    // Create notification for phase change
+                    $this->createNotification(
+                        'success',
+                        'Phase Changed - Moved to ' . ucfirst($newPhase),
+                        "Application for {$demo->first_name} {$demo->last_name} has been moved to {$newPhase} phase.",
+                        'fas fa-check-circle',
+                        'green',
+                        [
+                            'demo_id' => $demo->id,
+                            'applicant_name' => $demo->first_name . ' ' . $demo->last_name,
+                            'old_phase' => $currentPhase,
+                            'new_phase' => $newPhase,
+                            'results' => $updateData['results'] ?? $currentResults,
+                            'assigned_account' => $demo->assigned_account,
+                            'updated_at' => now()->toISOString()
+                        ]
+                    );
+                }
+            }
+            // Handle results/status update
+            elseif ($request->has('status') || $request->has('results')) {
+                $newResults = $request->status ?? $request->results;
+                $updateData = [
+                    'results' => $newResults,
+                ];
+                
+                // Update notes if provided
+                if ($request->has('notes') && $request->notes) {
+                    $updateData['notes'] = $request->notes;
+                }
+                
+                // Update schedule if provided and sync with applicant's interview_time
+                if ($request->has('next_schedule') && $request->next_schedule) {
+                    $updateData['screening_date_time'] = $request->next_schedule;
+                    // Sync with applicant's interview_time
+                    if ($demo->applicant) {
+                        $demo->applicant->update(['interview_time' => $request->next_schedule]);
+                    }
+                }
+                
+                $demo->update($updateData);
+                
+                // Send email notification based on results
+                $applicantEmail = $demo->applicant ? $demo->applicant->email : $demo->email;
+                if ($applicantEmail) {
+                    try {
+                        if ($newResults === 'passed') {
+                            // Send pass email
+                            Mail::to($applicantEmail)->send(new ApplicantPassedMail(
+                                $demo->first_name . ' ' . $demo->last_name,
+                                $applicantEmail,
+                                $currentPhase,
+                                null, // staying in same phase, just updating results
+                                $request->next_schedule,
+                                Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : 'Supervisor',
+                                $request->notes ?? "Congratulations! You've passed the {$currentPhase} phase."
+                            ));
+                            Log::info('Results pass email sent to: ' . $applicantEmail);
+                        } elseif ($newResults === 'failed') {
+                            // Send fail email
+                            Mail::to($applicantEmail)->send(new ApplicantFailedMail(
+                                $demo->first_name . ' ' . $demo->last_name,
+                                $applicantEmail,
+                                $currentPhase,
+                                'not_recommended',
+                                null,
+                                Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : 'Supervisor',
+                                $request->notes ?? "Unfortunately, you did not pass the {$currentPhase} phase."
+                            ));
+                            Log::info('Results fail email sent to: ' . $applicantEmail);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send results update email: ' . $e->getMessage());
+                    }
+                }
+                
+                // Create notification for results change
                 $this->createNotification(
-                    $newStatus === 'hired' ? 'success' : ($newStatus === 'not_hired' ? 'error' : 'info'),
-                    'Demo Status Updated',
-                    "Demo status for {$demo->first_name} {$demo->last_name} has been updated to: " . ucfirst(str_replace('_', ' ', $newStatus)) . ".",
-                    $newStatus === 'hired' ? 'fas fa-check-circle' : ($newStatus === 'not_hired' ? 'fas fa-times-circle' : 'fas fa-info-circle'),
-                    $newStatus === 'hired' ? 'green' : ($newStatus === 'not_hired' ? 'red' : 'blue'),
+                    $newResults === 'passed' ? 'success' : ($newResults === 'failed' ? 'error' : 'info'),
+                    'Results Updated',
+                    "Results for {$demo->first_name} {$demo->last_name} has been updated to: " . ucfirst(str_replace('_', ' ', $newResults)) . ".",
+                    $newResults === 'passed' ? 'fas fa-check-circle' : ($newResults === 'failed' ? 'fas fa-times-circle' : 'fas fa-info-circle'),
+                    $newResults === 'passed' ? 'green' : ($newResults === 'failed' ? 'red' : 'blue'),
                     [
                         'demo_id' => $demo->id,
                         'applicant_name' => $demo->first_name . ' ' . $demo->last_name,
-                        'old_status' => $currentStatus,
-                        'new_status' => $newStatus,
+                        'old_results' => $currentResults,
+                        'new_results' => $newResults,
                         'assigned_account' => $demo->assigned_account,
                         'updated_at' => now()->toISOString()
                     ]
                 );
-            } else {
-                // Next step update
+            }
+            // Handle next step update
+            elseif ($request->has('next_status')) {
                 $request->validate([
                     'next_status' => 'required|string',
                     'next_schedule' => 'nullable|date',
                     'notes' => 'nullable|string'
                 ]);
 
-                $nextStatus = $request->next_status;
+                $nextPhase = $request->next_status;
                 $updateData = [
-                    'status' => $nextStatus,
-                    'notes' => $request->notes,
+                    'phase' => $nextPhase,
                 ];
-
-                // Set appropriate schedule based on next status
-                if ($nextStatus === 'training') {
-                    $updateData['training_schedule'] = $request->next_schedule;
-                    $updateData['moved_to_training_at'] = now();
-                } elseif ($nextStatus === 'demo') {
-                    $updateData['demo_schedule'] = $request->next_schedule;
-                    $updateData['moved_to_demo_at'] = now();
-                } elseif ($nextStatus === 'onboarding') {
-                    $updateData['moved_to_onboarding_at'] = now();
+                
+                // Update schedule if provided and sync with applicant's interview_time
+                if ($request->next_schedule) {
+                    $updateData['screening_date_time'] = $request->next_schedule;
+                    // Sync with applicant's interview_time
+                    if ($demo->applicant) {
+                        $demo->applicant->update(['interview_time' => $request->next_schedule]);
+                    }
+                }
+                
+                // Update notes if provided
+                if ($request->notes) {
+                    $updateData['notes'] = $request->notes;
                 }
 
                 $demo->update($updateData);
                 
-                // Create notification for status progression
+                // Send email notification for phase progression
+                $applicantEmail = $demo->applicant ? $demo->applicant->email : $demo->email;
+                if ($applicantEmail) {
+                    try {
+                        Mail::to($applicantEmail)->send(new ApplicantPassedMail(
+                            $demo->first_name . ' ' . $demo->last_name,
+                            $applicantEmail,
+                            $currentPhase,
+                            $nextPhase,
+                            $request->next_schedule,
+                            Auth::guard('supervisor')->check() ? Auth::guard('supervisor')->user()->full_name : 'Supervisor',
+                            $request->notes ?? "Congratulations! You've progressed to the {$nextPhase} phase."
+                        ));
+                        Log::info('Phase progression email sent to: ' . $applicantEmail);
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send phase progression email: ' . $e->getMessage());
+                    }
+                }
+                
+                // Create notification for phase progression
                 $this->createNotification(
                     'info',
-                    'Demo Progress - Moved to ' . ucfirst($nextStatus),
-                    "Demo for {$demo->first_name} {$demo->last_name} has progressed to {$nextStatus} stage" . ($request->next_schedule ? " scheduled for " . \Carbon\Carbon::parse($request->next_schedule)->format('M j, Y \a\t g:i A') : '') . ".",
+                    'Progress - Moved to ' . ucfirst($nextPhase),
+                    "Application for {$demo->first_name} {$demo->last_name} has progressed to {$nextPhase} phase" . ($request->next_schedule ? " scheduled for " . \Carbon\Carbon::parse($request->next_schedule)->format('M j, Y \a\t g:i A') : '') . ".",
                     'fas fa-arrow-right',
                     'blue',
                     [
                         'demo_id' => $demo->id,
                         'applicant_name' => $demo->first_name . ' ' . $demo->last_name,
-                        'old_status' => $currentStatus,
-                        'new_status' => $nextStatus,
+                        'old_phase' => $currentPhase,
+                        'new_phase' => $nextPhase,
                         'assigned_account' => $demo->assigned_account,
                         'schedule' => $request->next_schedule,
                         'updated_at' => now()->toISOString()
                     ]
                 );
             }
+            // Handle general updates (notes, schedule, etc.)
+            else {
+                $updateData = [];
+                
+                if ($request->has('notes')) {
+                    $updateData['notes'] = $request->notes;
+                }
+                
+                if ($request->has('screening_date_time') || $request->has('schedule')) {
+                    $newSchedule = $request->screening_date_time ?? $request->schedule;
+                    $updateData['screening_date_time'] = $newSchedule;
+                    // Sync with applicant's interview_time
+                    if ($demo->applicant) {
+                        $demo->applicant->update(['interview_time' => $newSchedule]);
+                    }
+                }
+                
+                if (!empty($updateData)) {
+                    $demo->update($updateData);
+                }
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Status updated successfully'
+                'message' => 'Updated successfully'
             ]);
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Demo status update error: ' . $e->getMessage());
+            Log::error('Demo update error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Error updating status: ' . $e->getMessage()
+                'message' => 'Error updating: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -334,31 +617,33 @@ class ApplicationController extends Controller
         try {
             $demo = Demo::findOrFail($id);
             
-            if ($demo->status !== 'demo') {
-                throw new \Exception('Only demo stage applications can be finalized.');
+            if ($demo->phase !== 'demo') {
+                throw new \Exception('Only demo phase applications can be finalized.');
             }
 
-            $newStatus = $request->status === 'success' ? 'onboarding' : 'not_hired';
+            $newPhase = $request->status === 'success' ? 'onboarding' : 'screening';
+            $newResults = $request->status === 'success' ? 'passed' : 'failed';
+            
             $demo->update([
-                'status' => $newStatus,
-                'finalized_at' => now(),
-                'moved_to_onboarding_at' => $request->status === 'success' ? now() : null,
+                'phase' => $newPhase,
+                'results' => $newResults,
                 'notes' => $request->notes
             ]);
             
             // Create notification for demo finalization
             $this->createNotification(
                 $request->status === 'success' ? 'success' : 'error',
-                $request->status === 'success' ? 'Demo Passed - Moved to Onboarding' : 'Demo Failed - Not Hired',
-                "Demo for {$demo->first_name} {$demo->last_name} has been " . ($request->status === 'success' ? 'passed and moved to onboarding' : 'failed and marked as not hired') . ".",
+                $request->status === 'success' ? 'Demo Passed - Moved to Onboarding' : 'Demo Failed',
+                "Demo for {$demo->first_name} {$demo->last_name} has been " . ($request->status === 'success' ? 'passed and moved to onboarding' : 'failed') . ".",
                 $request->status === 'success' ? 'fas fa-check-circle' : 'fas fa-times-circle',
                 $request->status === 'success' ? 'green' : 'red',
                 [
                     'demo_id' => $demo->id,
                     'applicant_name' => $demo->first_name . ' ' . $demo->last_name,
-                    'status' => $newStatus,
+                    'phase' => $newPhase,
+                    'results' => $newResults,
                     'assigned_account' => $demo->assigned_account,
-                    'finalized_at' => now()->toISOString()
+                    'updated_at' => now()->toISOString()
                 ]
             );
 
@@ -368,7 +653,7 @@ class ApplicationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Demo finalization error: ' . $e->getMessage());
+            Log::error('Demo finalization error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error finalizing demo: ' . $e->getMessage()
@@ -389,20 +674,45 @@ class ApplicationController extends Controller
 
             switch ($failReason) {
                 case 'missed':
-                    // Keep current status, update interview time
+                    // Keep current status, update interview time and screening schedule
                     $newInterviewTime = $request->input('new_interview_time');
+                    
+                    // Update screening schedule
                     $demo->update([
-                        'interview_time' => $newInterviewTime,
-                        'demo_schedule' => $newInterviewTime, // Also update demo_schedule for table display
-                        'interviewer' => $interviewer,
+                        'screening_date_time' => $newInterviewTime,
                         'notes' => $notes
                     ]);
                     
-                    // Create notification for missed demo
+                    // Sync with applicant's interview_time
+                    if ($demo->applicant && $newInterviewTime) {
+                        $demo->applicant->update(['interview_time' => $newInterviewTime]);
+                    }
+                    
+                    // Send email notification for missed interview
+                    $applicantEmail = $demo->applicant ? $demo->applicant->email : $demo->email;
+                    if ($applicantEmail) {
+                        try {
+                            Mail::to($applicantEmail)->send(new ApplicantFailedMail(
+                                $demo->first_name . ' ' . $demo->last_name,
+                                $applicantEmail,
+                                $demo->phase,
+                                'no_answer',
+                                $newInterviewTime,
+                                $interviewer,
+                                $notes
+                            ));
+                            Log::info('Missed interview email sent to: ' . $applicantEmail);
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send missed interview email: ' . $e->getMessage());
+                        }
+                    }
+                    
+                    // Create notification for missed demo/onboarding
+                    $phaseName = ($demo->phase === 'onboarding' || $demo->status === 'onboarding') ? 'Onboarding' : 'Demo';
                     $this->createNotification(
                         'warning',
-                        'Demo Missed - Rescheduled',
-                        "Demo for {$demo->first_name} {$demo->last_name} was missed and has been rescheduled" . ($newInterviewTime ? " to " . \Carbon\Carbon::parse($newInterviewTime)->format('M j, Y \a\t g:i A') : '') . ".",
+                        $phaseName . ' Missed - Rescheduled',
+                        "{$phaseName} for {$demo->first_name} {$demo->last_name} was missed and has been rescheduled" . ($newInterviewTime ? " to " . \Carbon\Carbon::parse($newInterviewTime)->format('M j, Y \a\t g:i A') : '') . ".",
                         'fas fa-calendar-times',
                         'yellow',
                         [
@@ -418,6 +728,25 @@ class ApplicationController extends Controller
 
                 case 'declined':
                 case 'not_recommended':
+                    // Send email notification before archiving
+                    $applicantEmail = $demo->applicant ? $demo->applicant->email : $demo->email;
+                    if ($applicantEmail) {
+                        try {
+                            Mail::to($applicantEmail)->send(new ApplicantFailedMail(
+                                $demo->first_name . ' ' . $demo->last_name,
+                                $applicantEmail,
+                                $demo->phase,
+                                $failReason,
+                                null, // no reschedule
+                                $interviewer,
+                                $notes
+                            ));
+                            Log::info('Application status email sent to: ' . $applicantEmail);
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send application status email: ' . $e->getMessage());
+                        }
+                    }
+                    
                     // Move to archive
                     $this->archiveDemo($demo, $failReason, $interviewer, $notes);
                     
@@ -466,9 +795,33 @@ class ApplicationController extends Controller
                         'notes' => $notes
                     ]);
                     
+                    // Sync with applicant's interview_time
+                    if ($demo->applicant && $transferData['schedule']) {
+                        $demo->applicant->update(['interview_time' => $transferData['schedule']]);
+                    }
+                    
                     // Refresh the model to load the new account relationship
                     $demo->refresh();
                     $demo->load('account');
+                    
+                    // Send email notification for account transfer with new schedule
+                    $applicantEmail = $demo->applicant ? $demo->applicant->email : $demo->email;
+                    if ($applicantEmail && $transferData['schedule']) {
+                        try {
+                            Mail::to($applicantEmail)->send(new ApplicantFailedMail(
+                                $demo->first_name . ' ' . $demo->last_name,
+                                $applicantEmail,
+                                $demo->phase,
+                                're_schedule',
+                                $transferData['schedule'],
+                                $interviewer,
+                                $notes ?? "Your application has been transferred to {$transferData['assigned_account']} account."
+                            ));
+                            Log::info('Account transfer email sent to: ' . $applicantEmail);
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send account transfer email: ' . $e->getMessage());
+                        }
+                    }
                     
                     // Create notification for account transfer
                     $this->createNotification(
@@ -503,7 +856,7 @@ class ApplicationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Demo failure handling error: ' . $e->getMessage());
+            Log::error('Demo failure handling error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error processing failure action: ' . $e->getMessage()
@@ -693,5 +1046,155 @@ class ApplicationController extends Controller
             'color' => $color ?? $defaultColors[$type] ?? 'blue',
             'data' => $data
         ]);
+    }
+
+    /**
+     * Generate next incremental tutor ID
+     * 
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function generateTutorId()
+    {
+        try {
+            $tutorID = Tutor::generateFormattedId();
+            
+            return response()->json([
+                'success' => true,
+                'tutorID' => $tutorID,
+                'message' => 'Tutor ID generated successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error generating tutor ID:', ['error' => $e->getMessage()]);
+            return response()->json([
+                'error' => 'Failed to generate tutor ID: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate unique username based on applicant's name
+     * 
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id  Onboarding ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function generateUniqueUsername(Request $request, $id)
+    {
+        try {
+            // Get onboarding or demo record
+            $onboarding = \App\Models\Onboarding::find($id);
+            
+            if (!$onboarding) {
+                return response()->json([
+                    'error' => 'Onboarding record not found'
+                ], 404);
+            }
+
+            // Get applicant information
+            $applicant = $onboarding->applicant;
+            if (!$applicant) {
+                return response()->json([
+                    'error' => 'Applicant not found'
+                ], 404);
+            }
+
+            $firstName = strtolower(preg_replace('/[^a-zA-Z]/', '', $applicant->first_name));
+            $lastName = strtolower(preg_replace('/[^a-zA-Z]/', '', $applicant->last_name));
+            
+            // Generate base username from first name + last name
+            $baseUsername = $firstName . $lastName;
+            
+            // Get current username from request to avoid duplicating it
+            $currentUsername = $request->input('current_username');
+            
+            // Check if username exists and add counter if needed
+            $username = $baseUsername;
+            $counter = 1;
+            
+            // Keep incrementing until we find an available username
+            // that's also different from the current one
+            while (Tutor::where('username', $username)->exists() || $username === $currentUsername) {
+                $username = $baseUsername . $counter;
+                $counter++;
+            }
+
+            return response()->json([
+                'success' => true,
+                'username' => $username,
+                'message' => 'Username generated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error generating username:', ['error' => $e->getMessage()]);
+            return response()->json([
+                'error' => 'Failed to generate username: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate unique company email based on username or applicant's name
+     * 
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id  Onboarding ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function generateUniqueEmail(Request $request, $id)
+    {
+        try {
+            // Get current email from request to avoid duplicating it
+            $currentEmail = $request->input('current_email');
+            
+            // Get current username from request or generate from name
+            $currentUsername = $request->input('username');
+            
+            if ($currentUsername) {
+                // If username is provided, use it as base for email
+                $baseEmail = strtolower(preg_replace('/[^a-z0-9]/', '', $currentUsername));
+            } else {
+                // Otherwise, get from onboarding record
+                $onboarding = \App\Models\Onboarding::find($id);
+                
+                if (!$onboarding) {
+                    return response()->json([
+                        'error' => 'Onboarding record not found'
+                    ], 404);
+                }
+
+                $applicant = $onboarding->applicant;
+                if (!$applicant) {
+                    return response()->json([
+                        'error' => 'Applicant not found'
+                    ], 404);
+                }
+
+                $firstName = strtolower(preg_replace('/[^a-zA-Z]/', '', $applicant->first_name));
+                $lastName = strtolower(preg_replace('/[^a-zA-Z]/', '', $applicant->last_name));
+                $baseEmail = $firstName . $lastName;
+            }
+            
+            // Generate unique email
+            $email = $baseEmail . '@ogsconnect.com';
+            $counter = 1;
+            
+            // Keep incrementing until we find an available email
+            // that's also different from the current one
+            while (Tutor::where('email', $email)->exists() || $email === $currentEmail) {
+                $email = $baseEmail . $counter . '@ogsconnect.com';
+                $counter++;
+            }
+
+            return response()->json([
+                'success' => true,
+                'email' => $email,
+                'message' => 'Email generated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error generating email:', ['error' => $e->getMessage()]);
+            return response()->json([
+                'error' => 'Failed to generate email: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

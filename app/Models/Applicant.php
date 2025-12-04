@@ -91,4 +91,60 @@ class Applicant extends Model
     {
         return $this->hasMany(Tutor::class, 'applicant_id', 'applicant_id');
     }
+
+    // Accessor methods for tutor details compatibility
+    /**
+     * Get educational attainment from qualification
+     */
+    public function getEducationalAttainmentAttribute()
+    {
+        if (isset($this->attributes['educational_attainment'])) {
+            return $this->attributes['educational_attainment'];
+        }
+        return $this->qualification?->education;
+    }
+
+    /**
+     * Get ESL teaching experience from qualification
+     */
+    public function getEslTeachingExperienceAttribute()
+    {
+        if (isset($this->attributes['esl_teaching_experience'])) {
+            return $this->attributes['esl_teaching_experience'];
+        }
+        return $this->qualification?->esl_experience;
+    }
+
+    /**
+     * Get work setup from requirement
+     */
+    public function getWorkSetupAttribute()
+    {
+        if (isset($this->attributes['work_setup'])) {
+            return $this->attributes['work_setup'];
+        }
+        return $this->requirement?->work_type;
+    }
+
+    /**
+     * Get MS Teams ID (mapped from ms_teams field)
+     */
+    public function getMsTeamsIdAttribute()
+    {
+        if (isset($this->attributes['ms_teams_id'])) {
+            return $this->attributes['ms_teams_id'];
+        }
+        return $this->ms_teams;
+    }
+
+    /**
+     * Get first day of teaching from related tutor
+     */
+    public function getFirstDayOfTeachingAttribute()
+    {
+        if (isset($this->attributes['first_day_of_teaching'])) {
+            return $this->attributes['first_day_of_teaching'];
+        }
+        return $this->tutors()->first()?->hire_date_time;
+    }
 }

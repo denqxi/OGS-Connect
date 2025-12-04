@@ -174,9 +174,6 @@
         </thead>
         <tbody class="bg-white divide-y divide-gray-200" id="tutorTableBody">
             @forelse($tutors ?? [] as $tutor)
-            @php
-                $glsAccount = $tutor->accounts->firstWhere('account_name', 'GLS');
-            @endphp
             <tr class="hover:bg-gray-50 tutor-row" data-searchable="{{ strtolower(($tutor->full_name ?? '') . ' ' . ($tutor->email ?? '') . ' ' . ($tutor->phone_number ?? '')) }}">
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {{ $tutor->full_name ?? 'N/A' }}
@@ -186,7 +183,7 @@
                     <a href="mailto:{{ $tutor->email ?? '' }}">{{ $tutor->email ?? 'N/A' }}</a>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    @if($glsAccount)
+                    @if($tutor->workPreferences)
                         <div class="flex flex-col">
                             @php
                                 $filteredTime = '';

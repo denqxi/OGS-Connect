@@ -13,10 +13,11 @@ return new class extends Migration
     {
         Schema::table('tutor', function (Blueprint $table) {
             $table->string('tutorID', 50)->unique()->nullable()->after('tutor_id');
-            $table->string('tusername', 50)->unique()->nullable()->after('tutorID');
-            $table->string('email', 100)->unique()->nullable()->after('tusername');
-            $table->string('tpassword', 255)->nullable()->after('email');
-            $table->string('phone_number', 20)->nullable()->after('tpassword');
+            $table->string('username', 50)->unique()->nullable()->after('tutorID');
+            $table->string('email', 100)->unique()->nullable()->after('username');
+            $table->string('password', 255)->nullable()->after('email');
+            $table->string('full_name', 200)->nullable()->after('password');
+            $table->string('phone_number', 20)->nullable()->after('full_name');
             $table->enum('sex', ['male', 'female', 'other'])->nullable()->after('phone_number');
             $table->date('date_of_birth')->nullable()->after('sex');
             $table->enum('status', ['active', 'inactive'])->default('active')->after('date_of_birth');
@@ -32,9 +33,10 @@ return new class extends Migration
         Schema::table('tutor', function (Blueprint $table) {
             $table->dropColumn([
                 'tutorID',
-                'tusername',
+                'username',
                 'email',
-                'tpassword',
+                'password',
+                'full_name',
                 'phone_number',
                 'sex',
                 'date_of_birth',

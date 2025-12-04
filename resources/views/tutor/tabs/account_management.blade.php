@@ -16,7 +16,7 @@
         <!-- Username -->
         <div>
             <label class="block text-gray-600 dark:text-gray-300 font-medium mb-1">Username</label>
-            <input type="text" value="{{ $tutor->tusername ?? 'N/A' }}" readonly
+            <input type="text" value="{{ $tutor->username ?? 'N/A' }}" readonly
                 class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-200 cursor-not-allowed">
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Username is automatically assigned and cannot be changed.</p>
         </div>
