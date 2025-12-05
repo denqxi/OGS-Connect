@@ -167,34 +167,11 @@
                         {{ $data->class ?? '-' }}
                     </td>
                     
-                    <!-- Status - Display RAW database value -->
+                    <!-- Status -->
                     <td class="px-6 py-4 text-sm">
-                        @php
-                            // Get the raw value directly from joined assigned_daily_data.class_status
-                            $rawStatus = $data->raw_class_status ?? null;
-                            
-                            // Map to display format
-                            $statusDisplay = 'Not Assigned';
-                            $statusColor = 'bg-red-100 text-red-800';
-                            
-                            if ($rawStatus === 'fully_assigned') {
-                                $statusDisplay = 'Fully Assigned';
-                                $statusColor = 'bg-green-100 text-green-800';
-                            } elseif ($rawStatus === 'partially_assigned') {
-                                $statusDisplay = 'Partially Assigned';
-                                $statusColor = 'bg-yellow-100 text-yellow-800';
-                            } elseif ($rawStatus === 'cancelled') {
-                                $statusDisplay = 'Cancelled';
-                                $statusColor = 'bg-gray-200 text-gray-800';
-                            } elseif ($rawStatus === 'not_assigned') {
-                                $statusDisplay = 'Not Assigned';
-                                $statusColor = 'bg-red-100 text-red-800';
-                            }
-                        @endphp
-                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
-                            {{ $statusDisplay }}
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium {{ $data->status_color ?? 'bg-gray-100 text-gray-600' }}">
+                            {{ $data->status ?? 'Not Assigned' }}
                         </span>
-                        <span class="text-xs text-gray-400 ml-2">({{ $rawStatus ?? 'null' }})</span>
                     </td>
                     
                     <!-- Actions -->
@@ -335,11 +312,11 @@
                     <input type="text" id="detail-duration" readonly class="w-full bg-transparent border-0 font-semibold text-orange-900 focus:outline-none">
                 </div>
                 
-                <!-- Status & Account -->
+                <!-- Assignment Status & Count -->
                 <div class="grid grid-cols-2 gap-4">
                     <div class="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
                         <label class="block text-sm font-bold text-red-900 uppercase mb-2">Status</label>
-                        <div id="detail-status"></div>
+                        <div id="detail-status" class="font-semibold text-red-900"></div>
                     </div>
                     <div class="bg-gradient-to-br from-pink-50 to-pink-100 p-4 rounded-lg border border-pink-200">
                         <label class="block text-sm font-bold text-pink-900 uppercase mb-2">Account</label>
@@ -367,9 +344,12 @@
             </div>
             
             <!-- Footer -->
-            <div class="px-6 py-4 bg-gray-50 flex justify-end items-center border-t">
+            <div class="px-6 py-4 bg-gray-50 flex justify-between items-center border-t">
                 <input type="hidden" id="detail-schedule-id" value="">
                 <input type="hidden" id="detail-assignment-id" value="">
+                <button id="confirm-assignment-btn" onclick="confirmAssignment()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 hidden">
+                    <i class="fas fa-check mr-2"></i>Confirm Assignment
+                </button>
                 <button onclick="closeScheduleDetailsModal()" class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                     Close
                 </button>
@@ -498,27 +478,12 @@
             // Account name - use the actual account_name from data
             document.getElementById('detail-account').value = data.account_name || data.school || school || '-';
             
-            // Status - use raw database value
+            // Status badge - ensure we're using the correct status
             const statusDiv = document.getElementById('detail-status');
-            const rawStatus = data.raw_class_status || null;
-            let statusText = 'Not Assigned';
-            let statusColor = 'bg-red-100 text-red-800';
+            const statusText = data.status || data.class_status || 'Not Assigned';
+            const statusClass = data.status_color || 'bg-gray-100 text-gray-600';
             
-            if (rawStatus === 'fully_assigned') {
-                statusText = 'Fully Assigned';
-                statusColor = 'bg-green-100 text-green-800';
-            } else if (rawStatus === 'partially_assigned') {
-                statusText = 'Partially Assigned';
-                statusColor = 'bg-yellow-100 text-yellow-800';
-            } else if (rawStatus === 'cancelled') {
-                statusText = 'Cancelled';
-                statusColor = 'bg-gray-200 text-gray-800';
-            } else if (rawStatus === 'not_assigned') {
-                statusText = 'Not Assigned';
-                statusColor = 'bg-red-100 text-red-800';
-            }
-            
-            statusDiv.innerHTML = `<span class="px-3 py-1 rounded-full text-sm font-medium ${statusColor}">${statusText}</span><br><span class="text-xs text-gray-500 mt-1">DB: ${rawStatus || 'null'}</span>`;
+            statusDiv.innerHTML = `<span class="px-3 py-1 rounded-full text-sm font-medium ${statusClass}">${statusText}</span>`;
             
             // Assigned Supervisor
             document.getElementById('detail-supervisor').value = data.assigned_supervisors || data.assigned_supervisor || 'None';
@@ -529,11 +494,68 @@
             // Backup Tutor
             document.getElementById('detail-backup-tutor').value = data.backup_tutor_name || 'Not Assigned';
             
+            // Show confirm button if status is Partially Assigned and user is the assigned supervisor
+            const confirmBtn = document.getElementById('confirm-assignment-btn');
+            if (statusText === 'Partially Assigned' && data.assignment_id) {
+                confirmBtn.classList.remove('hidden');
+            } else {
+                confirmBtn.classList.add('hidden');
+            }
+            
             document.getElementById('scheduleDetailsModal').classList.remove('hidden');
         }
         
         function closeScheduleDetailsModal() {
             document.getElementById('scheduleDetailsModal').classList.add('hidden');
+        }
+        
+        function confirmAssignment() {
+            const assignmentId = document.getElementById('detail-assignment-id').value;
+            
+            if (!assignmentId) {
+                alert('No assignment found to confirm');
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to confirm this assignment? This will mark it as Fully Assigned.')) {
+                return;
+            }
+            
+            // Show loading state
+            const confirmBtn = document.getElementById('confirm-assignment-btn');
+            const originalText = confirmBtn.innerHTML;
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Confirming...';
+            
+            // Send AJAX request to confirm
+            fetch('{{ route("api.confirm-assignment") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    assignment_id: assignmentId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message || 'Assignment confirmed successfully!');
+                    closeScheduleDetailsModal();
+                    location.reload(); // Refresh to show updated data
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to confirm assignment'));
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while confirming the assignment');
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = originalText;
+            });
         }
         
         let assignScheduleDate = '';

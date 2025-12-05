@@ -24,8 +24,8 @@ function handleTutorFilterChange(changed) {
     // Update clear button visibility
     updateClearButtonVisibility();
     
-    // Submit the form to apply filters
-    document.getElementById('tutorFilterForm').submit();
+    // DISABLED AUTO-SUBMIT - User must click Apply button manually
+    // document.getElementById('tutorFilterForm').submit();
 }
 
 // Debounce timer for time range updates
@@ -123,13 +123,12 @@ function updateTimeRange() {
         // Update clear button visibility
         updateClearButtonVisibility();
         
-        // Only auto-submit if a day is selected
-        if (dayFilter.value) {
-            // Debounce the form submission - only submit after user stops changing values
-            timeRangeTimeout = setTimeout(() => {
-                document.getElementById('tutorFilterForm').submit();
-            }, 1000);
-        }
+        // DISABLED AUTO-SUBMIT - User must click Apply button manually
+        // if (dayFilter.value) {
+        //     timeRangeTimeout = setTimeout(() => {
+        //         document.getElementById('tutorFilterForm').submit();
+        //     }, 1000);
+        // }
     } else if (!startTime && !endTime) {
         // Clear the time filter if both are empty
         timeSlotInput.value = '';
@@ -137,13 +136,12 @@ function updateTimeRange() {
         // Update clear button visibility
         updateClearButtonVisibility();
         
-        // Only auto-submit if a day is selected
-        if (dayFilter.value) {
-            // Debounce the form submission
-            timeRangeTimeout = setTimeout(() => {
-                document.getElementById('tutorFilterForm').submit();
-            }, 1000);
-        }
+        // DISABLED AUTO-SUBMIT - User must click Apply button manually
+        // if (dayFilter.value) {
+        //     timeRangeTimeout = setTimeout(() => {
+        //         document.getElementById('tutorFilterForm').submit();
+        //     }, 1000);
+        // }
     }
 }
 
@@ -174,23 +172,17 @@ document.addEventListener('DOMContentLoaded', function() {
     let searchTimeout;
 
     if (searchInput) {
-        // Handle search input with debounce
-        searchInput.addEventListener('input', function() {
-            const query = this.value.trim();
-            
-            // Don't show clear button for search input - only for day/time filters
-                if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
+        // DISABLED AUTO-SUBMIT on typing - User must press Enter or click Apply
+        // searchInput.addEventListener('input', function() {
+        //     const query = this.value.trim();
+        //     if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
+        //     clearTimeout(searchTimeout);
+        //     searchTimeout = setTimeout(() => {
+        //         form.submit();
+        //     }, 800);
+        // });
 
-            // Clear previous timeout
-            clearTimeout(searchTimeout);
-            
-            // Debounce search - auto-submit form after user stops typing for 800ms
-            searchTimeout = setTimeout(() => {
-                form.submit();
-            }, 800);
-        });
-
-        // Handle Enter key
+        // Handle Enter key only
         searchInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();

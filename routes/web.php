@@ -364,6 +364,13 @@ Route::middleware(['auth:supervisor', 'prevent.back'])->group(function () {
     // TUTOR MANAGEMENT
     // ------------------------------------------------------------------------
     Route::post('/tutors/{tutor}/toggle-status', [ScheduleController::class, 'toggleTutorStatus'])->name('tutors.toggle-status');
+    
+    // ------------------------------------------------------------------------
+    // API ROUTES
+    // ------------------------------------------------------------------------
+    Route::get('/api/available-tutors', [ScheduleController::class, 'getAvailableTutors'])->name('api.available-tutors');
+    Route::post('/api/assign-tutor', [ScheduleController::class, 'assignTutorToSchedule'])->name('api.assign-tutor');
+    Route::post('/api/confirm-assignment', [ScheduleController::class, 'confirmAssignment'])->name('api.confirm-assignment');
 });
 
 // ============================================================================

@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tutor;
-use App\Models\DailyData;
+use App\Models\ScheduleDailyData;
+use App\Models\AssignedDailyData;
+use App\Models\DailyData; // Keep for backward compatibility during transition
 use App\Models\ScheduleHistory;
 use App\Models\Supervisor;
+use App\Models\SupervisorWatch;
 use App\Http\Requests\SaveScheduleRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -23,38 +26,35 @@ class ScheduleController extends Controller
         try {
             $tab = $request->input('tab', 'employee');
 
-        // Class scheduling tab
-        if ($tab === 'class') {
-            // Only show per-day view if view_date is specifically requested (from View button)
-            if ($request->filled('view_date')) {
-                $date = $request->input('view_date');
-                return $this->showPerDayScheduleData($date, $request->input('page', 1), $request);
-            }
+            // Class scheduling tab
+            if ($tab === 'class') {
+                // Only show per-day view if view_date is specifically requested (from View button)
+                if ($request->filled('view_date')) {
+                    $date = $request->input('view_date');
+                    return $this->showPerDayScheduleData($date, $request->input('page', 1), $request);
+                }
 
-            // Check if there are any filter parameters (non-empty)
-            if ($request->filled('search') || $request->filled('day') || $request->filled('status') || $request->filled('date')) {
-                return $this->searchSchedules($request);
-            }
+                // Check if there are any filter parameters (non-empty)
+                if ($request->filled('search') || $request->filled('day') || $request->filled('status') || $request->filled('date')) {
+                    return $this->searchSchedules($request);
+                }
 
-            return $this->showClassScheduleList($request);
-        }
+                return $this->showClassScheduleList($request);
+            }
 
             // Schedule History tab
             if ($tab === 'history') {
                 return $this->showScheduleHistoryData($request);
             }
 
-            // Employee availability tab
-            if ($tab === 'employee') {
-                return $this->showEmployeeAvailability($request);
-            }
-
-            // Default redirect to class scheduling tab
-            return redirect()->route('schedules.index', ['tab' => 'class']);
+            // Employee availability tab - DEFAULT TAB (no redirect loop)
+            // Always show employee availability view, never redirect
+            return $this->showEmployeeAvailability($request);
             
         } catch (\Exception $e) {
             Log::error('Error in ScheduleController@index: ' . $e->getMessage());
-            return redirect()->route('schedules.index', ['tab' => 'employee'])
+            // Show error on employee availability tab instead of redirecting
+            return $this->showEmployeeAvailability($request)
                 ->with('error', 'An error occurred. Please try again.');
         }
     }
@@ -64,165 +64,279 @@ class ScheduleController extends Controller
      */
     private function showClassScheduleList(Request $request)
     {
-            $query = DailyData::query();
-            
-        // Only show non-finalized schedules in class-scheduling tab
-            $query->where(function($q) {
-                $q->where('schedule_status', '!=', 'finalized')
-                  ->orWhereNull('schedule_status');
+        $query = ScheduleDailyData::query()
+            ->leftJoin('assigned_daily_data as ad', function($join) {
+                $join->on('ad.schedule_daily_data_id', '=', 'schedules_daily_data.id')
+                     ->whereRaw('ad.id = (
+                        SELECT MAX(ad2.id)
+                        FROM assigned_daily_data ad2
+                        WHERE ad2.schedule_daily_data_id = schedules_daily_data.id
+                     )');
             });
 
-        // Apply filters
-            if ($request->filled('search')) {
-                $query->where('school', 'like', '%' . $request->search . '%');
-            }
+        // Apply search filter (school name)
+        if ($request->filled('search')) {
+            $query->where('school', 'like', '%' . $request->search . '%');
+        }
 
-            // Prioritize date filter over day filter - only apply one at a time
-            $dateFilter = $request->input('date');
-            $dayFilter = $request->input('day');
-            
-            if ($dateFilter && trim($dateFilter) !== '') {
-                // Try both whereDate and direct comparison
-                $query->where(function($q) use ($dateFilter) {
-                    $q->whereDate('date', $dateFilter)
-                      ->orWhere('date', $dateFilter);
-                });
-            } elseif ($dayFilter && trim($dayFilter) !== '') {
-                $day = $this->validateDayName($dayFilter);
-                if ($day) {
-                    // Use DAYOFWEEK instead of DAYNAME for more reliable filtering
-                    $dayOfWeek = $this->getDayOfWeek($day);
-                    if ($dayOfWeek) {
-                        $query->whereRaw('DAYOFWEEK(date) = ?', [$dayOfWeek]);
-                    }
+        // Date filter
+        if ($request->filled('date') && trim($request->input('date')) !== '') {
+            $query->whereDate('date', $request->input('date'));
+        }
+        // Day filter (only if date not set)
+        elseif ($request->filled('day') && trim($request->input('day')) !== '') {
+            $day = $this->validateDayName($request->input('day'));
+            if ($day) {
+                $dayOfWeek = $this->getDayOfWeek($day);
+                if ($dayOfWeek) {
+                    $query->whereRaw('DAYOFWEEK(date) = ?', [$dayOfWeek]);
                 }
             }
-
-            $dailyData = $query->selectRaw('date, DAYNAME(date) as day, 
-                GROUP_CONCAT(DISTINCT school ORDER BY school ASC SEPARATOR ", ") as schools,
-                COUNT(*) as class_count,
-                SUM(CASE WHEN class_status = "cancelled" THEN 0 ELSE 1 END) as active_class_count,
-                SUM(CASE WHEN class_status = "cancelled" THEN 1 ELSE 0 END) as cancelled_class_count,
-                SUM(number_required) as total_required,
-                (SELECT COUNT(*) FROM tutor_assignments ta WHERE ta.daily_data_id IN (SELECT dd2.id FROM daily_data dd2 WHERE dd2.date = daily_data.date) AND (ta.is_backup = 0 OR ta.is_backup IS NULL)) as total_assigned,
-                GROUP_CONCAT(DISTINCT assigned_supervisor ORDER BY assigned_supervisor ASC SEPARATOR ", ") as assigned_supervisors')
-                ->groupBy('date');
-
-            // Apply status filter after grouping (using HAVING clause)
-            if ($request->filled('status')) {
-                $this->applyStatusFilter($dailyData, $request->status);
+        }
+        
+        // Status filter
+        if ($request->filled('status')) {
+            $status = $request->input('status');
+            if ($status === 'not_assigned') {
+                // Show schedules with no assignment or with not_assigned status
+                $query->where(function($q) {
+                    $q->whereDoesntHave('assignedData')
+                      ->orWhereHas('assignedData', function($sub) {
+                          $sub->where('class_status', 'not_assigned');
+                      });
+                });
+            } else {
+                // Show schedules with specific status
+                $query->whereHas('assignedData', function($sub) use ($status) {
+                    $sub->where('class_status', $status);
+                });
             }
+        }
 
-            $dailyData = $dailyData->orderBy('date', 'desc')
-                ->paginate(5)
-                ->withQueryString();
+        // Get individual schedule entries (no grouping - show each schedule as separate row)
+        $dailyData = $query->select(
+                'schedules_daily_data.id',
+                'schedules_daily_data.date',
+                'schedules_daily_data.day',
+                'schedules_daily_data.time',
+                'schedules_daily_data.duration',
+                'schedules_daily_data.school',
+                'schedules_daily_data.class',
+                DB::raw('ad.class_status as raw_class_status'),
+                DB::raw('ad.id as assignment_id')
+            )
+            ->orderBy('date', 'asc')
+            ->orderBy('time', 'asc')
+            ->paginate(10)
+            ->withQueryString();
 
-            // Get available dates and days for filtering (only non-finalized for class scheduling)
+        // Add computed fields to each row
+        foreach ($dailyData as $data) {
+            // Get assignment details for this schedule with tutor names AND class_status
+            $assignment = AssignedDailyData::where('schedule_daily_data_id', $data->id)
+                ->with([
+                    'supervisor:supervisor_id,first_name,last_name',
+                    'mainTutor.applicant:applicant_id,first_name,last_name',
+                    'mainTutor.account:account_id,account_name',
+                    'backupTutor.applicant:applicant_id,first_name,last_name'
+                ])
+                ->first();
+            
+            // DIRECTLY use the raw database value from the assignment record
+            if ($assignment) {
+                $data->setAttribute('raw_class_status', $assignment->class_status);
+                $data->setAttribute('assignment_id', $assignment->id);
+            } else {
+                // Fallback to left join values
+                $data->setAttribute('raw_class_status', $data->raw_class_status ?? null);
+                $data->setAttribute('assignment_id', $data->assignment_id ?? null);
+            }
+            
+            $hasMainTutor = $assignment && $assignment->main_tutor;
+            $hasBackupTutor = $assignment && $assignment->backup_tutor;
+            
+            $data->total_assigned = ($hasMainTutor ? 1 : 0) + ($hasBackupTutor ? 1 : 0);
+            $data->total_required = 2;
+            
+            // Get supervisor name
+            if ($assignment && $assignment->supervisor) {
+                $data->setAttribute('assigned_supervisors', trim($assignment->supervisor->first_name . ' ' . $assignment->supervisor->last_name));
+                $data->setAttribute('assigned_supervisor_ids', $assignment->assigned_supervisor);
+            } else {
+                $data->setAttribute('assigned_supervisors', 'None');
+                $data->setAttribute('assigned_supervisor_ids', '');
+            }
+            
+            // Get main tutor name and account
+            if ($assignment && $assignment->mainTutor) {
+                if ($assignment->mainTutor->applicant) {
+                    $data->setAttribute('main_tutor_name', trim($assignment->mainTutor->applicant->first_name . ' ' . $assignment->mainTutor->applicant->last_name));
+                } else {
+                    $data->setAttribute('main_tutor_name', 'Unknown');
+                }
+                
+                // Get account name for display
+                if ($assignment->mainTutor->account) {
+                    $data->setAttribute('account_name', $assignment->mainTutor->account->account_name);
+                } else {
+                    $data->setAttribute('account_name', $data->school);
+                }
+            } else {
+                $data->setAttribute('main_tutor_name', 'Not Assigned');
+                $data->setAttribute('account_name', $data->school);
+            }
+            
+            // Get backup tutor name
+            if ($assignment && $assignment->backupTutor && $assignment->backupTutor->applicant) {
+                $data->setAttribute('backup_tutor_name', trim($assignment->backupTutor->applicant->first_name . ' ' . $assignment->backupTutor->applicant->last_name));
+            } else {
+                $data->setAttribute('backup_tutor_name', 'Not Assigned');
+            }
+            
+            // Add assignment_id for confirmation functionality
+            $data->setAttribute('assignment_id', $assignment ? $assignment->id : null);
+            
+            // Store total counts
+            $data->setAttribute('total_assigned', $data->total_assigned);
+            $data->setAttribute('total_required', $data->total_required);
+            
+            // No need to append - setAttribute makes attributes accessible without requiring accessor methods
+        }
+
+        // Get available dates and days for filtering
         $availableDates = $this->getAvailableDates($request->input('date'), true);
         $availableDays = $this->getAvailableDays();
 
-            return view('schedules.index', compact('dailyData', 'availableDates', 'availableDays'));
-        }
+        // DEBUG: Log the final data before passing to view
+        Log::info('Class list data being passed to view:', [
+            'dailyData_count' => $dailyData->count(),
+            'sample' => $dailyData->take(5)->map(fn($d) => [
+                'id' => $d->id,
+                'raw_class_status' => $d->raw_class_status ?? null,
+                'assignment_id' => $d->assignment_id ?? null,
+            ])->toArray(),
+        ]);
+
+        return view('schedules.index', compact('dailyData', 'availableDates', 'availableDays'));
+    }
 
     /**
      * Show employee availability with filtering
      */
     private function showEmployeeAvailability(Request $request)
     {
-        $query = Tutor::with(['accounts' => function($query) {
-            $query->where('account_name', 'GLS')->where('status', 'active');
-        }])
-        ->whereHas('accounts', function($query) {
-            $query->where('account_name', 'GLS')->where('status', 'active');
-        });
+        // Get all active tutors with applicant info for sorting/display
+        $query = Tutor::query()
+            ->join('applicants', 'tutor.applicant_id', '=', 'applicants.applicant_id')
+            ->where('tutor.status', 'active')
+            ->select('tutor.*');
         
-        // Apply filters
+        // Apply search filter
         if ($request->filled('search')) {
             $query->where(function($q) use ($request) {
-                $q->where('tusername', 'like', '%' . $request->search . '%')
-                  ->orWhere('first_name', 'like', '%' . $request->search . '%')
-                  ->orWhere('last_name', 'like', '%' . $request->search . '%')
-                  ->orWhere('email', 'like', '%' . $request->search . '%')
-                  ->orWhere('phone_number', 'like', '%' . $request->search . '%')
-                  ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ['%' . $request->search . '%']);
+                $q->where('tutor.username', 'like', '%' . $request->search . '%')
+                  ->orWhere('applicants.first_name', 'like', '%' . $request->search . '%')
+                  ->orWhere('applicants.last_name', 'like', '%' . $request->search . '%')
+                  ->orWhere('tutor.email', 'like', '%' . $request->search . '%')
+                  ->orWhere('applicants.phone_number', 'like', '%' . $request->search . '%')
+                  ->orWhereRaw("CONCAT(applicants.first_name, ' ', applicants.last_name) LIKE ?", ['%' . $request->search . '%']);
             });
         }
         
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('tutor.status', $request->status);
         }
         
-        // Apply day filter (optional)
-        if ($request->filled('day')) {
-            $dayName = $this->normalizeDayName($request->day);
-            $dayNameLower = strtolower($dayName);
-            
-            
-            $query->whereHas('accounts', function($q) use ($dayName, $dayNameLower) {
-                $q->where('account_name', 'GLS')->where('status', 'active')
-                  ->where(function($subQuery) use ($dayName, $dayNameLower) {
-                      $subQuery->where('available_times', 'like', '%' . $dayName . '%')
-                               ->orWhere('available_times', 'like', '%' . $dayNameLower . '%');
-                  });
-            });
-        }
+        // Order by applicant name and paginate
+        $tutors = $query->orderBy('applicants.first_name')
+            ->orderBy('applicants.last_name')
+            ->paginate(5)
+            ->withQueryString();
         
-        // Apply time slot filter (optional)
-        if ($request->filled('time_slot')) {
-            $timeSlot = $request->time_slot;
-            // Normalize time format - convert "09:00 - 10:00" to "09:00-10:00"
-            $timeSlot = str_replace([' - ', ' '], '-', $timeSlot);
-            
-            // Parse the requested time range
-            if (strpos($timeSlot, '-') !== false) {
-                list($requestedStart, $requestedEnd) = explode('-', $timeSlot);
+        // For each tutor, get their GLS account availability information
+        $tutors->getCollection()->transform(function ($tutor) use ($request) {
+            // Check if tutor's assigned account is GLS
+            if ($tutor->account && $tutor->account->account_name === 'GLS') {
+                // Get work preference for this tutor (through applicant relationship)
+                $workPreference = $tutor->workPreferences;
                 
-                // Convert to minutes for comparison
-                $requestedStartMinutes = $this->timeToMinutes($requestedStart);
-                $requestedEndMinutes = $this->timeToMinutes($requestedEnd);
-                
-                // Use a simpler approach: get all tutors and filter in PHP
-                $allTutorIds = $query->pluck('tutorID')->toArray();
-                
-                if (!empty($allTutorIds)) {
-                    $filteredTutorIds = [];
-                    
-                    // Get tutors with their accounts
-                    $tutorsWithAccounts = Tutor::with(['accounts' => function($query) {
-                        $query->where('account_name', 'GLS')->where('status', 'active');
-                    }])->whereIn('tutorID', $allTutorIds)->get();
-                    
-                    foreach ($tutorsWithAccounts as $tutor) {
-                        $glsAccount = $tutor->accounts->first(function($account) {
-                            return $account->account && $account->account->account_name === 'GLS';
-                        });
-                        if ($glsAccount && $this->isTimeRangeAvailable($glsAccount->available_times, $requestedStart, $requestedEnd)) {
-                            $filteredTutorIds[] = $tutor->tutorID;
+                if ($workPreference && $workPreference->available_times) {
+                    // Format available times from work preference
+                    $availableTimes = $workPreference->available_times;
+                    if (is_array($availableTimes)) {
+                        $formatted = [];
+                        foreach ($availableTimes as $day => $times) {
+                            if (is_array($times)) {
+                                $formatted[] = ucfirst($day) . ': ' . implode(', ', $times);
+                            } else {
+                                $formatted[] = ucfirst($day) . ': ' . $times;
+                            }
                         }
-                    }
-                    
-                    // Apply the filtered tutor IDs
-                    if (!empty($filteredTutorIds)) {
-                        $query->whereIn('tutorID', $filteredTutorIds);
+                        $tutor->formatted_available_time = implode(' | ', $formatted);
                     } else {
-                        // No tutors match the time range, return empty result
-                        $query->where('tutorID', '=', 'impossible_id_that_does_not_exist');
+                        $tutor->formatted_available_time = $availableTimes;
                     }
+                    $tutor->available_times = $availableTimes;
+                } else {
+                    $tutor->formatted_available_time = 'No schedule';
+                    $tutor->available_times = null;
                 }
             } else {
-                // Fallback to simple string matching for single time values
-                $query->whereHas('accounts', function($q) use ($timeSlot) {
-                    $q->where('account_name', 'GLS')->where('status', 'active')
-                      ->where('available_times', 'like', '%' . $timeSlot . '%');
-                });
+                $tutor->formatted_available_time = 'Not assigned to GLS';
+                $tutor->available_times = null;
             }
-        }
+            
+            return $tutor;
+        });
         
-        $tutors = $query->orderBy('first_name')->orderBy('last_name')->paginate(5)->withQueryString();
+        // Apply day and time filters by filtering the collection
+        if ($request->filled('day') || $request->filled('time_slot')) {
+            $tutors->setCollection($tutors->getCollection()->filter(function ($tutor) use ($request) {
+                // Check if tutor has available times (from the transform step above)
+                if (!$tutor->available_times) {
+                    return false;
+                }
+                
+                // Check day filter
+                if ($request->filled('day')) {
+                    $dayName = $this->normalizeDayName($request->day);
+                    $availableTimes = json_encode($tutor->available_times);
+                    if (stripos($availableTimes, $dayName) === false) {
+                        return false;
+                    }
+                }
+                
+                // Check time filter
+                if ($request->filled('time_slot')) {
+                    $timeSlot = $request->time_slot;
+                    $availableTimes = json_encode($tutor->available_times);
+                    if (stripos($availableTimes, $timeSlot) === false) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            })->values());
+        }
         $availableTimeSlots = $this->getAvailableTimeSlots();
         $availableDays = $this->getAvailableDaysFromTutorAccounts();
         
-        return view('schedules.index', compact('tutors', 'availableTimeSlots', 'availableDays'));
+        // Get all daily data for the calendar view
+        $dailyData = DailyData::orderBy('date')
+            ->get()
+            ->map(function($data) {
+                $data->tutor_name = 'TBD';
+                // Try to get tutor name from tutor assignments
+                if ($data->tutorAssignments && $data->tutorAssignments->count() > 0) {
+                    $tutor = $data->tutorAssignments->first()->tutor;
+                    if ($tutor && $tutor->applicant) {
+                        $data->tutor_name = $tutor->applicant->first_name . ' ' . $tutor->applicant->last_name;
+                    }
+                }
+                return $data;
+            });
+        
+        return view('schedules.index', compact('tutors', 'availableTimeSlots', 'availableDays', 'dailyData'));
     }
 
     /**
@@ -326,9 +440,9 @@ class ScheduleController extends Controller
             ->paginate(10, ['*'], 'page', $page)
             ->withQueryString();
 
-        // Check if this schedule is finalized
-        $isFinalized = $dayClasses->where('schedule_status', 'finalized')->count() > 0;
-        $finalizedAt = $isFinalized ? $dayClasses->where('schedule_status', 'finalized')->first()->finalized_at : null;
+        // Note: Finalization is now tracked in assigned_daily_data, not schedules_daily_data
+        $isFinalized = false;
+        $finalizedAt = null;
 
         // Get grouped information for the header (include all classes for statistics)
         $dayInfo = DailyData::select([
@@ -396,10 +510,9 @@ class ScheduleController extends Controller
      */
     private function showScheduleHistoryData(Request $request)
     {
+        // Note: This method uses legacy DailyData model - consider refactoring to use ScheduleDailyData
+        // For now, remove the schedule_status filter since it doesn't exist in new table structure
         $query = DailyData::query();
-        
-        // Only show finalized schedules
-        $query->where('schedule_status', 'finalized');
 
         // Apply filters
         if ($request->filled('search')) {
@@ -432,9 +545,8 @@ class ScheduleController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // Get available dates and days for filtering (only finalized schedules)
-        $availableDates = DailyData::where('schedule_status', 'finalized')
-            ->select('date')
+        // Get available dates and days for filtering
+        $availableDates = DailyData::select('date')
             ->distinct()
             ->orderBy('date', 'desc')
             ->pluck('date');
@@ -451,87 +563,146 @@ class ScheduleController extends Controller
     public function searchSchedules(Request $request)
     {
         try {
-            
-            $query = DailyData::query();
-            
-            // Only show non-finalized schedules
-            $query->where(function($q) {
-                $q->where('schedule_status', '!=', 'finalized')
-                  ->orWhereNull('schedule_status');
-            });
-            
+            // Per-row schedules with status join for consistent display
+            $query = ScheduleDailyData::query()
+                ->leftJoin('assigned_daily_data as ad', 'ad.schedule_daily_data_id', '=', 'schedules_daily_data.id');
+
+            // Apply search filter
             if ($request->filled('search')) {
                 $searchTerm = $request->search;
                 $query->where(function($q) use ($searchTerm) {
-                    $q->where('school', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('class', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('assigned_supervisor', 'like', '%' . $searchTerm . '%');
+                    $q->where('schedules_daily_data.school', 'like', '%' . $searchTerm . '%')
+                      ->orWhere('schedules_daily_data.class', 'like', '%' . $searchTerm . '%');
                 });
             }
-            
-            // Prioritize date filter over day filter - only apply one at a time
+
+            // Date or Day filter
             $dateFilter = $request->input('date');
             $dayFilter = $request->input('day');
-            
+
             if ($dateFilter && trim($dateFilter) !== '') {
-                // Try both whereDate and direct comparison
-                $query->where(function($q) use ($dateFilter) {
-                    $q->whereDate('date', $dateFilter)
-                      ->orWhere('date', $dateFilter);
-                });
+                $query->whereDate('schedules_daily_data.date', $dateFilter);
             } elseif ($dayFilter && trim($dayFilter) !== '') {
                 $day = $this->validateDayName($dayFilter);
                 if ($day) {
-                    // Use DAYOFWEEK instead of DAYNAME for more reliable filtering
                     $dayOfWeek = $this->getDayOfWeek($day);
                     if ($dayOfWeek) {
-                        $query->whereRaw('DAYOFWEEK(date) = ?', [$dayOfWeek]);
+                        $query->whereRaw('DAYOFWEEK(schedules_daily_data.date) = ?', [$dayOfWeek]);
                     }
                 }
             }
-            
-            $schedules = $query->selectRaw('date, DAYNAME(date) as day, 
-                GROUP_CONCAT(DISTINCT school ORDER BY school ASC SEPARATOR ", ") as schools,
-                COUNT(*) as class_count,
-                SUM(CASE WHEN class_status = "cancelled" THEN 0 ELSE 1 END) as active_class_count,
-                SUM(CASE WHEN class_status = "cancelled" THEN 1 ELSE 0 END) as cancelled_class_count,
-                SUM(number_required) as total_required,
-                (SELECT COUNT(*) FROM tutor_assignments ta WHERE ta.daily_data_id IN (SELECT dd2.id FROM daily_data dd2 WHERE dd2.date = daily_data.date) AND (ta.is_backup = 0 OR ta.is_backup IS NULL)) as total_assigned,
-                GROUP_CONCAT(DISTINCT assigned_supervisor ORDER BY assigned_supervisor ASC SEPARATOR ", ") as assigned_supervisors')
-                ->groupBy('date');
 
-            // Apply status filter after grouping (using HAVING clause)
+            // Status filter via joined table
             if ($request->filled('status')) {
-                $this->applyStatusFilter($schedules, $request->status);
+                $status = $request->input('status');
+                if ($status === 'not_assigned') {
+                    $query->where(function($q) {
+                        $q->whereNull('ad.id')
+                          ->orWhere('ad.class_status', 'not_assigned');
+                    });
+                } else {
+                    $query->where('ad.class_status', $status);
+                }
             }
 
-            $schedules = $schedules->orderBy('date', 'desc')
-                ->paginate(5)
+            // Select fields including joined status
+            $dailyData = $query->select(
+                    'schedules_daily_data.id',
+                    'schedules_daily_data.date',
+                    DB::raw('DAYNAME(schedules_daily_data.date) as day'),
+                    'schedules_daily_data.time',
+                    'schedules_daily_data.duration',
+                    'schedules_daily_data.school',
+                    'schedules_daily_data.class',
+                    DB::raw('ad.class_status as raw_class_status'),
+                    DB::raw('ad.id as assignment_id')
+                )
+                ->orderBy('schedules_daily_data.date', 'asc')
+                ->orderBy('schedules_daily_data.time', 'asc')
+                ->paginate(10)
                 ->withQueryString();
-            
-            // Check if this is an AJAX request
-            if ($request->ajax()) {
-                // Return JSON response for AJAX requests
-                $html = view('schedules.partials.class-schedule-table', ['schedules' => $schedules])->render();
-                $pagination = view('schedules.partials.class-pagination', ['dailyData' => $schedules])->render();
-            
-            return response()->json([
-                'success' => true,
-                    'html' => $html,
-                    'pagination' => $pagination,
-                    'total' => $schedules->total()
-            ]);
+
+            // Populate display attributes
+            foreach ($dailyData as $data) {
+                $assignment = AssignedDailyData::where('schedule_daily_data_id', $data->id)
+                    ->with([
+                        'supervisor:supervisor_id,first_name,last_name',
+                        'mainTutor.applicant:applicant_id,first_name,last_name',
+                        'mainTutor.account:account_id,account_name',
+                        'backupTutor.applicant:applicant_id,first_name,last_name'
+                    ])->first();
+
+                if ($assignment) {
+                    $data->setAttribute('raw_class_status', $assignment->class_status);
+                    $data->setAttribute('assignment_id', $assignment->id);
+                } else {
+                    $data->setAttribute('raw_class_status', $data->raw_class_status ?? null);
+                    $data->setAttribute('assignment_id', $data->assignment_id ?? null);
+                }
+
+                $hasMainTutor = $assignment && $assignment->main_tutor;
+                $hasBackupTutor = $assignment && $assignment->backup_tutor;
+                $data->total_assigned = ($hasMainTutor ? 1 : 0) + ($hasBackupTutor ? 1 : 0);
+                $data->total_required = 2;
+
+                if ($assignment && $assignment->supervisor) {
+                    $data->setAttribute('assigned_supervisors', trim($assignment->supervisor->first_name . ' ' . $assignment->supervisor->last_name));
+                    $data->setAttribute('assigned_supervisor_ids', $assignment->assigned_supervisor);
+                } else {
+                    $data->setAttribute('assigned_supervisors', 'None');
+                    $data->setAttribute('assigned_supervisor_ids', '');
+                }
+
+                if ($assignment && $assignment->mainTutor) {
+                    if ($assignment->mainTutor->applicant) {
+                        $data->setAttribute('main_tutor_name', trim($assignment->mainTutor->applicant->first_name . ' ' . $assignment->mainTutor->applicant->last_name));
+                    } else {
+                        $data->setAttribute('main_tutor_name', 'Unknown');
+                    }
+
+                    if ($assignment->mainTutor->account) {
+                        $data->setAttribute('account_name', $assignment->mainTutor->account->account_name);
+                    } else {
+                        $data->setAttribute('account_name', $data->school);
+                    }
+                } else {
+                    $data->setAttribute('main_tutor_name', 'Not Assigned');
+                    $data->setAttribute('account_name', $data->school);
+                }
+
+                if ($assignment && $assignment->backupTutor && $assignment->backupTutor->applicant) {
+                    $data->setAttribute('backup_tutor_name', trim($assignment->backupTutor->applicant->first_name . ' ' . $assignment->backupTutor->applicant->last_name));
+                } else {
+                    $data->setAttribute('backup_tutor_name', 'Not Assigned');
+                }
+
+                $data->setAttribute('total_assigned', $data->total_assigned);
+                $data->setAttribute('total_required', $data->total_required);
+                // No need to append - setAttribute makes attributes accessible without requiring accessor methods
             }
 
-            // Get available dates and days for filtering (only non-finalized for class scheduling)
             $availableDates = $this->getAvailableDates($request->input('date'), true);
             $availableDays = $this->getAvailableDays();
-            
-            // Rename $schedules to $dailyData to match view expectations
-            $dailyData = $schedules;
-            
+
+            Log::info('SearchSchedules joined data:', [
+                'count' => $dailyData->count(),
+                'sample' => $dailyData->take(5)->map(fn($d) => ['id' => $d->id, 'status' => $d->raw_class_status])->toArray(),
+            ]);
+
+            if ($request->ajax()) {
+                $html = view('schedules.partials.class-schedule-table', ['schedules' => $dailyData])->render();
+                $pagination = view('schedules.partials.class-pagination', ['dailyData' => $dailyData])->render();
+
+                return response()->json([
+                    'success' => true,
+                    'html' => $html,
+                    'pagination' => $pagination,
+                    'total' => $dailyData->total()
+                ]);
+            }
+
             return view('schedules.index', compact('dailyData', 'availableDates', 'availableDays'));
-            
+
         } catch (\Exception $e) {
             Log::error('Error searching schedules: ' . $e->getMessage());
             return redirect()->route('schedules.index', ['tab' => 'class'])
@@ -566,19 +737,15 @@ class ScheduleController extends Controller
             $scheduleStatus = $status === 'final' ? 'finalized' : 'tentative';
 
             foreach ($classes as $class) {
-                    $oldData = [
-                    'schedule_status' => $class->schedule_status,
-                    'finalized_at' => $class->finalized_at,
-                    'finalized_by' => $class->finalized_by
-                ];
+                    // Note: schedules_daily_data no longer has schedule_status, finalized_at, or finalized_by
+                    // These are now tracked in assigned_daily_data table
+                    $oldData = [];
 
-                $updateData = ['schedule_status' => $scheduleStatus];
-                if ($status === 'final') {
-                    $updateData['finalized_at'] = now();
-                    $updateData['finalized_by'] = $performedBy;
-                }
+                $updateData = [];
+                // No updates needed for schedules_daily_data - it only stores schedule info
+                // Finalization is handled through assigned_daily_data
 
-                $class->update($updateData);
+                // $class->update($updateData);
 
                 if (method_exists($class, 'createHistoryRecord')) {
                     $class->createHistoryRecord(
@@ -586,11 +753,7 @@ class ScheduleController extends Controller
                         $performedBy,
                         "Schedule saved as " . ($status === 'final' ? 'finalized' : 'tentative'),
                         $oldData,
-                        [
-                            'schedule_status' => $scheduleStatus,
-                            'finalized_at' => $updateData['finalized_at'] ?? null,
-                            'finalized_by' => $updateData['finalized_by'] ?? null
-                        ]
+                        []
                     );
                 }
 
@@ -727,205 +890,6 @@ class ScheduleController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unable to update tutor status. Please try again or contact support if the issue persists.'
-            ], 500);
-        }
-    }
-
-    /**
-     * Get available tutors for assignment
-     */
-    public function getAvailableTutors(Request $request)
-    {
-        try {
-            $date = $request->input('date');
-            $day = $request->input('day');
-            $timeSlot = $request->input('time_slot');
-            $classId = $request->input('class_id');
-
-            // Debug logging
-            Log::info('getAvailableTutors called with:', [
-                'date' => $date,
-                'day' => $day,
-                'time_slot' => $timeSlot,
-                'class_id' => $classId
-            ]);
-
-            // First, let's check how many tutors we have without any filtering
-            $totalTutors = Tutor::where('status', 'active')->count();
-            $glsTutors = Tutor::whereHas('accounts', function($query) {
-                $query->where('account_name', 'GLS')->where('status', 'active');
-            })->where('status', 'active')->count();
-            
-            Log::info('Tutor counts:', [
-                'total_active_tutors' => $totalTutors,
-                'gls_active_tutors' => $glsTutors
-            ]);
-
-            $query = Tutor::with(['accounts' => function($query) {
-                $query->where('account_name', 'GLS')->where('status', 'active');
-            }])
-                           ->whereHas('accounts', function($query) {
-                $query->where('account_name', 'GLS')->where('status', 'active');
-            })
-            ->where('status', 'active');
-
-            // Filter by day if provided
-            if ($day) {
-                $dayName = $this->normalizeDayName($day);
-                Log::info('Filtering by day:', ['original_day' => $day, 'normalized_day' => $dayName]);
-                
-                // Let's check how many tutors have this day in their available_times
-                $dayTutors = Tutor::whereHas('accounts', function($q) use ($dayName) {
-                    $q->where('account_name', 'GLS')->where('status', 'active')
-                      ->where('available_times', 'like', '%' . $dayName . '%');
-                })->where('status', 'active')->count();
-                
-                Log::info('Tutors available on day:', ['day' => $dayName, 'count' => $dayTutors]);
-                
-                $query->whereHas('accounts', function($q) use ($dayName) {
-                    $q->where('account_name', 'GLS')->where('status', 'active')
-                      ->where('available_times', 'like', '%' . $dayName . '%');
-                });
-            }
-
-            // Filter by time slot if provided
-            if ($timeSlot) {
-                $timeSlot = str_replace(' - ', '-', $timeSlot);
-                Log::info('Filtering by time slot:', ['original_time_slot' => $request->input('time_slot'), 'processed_time_slot' => $timeSlot]);
-                
-                // Let's check how many tutors have this time slot in their available_times
-                $timeSlotTutors = Tutor::whereHas('accounts', function($q) use ($timeSlot) {
-                    $q->where('account_name', 'GLS')->where('status', 'active')
-                      ->where('available_times', 'like', '%' . $timeSlot . '%');
-                })->where('status', 'active')->count();
-                
-                Log::info('Tutors available at time slot:', ['time_slot' => $timeSlot, 'count' => $timeSlotTutors]);
-                
-                $query->whereHas('accounts', function($q) use ($timeSlot) {
-                    $q->where('account_name', 'GLS')->where('status', 'active')
-                      ->where('available_times', 'like', '%' . $timeSlot . '%');
-                });
-            }
-
-            // If class_id is provided, exclude only MAIN tutors already assigned to this class
-            // But allow backup tutors to be available for promotion to main
-            if ($classId) {
-                // First, let's see all assignments for this class
-                $allAssignments = \App\Models\TutorAssignment::where('daily_data_id', $classId)
-                    ->with('tutor')
-                    ->get(['tutor_id', 'is_backup']);
-                
-                Log::info('All assignments for class:', [
-                    'class_id' => $classId,
-                    'assignments' => $allAssignments->map(function($a) {
-                        return [
-                            'tutor_id' => $a->tutor_id,
-                            'tutor_name' => $a->tutor ? $a->tutor->full_name : 'Unknown',
-                            'is_backup' => $a->is_backup
-                        ];
-                    })
-                ]);
-                
-                $assignedMainTutorIds = \App\Models\TutorAssignment::where('daily_data_id', $classId)
-                    ->where('is_backup', false) // Only exclude main tutors, not backup tutors
-                    ->pluck('tutor_id')
-                    ->toArray();
-                
-                if (!empty($assignedMainTutorIds)) {
-                    $query->whereNotIn('tutorID', $assignedMainTutorIds);
-                }
-                
-                Log::info('Excluded main tutors for class:', [
-                    'class_id' => $classId,
-                    'excluded_main_tutor_ids' => $assignedMainTutorIds
-                ]);
-            }
-
-            $tutors = $query->get()->map(function($tutor) {
-                return [
-                    'id' => $tutor->tutorID,
-                    'username' => $tutor->tusername,
-                        'full_name' => $tutor->full_name,
-                    'name' => $tutor->full_name, // Keep for backward compatibility
-                    'email' => $tutor->email,
-                    'phone' => $tutor->phone_number,
-                    'availability' => $tutor->formatted_available_time
-                ];
-            });
-
-            Log::info('getAvailableTutors result:', [
-                'total_tutors_found' => $tutors->count(),
-                'tutor_usernames' => $tutors->pluck('username')->toArray()
-            ]);
-
-            // If no tutors found and we have time slot filtering, try without time slot filter
-            if ($tutors->count() === 0 && $timeSlot) {
-                Log::info('No tutors found with time slot filter, trying without time slot filter');
-                
-                $fallbackQuery = Tutor::with(['accounts' => function($query) {
-                    $query->where('account_name', 'GLS')->where('status', 'active');
-                }])
-                ->whereHas('accounts', function($query) {
-                    $query->where('account_name', 'GLS')->where('status', 'active');
-                })
-                ->where('status', 'active');
-
-                // Apply day filter only
-                if ($day) {
-                    $dayName = $this->normalizeDayName($day);
-                    $fallbackQuery->whereHas('accounts', function($q) use ($dayName) {
-                        $q->where('account_name', 'GLS')->where('status', 'active')
-                          ->where('available_times', 'like', '%' . $dayName . '%');
-                    });
-                }
-
-                // Apply class exclusion - only exclude main tutors, not backup tutors
-                if ($classId) {
-                    $assignedMainTutorIds = \App\Models\TutorAssignment::where('daily_data_id', $classId)
-                        ->where('is_backup', false) // Only exclude main tutors, not backup tutors
-                        ->pluck('tutor_id')
-                        ->toArray();
-                    
-                    if (!empty($assignedMainTutorIds)) {
-                        $fallbackQuery->whereNotIn('tutorID', $assignedMainTutorIds);
-                    }
-                }
-
-                $fallbackTutors = $fallbackQuery->get()->map(function($tutor) {
-                    return [
-                        'id' => $tutor->tutorID,
-                        'username' => $tutor->tusername,
-                    'full_name' => $tutor->full_name,
-                        'name' => $tutor->full_name,
-                        'email' => $tutor->email,
-                        'phone' => $tutor->phone_number,
-                        'availability' => $tutor->formatted_available_time
-                    ];
-                });
-
-                Log::info('Fallback query result:', [
-                    'total_tutors_found' => $fallbackTutors->count(),
-                    'tutor_usernames' => $fallbackTutors->pluck('username')->toArray()
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'tutors' => $fallbackTutors,
-                    'note' => 'Time slot filter removed - no tutors found with exact time match'
-                ]);
-            }
-            
-            return response()->json([
-                'success' => true,
-                'tutors' => $tutors
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Error getting available tutors: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to get available tutors: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -1098,19 +1062,8 @@ class ScheduleController extends Controller
      */
     private function getAvailableDates($includeSelectedDate = null, $nonFinalizedOnly = false)
     {
-        $query = DailyData::select('date')->distinct();
-        
-        // For class scheduling tab, only show dates with non-finalized schedules
-        if ($nonFinalizedOnly) {
-            // Debug: Let's see what status values exist
-            $allStatuses = DailyData::select('schedule_status')->distinct()->pluck('schedule_status');
-            Log::info('Available schedule statuses in database:', ['statuses' => $allStatuses->toArray()]);
-            
-            $query->where(function($q) {
-                $q->where('schedule_status', '!=', 'finalized')
-                  ->orWhereNull('schedule_status');
-            });
-        }
+        // Use ScheduleDailyData table directly - no schedule_status column exists
+        $query = ScheduleDailyData::select('date')->distinct();
         
         $dates = $query->orderBy('date', 'desc')->pluck('date')->map(function($date) {
             return $date instanceof \Carbon\Carbon ? $date->format('Y-m-d') : $date;
@@ -1137,11 +1090,8 @@ class ScheduleController extends Controller
      */
     private function getAvailableDays()
     {
-        $dates = DailyData::where(function($q) {
-            $q->where('schedule_status', '!=', 'finalized')
-              ->orWhereNull('schedule_status');
-        })
-        ->select('date')
+        // Use ScheduleDailyData table - no schedule_status filtering needed
+        $dates = ScheduleDailyData::select('date')
         ->distinct()
         ->pluck('date');
         
@@ -1171,16 +1121,22 @@ class ScheduleController extends Controller
      */
     private function getAvailableDaysFromTutorAccounts()
     {
-        $tutorAccounts = \App\Models\TutorAccount::where('status', 'active')
-            ->whereNotNull('available_days')
+        // Get all active tutors with GLS account and their work preferences
+        $workPreferences = \App\Models\WorkPreference::join('applicants', 'work_preferences.applicant_id', '=', 'applicants.applicant_id')
+            ->join('tutor', 'tutor.applicant_id', '=', 'applicants.applicant_id')
+            ->join('accounts', 'tutor.account_id', '=', 'accounts.account_id')
+            ->where('accounts.account_name', 'GLS')
+            ->whereNotNull('work_preferences.days_available')
+            ->select('work_preferences.days_available')
+            ->distinct()
             ->get();
         
         $allDays = collect();
         
-        foreach ($tutorAccounts as $account) {
-            $availableDays = $account->available_days;
+        foreach ($workPreferences as $preference) {
+            $availableDays = $preference->days_available;
             
-            // Handle case where available_days might be a string instead of array
+            // Handle case where days_available might be a string instead of array
             if (is_string($availableDays)) {
                 $availableDays = json_decode($availableDays, true) ?? [];
             }
@@ -1190,7 +1146,7 @@ class ScheduleController extends Controller
             }
         }
         
-        // Get unique days and filter out empty values and weekends
+        // Get unique days and filter out empty values and weekdays only
         $weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
         $uniqueDays = $allDays->filter()->unique()->filter(function($day) use ($weekdays) {
             return in_array($day, $weekdays);
@@ -1362,6 +1318,268 @@ class ScheduleController extends Controller
             return $time; // Return as-is if can't parse
         } catch (\Exception $e) {
             return $time; // Return as-is if error
+        }
+    }
+    
+    /**
+     * Get available tutors for a given date, time, and supervisor's account
+     */
+    public function getAvailableTutors(Request $request)
+    {
+        try {
+            $date = $request->input('date');
+            $time = $request->input('time');
+            $supervisorAccount = $request->input('account');
+            
+            if (!$supervisorAccount) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Account is required'
+                ], 400);
+            }
+            
+            // Get day of week from date if provided
+            $dayOfWeek = $date ? Carbon::parse($date)->format('l') : null;
+            
+            // Get ALL active tutors from the supervisor's account with their work preferences
+            $availableTutors = Tutor::where('tutor.status', 'active')
+                ->join('accounts', 'tutor.account_id', '=', 'accounts.account_id')
+                ->join('applicants', 'tutor.applicant_id', '=', 'applicants.applicant_id')
+                ->leftJoin('work_preferences', 'applicants.applicant_id', '=', 'work_preferences.applicant_id')
+                ->where('accounts.account_name', $supervisorAccount)
+                ->select(
+                    'tutor.tutor_id',
+                    'tutor.tutorID',
+                    'applicants.first_name',
+                    'applicants.last_name',
+                    'accounts.account_name',
+                    'work_preferences.start_time',
+                    'work_preferences.end_time',
+                    'work_preferences.days_available'
+                )
+                ->orderBy('applicants.first_name')
+                ->orderBy('applicants.last_name')
+                ->get()
+                ->map(function($tutor) use ($dayOfWeek, $time) {
+                    // Format availability display
+                    $availability = 'Available';
+                    if ($tutor->start_time && $tutor->end_time) {
+                        $availability = Carbon::parse($tutor->start_time)->format('g:i A') . ' - ' . Carbon::parse($tutor->end_time)->format('g:i A');
+                    }
+                    
+                    // Check if days_available matches (if we have a day to check)
+                    $matchesDay = true;
+                    if ($dayOfWeek && $tutor->days_available) {
+                        $daysArray = json_decode($tutor->days_available, true);
+                        $matchesDay = is_array($daysArray) && in_array($dayOfWeek, $daysArray);
+                    }
+                    
+                    // Check if time matches (if we have a time to check)
+                    $matchesTime = true;
+                    if ($time && $tutor->start_time && $tutor->end_time) {
+                        $matchesTime = $time >= $tutor->start_time && $time <= $tutor->end_time;
+                    }
+                    
+                    // Add indicator if doesn't match filters (but still show them)
+                    $availabilityNote = '';
+                    if (!$matchesDay || !$matchesTime) {
+                        $availabilityNote = ' (outside preferred schedule)';
+                    }
+                    
+                    return [
+                        'id' => $tutor->tutor_id,
+                        'tutorID' => $tutor->tutorID,
+                        'name' => trim($tutor->first_name . ' ' . $tutor->last_name),
+                        'account' => $tutor->account_name,
+                        'availability' => $availability . $availabilityNote
+                    ];
+                });
+            
+            return response()->json([
+                'success' => true,
+                'tutors' => $availableTutors,
+                'count' => $availableTutors->count()
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error fetching available tutors', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching tutors: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Assign a tutor and supervisor to a schedule
+     */
+    public function assignTutorToSchedule(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'date' => 'required|date',
+                'school' => 'required|string',
+                'main_tutor_id' => 'required|exists:tutor,tutor_id',
+                'backup_tutor_id' => 'nullable|exists:tutor,tutor_id',
+                'notes' => 'nullable|string',
+                'time' => 'nullable|string'
+            ]);
+            
+            // Ensure main and backup tutors are not the same
+            if (!empty($validated['backup_tutor_id']) && $validated['main_tutor_id'] == $validated['backup_tutor_id']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Main tutor and backup tutor cannot be the same'
+                ], 422);
+            }
+            
+            // Get the logged-in supervisor
+            $supervisor = Auth::guard('supervisor')->user();
+            
+            if (!$supervisor) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Supervisor not authenticated'
+                ], 401);
+            }
+            
+            // Find the schedule(s) for this date and school
+            $query = ScheduleDailyData::where('date', $validated['date'])
+                ->where('school', $validated['school']);
+            
+            // If time is provided, filter by time
+            if (!empty($validated['time'])) {
+                $query->where('time', $validated['time']);
+            }
+            
+            $schedules = $query->get();
+            
+            if ($schedules->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No schedules found for the specified criteria'
+                ], 404);
+            }
+            
+            // Assign tutor and supervisor to all matching schedules
+            $assigned = 0;
+            foreach ($schedules as $schedule) {
+                // Get or create assigned_daily_data record
+                $assignment = AssignedDailyData::firstOrCreate(
+                    ['schedule_daily_data_id' => $schedule->id],
+                    ['class_status' => 'not_assigned']
+                );
+                
+                // When tutors are assigned, status is partially_assigned (waiting for confirmation)
+                // Status will become fully_assigned when finalized_at is set
+                
+                // Update with tutors and supervisor
+                $assignment->update([
+                    'main_tutor' => $validated['main_tutor_id'],
+                    'backup_tutor' => $validated['backup_tutor_id'] ?? null,
+                    'assigned_supervisor' => $supervisor->supervisor_id,
+                    'class_status' => 'partially_assigned',
+                    'notes' => $validated['notes'] ?? $assignment->notes
+                ]);
+                
+                $assigned++;
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Successfully assigned tutor(s) to {$assigned} schedule(s)",
+                'assigned_count' => $assigned
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error assigning tutor to schedule', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error assigning tutor: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Confirm assignment (change status from partially_assigned to fully_assigned)
+     */
+    public function confirmAssignment(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'assignment_id' => 'required|exists:assigned_daily_data,id'
+            ]);
+            
+            // Get the logged-in supervisor
+            $supervisor = Auth::guard('supervisor')->user();
+            
+            if (!$supervisor) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Supervisor not authenticated'
+                ], 401);
+            }
+            
+            // Get the assignment
+            $assignment = AssignedDailyData::find($validated['assignment_id']);
+            
+            if (!$assignment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Assignment not found'
+                ], 404);
+            }
+            
+            // Check if the supervisor is the one who assigned this
+            if ($assignment->assigned_supervisor != $supervisor->supervisor_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are not authorized to confirm this assignment'
+                ], 403);
+            }
+            
+            // Confirm the assignment
+            $assignment->update([
+                'class_status' => 'fully_assigned',
+                'finalized_at' => now(),
+                'finalized_by' => $supervisor->supervisor_id
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Assignment confirmed successfully!'
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error confirming assignment', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error confirming assignment: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

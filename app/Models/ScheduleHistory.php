@@ -35,7 +35,13 @@ class ScheduleHistory extends Model
     // Relationships
     public function dailyData()
     {
-        return $this->belongsTo(DailyData::class, 'class_id');
+        return $this->belongsTo(ScheduleDailyData::class, 'class_id');
+    }
+    
+    // Alias for backward compatibility
+    public function schedule()
+    {
+        return $this->belongsTo(ScheduleDailyData::class, 'class_id');
     }
 
     public function performer()

@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\DailyData;
+use App\Models\ScheduleDailyData;
+use App\Models\AssignedDailyData;
 use App\Models\TutorAssignment;
 use App\Models\Tutor;
 use App\Models\Supervisor;
@@ -110,8 +111,8 @@ class DashboardController extends Controller
      */
     private function getClassesConducted($weekStart)
     {
-        return DailyData::where('class_status', '!=', 'cancelled')
-            ->where('schedule_status', 'finalized')
+        return AssignedDailyData::where('class_status', '!=', 'cancelled')
+            ->whereNotNull('finalized_at')
             ->count();
     }
 
@@ -120,8 +121,8 @@ class DashboardController extends Controller
      */
     private function getCancelledClasses($weekStart)
     {
-        return DailyData::where('class_status', 'cancelled')
-            ->where('schedule_status', 'finalized')
+        return AssignedDailyData::where('class_status', 'cancelled')
+            ->whereNotNull('finalized_at')
             ->count();
     }
 
@@ -130,7 +131,7 @@ class DashboardController extends Controller
      */
     private function getTotalClasses($weekStart)
     {
-        return DailyData::where('schedule_status', 'finalized')
+        return AssignedDailyData::whereNotNull('finalized_at')
             ->count();
     }
 
@@ -139,12 +140,8 @@ class DashboardController extends Controller
      */
     private function getFullyAssignedClasses($weekStart)
     {
-        return DailyData::where('schedule_status', 'finalized')
-            ->withCount('tutorAssignments')
-            ->get()
-            ->filter(function($class) {
-                return $class->tutor_assignments_count >= $class->number_required;
-            })
+        return AssignedDailyData::whereNotNull('finalized_at')
+            ->whereNotNull('main_tutor')
             ->count();
     }
 
@@ -153,14 +150,9 @@ class DashboardController extends Controller
      */
     private function getPartiallyAssignedClasses($weekStart)
     {
-        return DailyData::where('schedule_status', 'finalized')
-            ->withCount('tutorAssignments')
-            ->get()
-            ->filter(function($class) {
-                $assigned = $class->tutor_assignments_count;
-                $required = $class->number_required;
-                return $assigned > 0 && $assigned < $required;
-            })
+        return AssignedDailyData::whereNotNull('finalized_at')
+            ->whereNull('main_tutor')
+            ->whereNotNull('backup_tutor')
             ->count();
     }
 
@@ -169,12 +161,9 @@ class DashboardController extends Controller
      */
     private function getUnassignedClasses($weekStart)
     {
-        return DailyData::where('schedule_status', 'finalized')
-            ->withCount('tutorAssignments')
-            ->get()
-            ->filter(function($class) {
-                return $class->tutor_assignments_count === 0;
-            })
+        return AssignedDailyData::whereNotNull('finalized_at')
+            ->whereNull('main_tutor')
+            ->whereNull('backup_tutor')
             ->count();
     }
 
@@ -188,14 +177,18 @@ class DashboardController extends Controller
             $weekStart = Carbon::now()->subWeeks($i)->startOfWeek();
             $weekEnd = $weekStart->copy()->endOfWeek();
             
-            $conducted = DailyData::whereBetween('date', [$weekStart, $weekEnd])
-                ->where('class_status', '!=', 'cancelled')
-                ->where('schedule_status', 'finalized')
+            $conducted = ScheduleDailyData::whereBetween('date', [$weekStart, $weekEnd])
+                ->whereHas('assignedData', function($q) {
+                    $q->where('class_status', '!=', 'cancelled')
+                      ->whereNotNull('finalized_at');
+                })
                 ->count();
                 
-            $cancelled = DailyData::whereBetween('date', [$weekStart, $weekEnd])
-                ->where('class_status', 'cancelled')
-                ->where('schedule_status', 'finalized')
+            $cancelled = ScheduleDailyData::whereBetween('date', [$weekStart, $weekEnd])
+                ->whereHas('assignedData', function($q) {
+                    $q->where('class_status', 'cancelled')
+                      ->whereNotNull('finalized_at');
+                })
                 ->count();
             
             $weeks[] = [
@@ -243,9 +236,14 @@ class DashboardController extends Controller
     private function getTutorUtilization($weekStart)
     {
         $totalTutors = $this->getActiveTutorsCount();
-        $assignedTutors = TutorAssignment::whereHas('dailyData', function($query) {
-            $query->where('schedule_status', 'finalized');
-        })->distinct('tutor_id')->count();
+        // Count unique tutors assigned to finalized schedules
+        $assignedTutors = AssignedDailyData::whereNotNull('finalized_at')
+            ->where(function($q) {
+                $q->whereNotNull('main_tutor')
+                  ->orWhereNotNull('backup_tutor');
+            })
+            ->distinct()
+            ->count(DB::raw('COALESCE(main_tutor, backup_tutor)'));
         
         return $totalTutors > 0 ? round(($assignedTutors / $totalTutors) * 100, 1) : 0;
     }
@@ -255,17 +253,16 @@ class DashboardController extends Controller
      */
     private function getScheduleStatusBreakdown($weekStart)
     {
-        $statuses = DailyData::select('schedule_status', DB::raw('count(*) as count'))
-            ->groupBy('schedule_status')
-            ->get()
-            ->pluck('count', 'schedule_status')
-            ->toArray();
+        $finalized = AssignedDailyData::whereNotNull('finalized_at')->count();
+        $notFinalized = ScheduleDailyData::whereDoesntHave('assignedData', function($q) {
+            $q->whereNotNull('finalized_at');
+        })->count();
             
         return [
-            'finalized' => $statuses['finalized'] ?? 0,
-            'tentative' => $statuses['tentative'] ?? 0,
-            'draft' => $statuses['draft'] ?? 0,
-            'null' => $statuses[null] ?? 0
+            'finalized' => $finalized,
+            'tentative' => $notFinalized,
+            'draft' => 0,
+            'null' => 0
         ];
     }
 

@@ -29,7 +29,10 @@ class SupervisorSeeder extends Seeder
             'birth_date' => '1985-03-15',
             'assigned_account' => 'GLS',
             'ms_teams' => 'admin.supervisor@ogsconnect.com',
-            'shift' => 'Day Shift (7:00 AM - 3:30 PM)',
+            'start_time' => '07:00:00',
+            'end_time' => '15:30:00',
+            'days_available' => json_encode(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']),
+            'timezone' => 'Asia/Manila',
             'status' => 'active',
             'password' => 'admin3214', // Will be hashed automatically by the model
         ]);

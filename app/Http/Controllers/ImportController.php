@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\DailyData;
+use App\Models\ScheduleDailyData;
+use App\Models\AssignedDailyData;
+use App\Models\DailyData; // Keep for backward compatibility
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -105,20 +107,33 @@ class ImportController extends Controller
                 ]);
 
                 try {
-                    // Parse data according to your Excel structure
-                    $schoolValue = $this->sanitizeString($row[0] ?? null);      
-                    $classValue = $this->sanitizeString($row[1] ?? null);       
-                    $dateValue = $this->parseDate($row[3] ?? null, $rowNumber); 
-                    $dayValue = $this->sanitizeString($row[4] ?? null);         
-                    $timeJST = $this->parseTime($row[5] ?? null, $rowNumber);   
-                    $numberRequired = $this->parseNumber($row[7] ?? 0);         
+                    // Parse data according to new Excel structure
+                    // Column mapping: Date(0), Time(1), Duration(2), School(3), Class(4)
+                    $dateValue = $this->parseDate($row[0] ?? null, $rowNumber);
+                    $timeJST = $this->parseTime($row[1] ?? null, $rowNumber);
+                    $duration = $this->parseNumber($row[2] ?? 25); // Default to 25 if not provided
+                    $schoolValue = $this->sanitizeString($row[3] ?? null);
+                    $classValue = $this->sanitizeString($row[4] ?? null);
+                    $numberRequired = 1; // Default to 1 tutor per class
+                    
+                    // Auto-calculate day from date
+                    $dayValue = null;
+                    if (!empty($dateValue)) {
+                        try {
+                            $dayValue = Carbon::parse($dateValue)->format('l'); // 'l' gives full day name
+                        } catch (\Exception $e) {
+                            Log::warning("Could not parse day from date", ['date' => $dateValue]);
+                            $dayValue = null;
+                        }
+                    }
 
                     Log::info("Parsed values for row {$rowNumber}", [
+                        'date' => $dateValue,
+                        'time_jst' => $timeJST,
+                        'duration' => $duration,
                         'school' => $schoolValue,
                         'class' => $classValue,
-                        'date' => $dateValue,
                         'day' => $dayValue,
-                        'time_jst' => $timeJST,
                         'number_required' => $numberRequired,
                     ]);
 
@@ -146,23 +161,31 @@ class ImportController extends Controller
                         'row_number' => $rowNumber,
                         'date' => $dateValue,
                         'day' => $dayValue,
-                        'class' => $classValue,
-                        'school' => $schoolValue,
                         'time_jst' => $timeJST,
+                        'duration' => $duration,
+                        'school' => $schoolValue,
+                        'class' => $classValue,
                         'number_required' => $numberRequired
                     ];
 
-                    // Check for duplicates (should be 0 since table is truncated)
+                    // Check for duplicates - must match date, school, class, AND time to be a true duplicate
                     if (!empty($classValue)) {
-                        $existingRecord = DailyData::where('date', $dateValue)
+                        // Convert JST to PHT for comparison (JST - 1 hour)
+                        $timePHT = !empty($timeJST)
+                            ? Carbon::parse($timeJST)->subHour()->format('H:i:s')
+                            : null;
+                        
+                        $existingRecord = ScheduleDailyData::where('date', $dateValue)
                                                   ->where('school', $schoolValue)
                                                   ->where('class', $classValue)
+                                                  ->where('time', $timePHT)
                                                   ->first();
                         
                         if ($existingRecord) {
                             $duplicateCount++;
                             Log::info("Duplicate found for row {$rowNumber}", [
-                                'existing_id' => $existingRecord->id
+                                'existing_id' => $existingRecord->id,
+                                'criteria' => "date={$dateValue}, school={$schoolValue}, class={$classValue}, time={$timePHT}"
                             ]);
                         } else {
                             Log::info("No duplicate found for row {$rowNumber}");
@@ -251,18 +274,21 @@ class ImportController extends Controller
                 Log::info("=== PROCESSING VALID ROW {$index} (Original Row {$validRow['row_number']}) ===", $validRow);
 
                 try {
-                    // **DEBUG: Check if DailyData model is accessible**
-                    $testCount = DailyData::count();
-                    Log::info("Current DailyData record count: {$testCount}");
+                    // **DEBUG: Check if ScheduleDailyData model is accessible**
+                    $testCount = ScheduleDailyData::count();
+                    Log::info("Current ScheduleDailyData record count: {$testCount}");
 
-                    // Check for exact match
+                    // Compute time (use PHT as primary time)
+                    $time = !empty($validRow['time_jst'])
+                        ? Carbon::parse($validRow['time_jst'])->subHour()->format('H:i:s')
+                        : null;
+
+                    // Check for exact match in schedules_daily_data
                     Log::info("Checking for exact match...");
-                    $exactMatch = DailyData::where('date', $validRow['date'])
+                    $exactMatch = ScheduleDailyData::where('date', $validRow['date'])
                                           ->where('school', $validRow['school'])
                                           ->where('class', $validRow['class'])
-                                          ->where('time_jst', $validRow['time_jst'])
-                                          ->whereRaw('DAYNAME(date) = ?', [$this->validateDayName($validRow['day'])])
-                                          ->where('number_required', $validRow['number_required'])
+                                          ->where('time', $time)
                                           ->first();
                     
                     if ($exactMatch) {
@@ -275,8 +301,8 @@ class ImportController extends Controller
 
                     Log::info("No exact match found. Checking for partial match...");
 
-                    // Check for partial match
-                    $partialMatch = DailyData::where('date', $validRow['date'])
+                    // Check for partial match (same date, school, class but different time)
+                    $partialMatch = ScheduleDailyData::where('date', $validRow['date'])
                                             ->where('school', $validRow['school'])
                                             ->where('class', $validRow['class'])
                                             ->first();
@@ -284,45 +310,42 @@ class ImportController extends Controller
                     if ($partialMatch) {
                         Log::info("Found partial match, updating...", ['existing_id' => $partialMatch->id]);
                         
-                        // Update existing
-                        $timePHT = !empty($validRow['time_jst'])
-                            ? Carbon::parse($validRow['time_jst'])->subHour()->format('H:i:s')
-                            : null;
-
+                        // Update existing schedule
                         $partialMatch->update([
                             'day' => $validRow['day'],
-                            'time_jst' => $validRow['time_jst'],
-                            'time_pht' => $timePHT, // ✅ keep both in sync
+                            'time' => $time,
                         ]);
                         $updated++;
                         Log::info("Updated record {$partialMatch->id} for row {$validRow['row_number']}");
                     } else {
                         Log::info("No partial match found. Creating new record...");
-                        
-                        // Compute time_pht (subtract 1 hour from JST)
-                        $timePHT = !empty($validRow['time_jst'])
-                            ? Carbon::parse($validRow['time_jst'])->subHour()->format('H:i:s')
-                            : null;
 
                         $recordData = [
                             'date' => $validRow['date'],
                             'day' => $validRow['day'],
-                            'class' => $validRow['class'],
+                            'time' => $time,
+                            'duration' => $validRow['duration'] ?? 25,
                             'school' => $validRow['school'],
-                            'time_jst' => $validRow['time_jst'],
-                            'time_pht' => $timePHT,
-                            'number_required' => $validRow['number_required'],
+                            'class' => $validRow['class'],
                         ];
 
                         try {
-                            $newRecord = DailyData::create($recordData);
+                            // Create schedule record
+                            $newSchedule = ScheduleDailyData::create($recordData);
+                            
+                            // Create corresponding assignment record
+                            AssignedDailyData::create([
+                                'schedule_daily_data_id' => $newSchedule->id,
+                                'class_status' => 'active',
+                            ]);
+                            
                             $imported++;
-                            Log::info("✅ Successfully created new record {$newRecord->id} for row {$validRow['row_number']}");
+                            Log::info("✅ Successfully created new schedule {$newSchedule->id} and assignment for row {$validRow['row_number']}");
                         } catch (\Illuminate\Database\QueryException $e) {
                             if ($e->getCode() == 23000) {
                                 // Duplicate row, skip gracefully
                                 $skipped++;
-                                $skippedRows[] = "{$validRow['date']} - {$validRow['school']} - {$validRow['class']} ({$validRow['time_jst']})";
+                                $skippedRows[] = "{$validRow['date']} - {$validRow['school']} - {$validRow['class']} ({$time})";
                                 Log::info("⚠️ Duplicate skipped for row {$validRow['row_number']}", $recordData);
                                 continue;
                             } else {

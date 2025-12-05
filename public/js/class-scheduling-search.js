@@ -37,30 +37,33 @@ document.addEventListener('DOMContentLoaded', function() {
     window.alwaysUseAjaxPagination = false;
     
     if (searchInput) {
-        // Real-time search on input
+        // Show/hide clear button based on initial value
+        if (searchInput.value.trim().length > 0) {
+            clearButton.classList.remove('hidden');
+        }
+        
+        // Real-time search on input - DISABLED to prevent infinite reload
+        // Only submit on Enter key press
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const form = document.getElementById('filterForm');
+                if (form) {
+                    form.submit();
+                }
+            }
+        });
+        
+        // Update clear button visibility on input
         searchInput.addEventListener('input', function() {
             const query = this.value.trim();
             
             // Show/hide clear button
             if (query.length > 0) {
                 clearButton.classList.remove('hidden');
-                isSearchActive = true;
             } else {
                 clearButton.classList.add('hidden');
-                isSearchActive = false;
             }
-            
-            // Clear previous timeout
-            clearTimeout(searchTimeout);
-            
-            // Debounce search - use normal form submission instead of AJAX
-            searchTimeout = setTimeout(() => {
-                // Submit the form normally instead of using AJAX
-                const form = document.getElementById('filterForm');
-                if (form) {
-                    form.submit();
-                }
-            }, 500);
         });
         
         // Clear search functionality
