@@ -22,6 +22,11 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\SimplePasswordResetController;
 
 // ============================================================================
+// MODELS
+// ============================================================================
+use App\Models\Notification;
+
+// ============================================================================
 // PUBLIC ROUTES
 // ============================================================================
 
@@ -153,6 +158,7 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
         Route::post('/', [NotificationController::class, 'store'])->name('store');
         Route::post('/{id}/read', [NotificationController::class, 'markAsRead'])->name('read');
         Route::post('/read-all', [NotificationController::class, 'markAllAsRead'])->name('read-all');
+        Route::delete('/{id}/delete', [NotificationController::class, 'delete'])->name('delete');
     });
     
     // ------------------------------------------------------------------------
@@ -206,6 +212,84 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
         Route::post('/setup-payment', [TutorAvailabilityController::class, 'setupPayment'])->name('setup-payment');
         Route::put('/payment-method/{paymentId}', [TutorAvailabilityController::class, 'updatePaymentMethod'])->name('update-payment-method');
         Route::delete('/payment-method/{paymentId}', [TutorAvailabilityController::class, 'deletePaymentMethod'])->name('delete-payment-method');
+    });
+    
+    // ------------------------------------------------------------------------
+    // TUTOR NOTIFICATIONS
+    // ------------------------------------------------------------------------
+    Route::prefix('tutor/notifications')->name('tutor.notifications.')->group(function () {
+        Route::get('/api', function () {
+            $tutor = Auth::guard('tutor')->user();
+            $limit = request()->query('limit', 10);
+            
+            // Get notifications for this specific tutor only
+            $notifications = Notification::where('user_id', $tutor->tutor_id)
+                ->where('user_type', 'tutor')
+                ->orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get();
+            
+            // Check if there are more notifications
+            $totalCount = Notification::where('user_id', $tutor->tutor_id)
+                ->where('user_type', 'tutor')
+                ->count();
+                
+            $unreadCount = Notification::where('user_id', $tutor->tutor_id)
+                ->where('user_type', 'tutor')
+                ->where('is_read', false)
+                ->count();
+                
+            return response()->json([
+                'notifications' => $notifications,
+                'unread_count' => $unreadCount,
+                'has_more' => $totalCount > $limit
+            ]);
+        })->name('api');
+        
+        Route::post('/{id}/read', function ($id) {
+            $tutor = Auth::guard('tutor')->user();
+            $notification = Notification::where('id', $id)
+                ->where('user_id', $tutor->tutor_id)
+                ->where('user_type', 'tutor')
+                ->first();
+                
+            if ($notification) {
+                $notification->update([
+                    'is_read' => true,
+                    'read_at' => now()
+                ]);
+            }
+            
+            return response()->json(['success' => true]);
+        })->name('read');
+        
+        Route::post('/read-all', function () {
+            $tutor = Auth::guard('tutor')->user();
+            Notification::where('user_id', $tutor->tutor_id)
+                ->where('user_type', 'tutor')
+                ->where('is_read', false)
+                ->update([
+                    'is_read' => true,
+                    'read_at' => now()
+                ]);
+                
+            return response()->json(['success' => true]);
+        })->name('read-all');
+        
+        Route::delete('/{id}/delete', function ($id) {
+            $tutor = Auth::guard('tutor')->user();
+            $notification = Notification::where('id', $id)
+                ->where('user_id', $tutor->tutor_id)
+                ->where('user_type', 'tutor')
+                ->first();
+                
+            if ($notification) {
+                $notification->delete();
+                return response()->json(['success' => true]);
+            }
+            
+            return response()->json(['success' => false, 'message' => 'Notification not found'], 404);
+        })->name('delete');
     });
     
     // ------------------------------------------------------------------------
@@ -371,6 +455,7 @@ Route::middleware(['auth:supervisor', 'prevent.back'])->group(function () {
     Route::get('/api/available-tutors', [ScheduleController::class, 'getAvailableTutors'])->name('api.available-tutors');
     Route::post('/api/assign-tutor', [ScheduleController::class, 'assignTutorToSchedule'])->name('api.assign-tutor');
     Route::post('/api/confirm-assignment', [ScheduleController::class, 'confirmAssignment'])->name('api.confirm-assignment');
+    Route::post('/api/finalize-schedule', [ScheduleController::class, 'finalizeSchedule'])->name('api.finalize-schedule');
 });
 
 // ============================================================================

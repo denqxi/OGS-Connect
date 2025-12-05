@@ -10,132 +10,165 @@
         'availableTimeSlots' => $availableTimeSlots ?? collect()
     ])
 @else
-    <!-- Page Title with Upload Button -->
-    <div class="bg-white border-b border-gray-200 px-6 py-4">
-        <div class="flex items-center justify-between">
-            <h2 class="text-xl font-semibold text-gray-800">Class Scheduling</h2>
-            
-            <!-- Upload Excel Button -->
-            <div class="relative">
-                <input type="file" 
-                       id="excelFileInput" 
-                       accept=".xlsx,.xls,.csv" 
-                       class="hidden"
-                       onchange="uploadExcelFile()">
-                <button onclick="document.getElementById('excelFileInput').click()"
-                        class="flex items-center space-x-2 bg-[#0E335D] text-white px-4 py-2 rounded-full text-sm font-medium 
-                              hover:bg-[#184679] transform transition duration-200 hover:scale-105">
-                    <i class="fas fa-file-excel"></i>
-                    <span>Upload Excel</span>
-                </button>
-            </div>
-        </div>
-    </div>
 
-    <!-- Search Filters -->
-    <div class="bg-white px-6 py-4 border-b border-gray-200">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
-        </div>
-        <form method="GET" action="{{ route('schedules.index') }}" id="filterForm">
-            <input type="hidden" name="tab" value="class">
-            <div class="flex justify-between items-center space-x-4">
-                <!-- Left Group: Filters Only -->
-                <div class="flex items-center space-x-4 flex-1 max-w-3xl">
-                    <!-- Only one filter active at a time -->
-                    <select name="date" id="filterDate" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
-                        <option value="">All Dates</option>
-                        @if(isset($availableDates) && $availableDates->count() > 0)
-                            @foreach($availableDates as $date)
-                                <option value="{{ $date }}" {{ request('date') == $date ? 'selected' : '' }}>
-                                    {{ \Carbon\Carbon::parse($date)->format('M d, Y') }}
-                                </option>
-                            @endforeach
-                        @else
-                            <!-- Debug: Show if availableDates is not set or empty -->
-                            <option value="" disabled>No dates available (Debug: availableDates not set or empty)</option>
-                        @endif
-                    </select>
-                    <select name="day" id="filterDay" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
-                        <option value="">All Days</option>
-                        @if(isset($availableDays) && $availableDays->count() > 0)
-                            @foreach($availableDays as $day)
-                                @php
-                                    // Handle capitalized abbreviated day names from database (Mon, Tue, Wed, Thu, Fri)
-                                    $dayMap = [
-                                        'Mon' => 'mon', 'Tue' => 'tue', 'Wed' => 'wed',
-                                        'Thu' => 'thur', 'Fri' => 'fri',
-                                        'Monday' => 'mon', 'Tuesday' => 'tue', 'Wednesday' => 'wed',
-                                        'Thursday' => 'thur', 'Friday' => 'fri',
-                                        'mon' => 'mon', 'tue' => 'tue', 'wed' => 'wed',
-                                        'thur' => 'thur', 'fri' => 'fri'
-                                    ];
-                                    
-                                    $displayMap = [
-                                        'Mon' => 'Monday', 'Tue' => 'Tuesday', 'Wed' => 'Wednesday',
-                                        'Thu' => 'Thursday', 'Fri' => 'Friday',
-                                        'Monday' => 'Monday', 'Tuesday' => 'Tuesday', 'Wednesday' => 'Wednesday',
-                                        'Thursday' => 'Thursday', 'Friday' => 'Friday',
-                                        'mon' => 'Monday', 'tue' => 'Tuesday', 'wed' => 'Wednesday',
-                                        'thur' => 'Thursday', 'fri' => 'Friday'
-                                    ];
-                                    
-                                    $dayValue = $dayMap[$day] ?? strtolower($day);
-                                    $dayDisplay = $displayMap[$day] ?? ucfirst($day);
-                                @endphp
-                                @if(in_array($day, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'mon', 'tue', 'wed', 'thur', 'fri']))
-                                    <option value="{{ $dayValue }}" {{ request('day') == $dayValue ? 'selected' : '' }}>
-                                        {{ $dayDisplay }}
-                                    </option>
-                                @endif
-                            @endforeach
-                        @else
-                            <!-- Fallback options if availableDays is not set or empty -->
-                            <option value="mon" {{ request('day') == 'mon' ? 'selected' : '' }}>Monday</option>
-                            <option value="tue" {{ request('day') == 'tue' ? 'selected' : '' }}>Tuesday</option>
-                            <option value="wed" {{ request('day') == 'wed' ? 'selected' : '' }}>Wednesday</option>
-                            <option value="thur" {{ request('day') == 'thur' ? 'selected' : '' }}>Thursday</option>
-                            <option value="fri" {{ request('day') == 'fri' ? 'selected' : '' }}>Friday</option>
-                        @endif
-                    </select>
-                    <select name="status" id="filterStatus" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
-                        <option value="">All Status</option>
-                        <option value="fully_assigned" {{ request('status') == 'fully_assigned' ? 'selected' : '' }}>Fully Assigned</option>
-                        <option value="partially_assigned" {{ request('status') == 'partially_assigned' ? 'selected' : '' }}>Partially Assigned</option>
-                        <option value="not_assigned" {{ request('status') == 'not_assigned' ? 'selected' : '' }}>Not Assigned</option>
-                    </select>
-                    @if(request()->hasAny(['date', 'day', 'status']))
-                    <a href="{{ route('schedules.index', ['tab' => 'class']) }}" 
-                       onclick="event.preventDefault(); document.getElementById('filterForm').reset(); removePageParam(); window.location='{{ route('schedules.index', ['tab' => 'class']) }}';"
-                       class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors">
-                        Clear Filters
-                    </a>
+<div class="bg-white px-0 pb-4 border-b border-gray-200">
+    <div class="flex items-center justify-between">
+
+        <!-- LEFT SIDE: LABEL + FILTERS IN ONE ROW -->
+        <div class="flex items-center space-x-4 overflow-x-auto whitespace-nowrap">
+
+            <h3 class="text-sm font-medium text-gray-700">Search Filters:</h3>
+
+            <form method="GET" action="{{ route('schedules.index') }}" id="filterForm" class="flex items-center space-x-3">
+                <input type="hidden" name="tab" value="class">
+
+                <!-- Date -->
+                <select name="date" id="filterDate"
+                    class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
+                    <option value="">All Dates</option>
+                    @if(isset($availableDates) && $availableDates->count() > 0)
+                        @foreach($availableDates as $date)
+                            <option value="{{ $date }}" {{ request('date') == $date ? 'selected' : '' }}>
+                                {{ \Carbon\Carbon::parse($date)->format('M d, Y') }}
+                            </option>
+                        @endforeach
+                    @else
+                        <option value="" disabled>No dates available</option>
                     @endif
-                </div>
-            </div>
-            <script>
-                function removePageParam() {
-                    // Remove the page param if present so search always starts at page 1
-                    const url = new URL(window.location.href);
-                    url.searchParams.delete('page');
-                    window.history.replaceState({}, '', url);
-                }
-                // REMOVED: Duplicate event listeners causing infinite reload - handled by external JS
-            </script>
-        </form>
+                </select>
+
+                <!-- Day -->
+                <select name="day" id="filterDay"
+                    class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
+                    <option value="">All Days</option>
+
+                    @if(isset($availableDays) && $availableDays->count() > 0)
+                        @foreach($availableDays as $day)
+                            @php
+                                $dayMap = [
+                                    'Mon'=>'mon','Tue'=>'tue','Wed'=>'wed','Thu'=>'thur','Fri'=>'fri',
+                                    'Monday'=>'mon','Tuesday'=>'tue','Wednesday'=>'wed','Thursday'=>'thur','Friday'=>'fri',
+                                    'mon'=>'mon','tue'=>'tue','wed'=>'wed','thur'=>'thur','fri'=>'fri'
+                                ];
+                                $displayMap = [
+                                    'Mon'=>'Monday','Tue'=>'Tuesday','Wed'=>'Wednesday','Thu'=>'Thursday','Fri'=>'Friday',
+                                    'Monday'=>'Monday','Tuesday'=>'Tuesday','Wednesday'=>'Wednesday','Thursday'=>'Thursday','Friday'=>'Friday',
+                                    'mon'=>'Monday','tue'=>'Tuesday','wed'=>'Wednesday','thur'=>'Thursday','fri'=>'Friday'
+                                ];
+                                $dayValue = $dayMap[$day] ?? strtolower($day);
+                                $dayDisplay = $displayMap[$day] ?? ucfirst($day);
+                            @endphp
+                            <option value="{{ $dayValue }}" {{ request('day') == $dayValue ? 'selected' : '' }}>
+                                {{ $dayDisplay }}
+                            </option>
+                        @endforeach
+                    @endif
+                </select>
+
+                <!-- Status -->
+                <select name="status" id="filterStatus"
+                    class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
+                    <option value="">All Status</option>
+                    <option value="fully_assigned" {{ request('status') == 'fully_assigned' ? 'selected' : '' }}>Fully Assigned</option>
+                    <option value="partially_assigned" {{ request('status') == 'partially_assigned' ? 'selected' : '' }}>Partially Assigned</option>
+                    <option value="not_assigned" {{ request('status') == 'not_assigned' ? 'selected' : '' }}>Not Assigned</option>
+                </select>
+
+                <!-- Clear -->
+                @if(request()->hasAny(['date', 'day', 'status']))
+                    <a href="{{ route('schedules.index', ['tab' => 'class']) }}"
+                        onclick="event.preventDefault(); document.getElementById('filterForm').reset(); removePageParam(); window.location='{{ route('schedules.index', ['tab' => 'class']) }}';"
+                        class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600">
+                        Clear
+                    </a>
+                @endif
+            </form>
+        </div>
+
+        <!-- RIGHT SIDE: UPLOAD BUTTON -->
+        <div class="relative">
+            <input type="file" 
+                   id="excelFileInput" 
+                   accept=".xlsx,.xls,.csv" 
+                   class="hidden"
+                   onchange="uploadExcelFile()">
+
+            <button onclick="document.getElementById('excelFileInput').click()"
+                class="flex items-center space-x-2 bg-[#0E335D] text-white px-4 py-2 rounded-full text-sm font-medium 
+                hover:bg-[#184679] transition duration-200 hover:scale-105">
+                <i class="fas fa-file-excel"></i>
+                <span>Upload Excel</span>
+            </button>
+        </div>
+
     </div>
+</div>
+
+<script>
+function removePageParam() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('page');
+    window.history.replaceState({}, '', url);
+}
+</script>
+
 
     <!-- Class Scheduling Table -->
     <div class="bg-white overflow-x-auto" id="tableContainer">
         <table class="w-full">
             <thead class="bg-gray-50 border-b border-gray-200">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Day</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">School</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('schedules.index', array_merge(request()->query(), ['tab' => 'class', 'sort' => request('sort') === 'date' && request('direction') === 'desc' ? '' : 'date', 'direction' => request('sort') === 'date' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                        <div class="flex items-center gap-1">
+                            Date
+                            @if(request('sort') === 'date')
+                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                            @else
+                                <i class="fas fa-sort text-xs opacity-30"></i>
+                            @endif
+                        </div>
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('schedules.index', array_merge(request()->query(), ['tab' => 'class', 'sort' => request('sort') === 'day' && request('direction') === 'desc' ? '' : 'day', 'direction' => request('sort') === 'day' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                        <div class="flex items-center gap-1">
+                            Day
+                            @if(request('sort') === 'day')
+                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                            @else
+                                <i class="fas fa-sort text-xs opacity-30"></i>
+                            @endif
+                        </div>
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('schedules.index', array_merge(request()->query(), ['tab' => 'class', 'sort' => request('sort') === 'time' && request('direction') === 'desc' ? '' : 'time', 'direction' => request('sort') === 'time' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                        <div class="flex items-center gap-1">
+                            Time
+                            @if(request('sort') === 'time')
+                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                            @else
+                                <i class="fas fa-sort text-xs opacity-30"></i>
+                            @endif
+                        </div>
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('schedules.index', array_merge(request()->query(), ['tab' => 'class', 'sort' => request('sort') === 'school' && request('direction') === 'desc' ? '' : 'school', 'direction' => request('sort') === 'school' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                        <div class="flex items-center gap-1">
+                            School
+                            @if(request('sort') === 'school')
+                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                            @else
+                                <i class="fas fa-sort text-xs opacity-30"></i>
+                            @endif
+                        </div>
+                    </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('schedules.index', array_merge(request()->query(), ['tab' => 'class', 'sort' => request('sort') === 'status' && request('direction') === 'desc' ? '' : 'status', 'direction' => request('sort') === 'status' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                        <div class="flex items-center gap-1">
+                            Status
+                            @if(request('sort') === 'status')
+                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                            @else
+                                <i class="fas fa-sort text-xs opacity-30"></i>
+                            @endif
+                        </div>
+                    </th>
                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
             </thead>
@@ -154,7 +187,15 @@
                     
                     <!-- Time -->
                     <td class="px-6 py-4 text-sm text-gray-500">
-                        {{ $data->time ? \Carbon\Carbon::parse($data->time)->format('g:i A') : '-' }}
+                        @if($data->time)
+                            @php
+                                $startTime = \Carbon\Carbon::parse($data->time);
+                                $endTime = $data->duration ? $startTime->copy()->addMinutes($data->duration) : $startTime;
+                            @endphp
+                            {{ $startTime->format('g:i A') }} - {{ $endTime->format('g:i A') }}
+                        @else
+                            -
+                        @endif
                     </td>
                     
                     <!-- School -->
@@ -168,35 +209,36 @@
                     </td>
                     
                     <!-- Status - Display RAW database value -->
-                    <td class="px-6 py-4 text-sm">
+                    <td class="px-6 py-4 text-sm text-gray-500">
                         @php
-                            // Get the raw value directly from joined assigned_daily_data.class_status
                             $rawStatus = $data->raw_class_status ?? null;
-                            
-                            // Map to display format
+
+                            // Defaults
                             $statusDisplay = 'Not Assigned';
-                            $statusColor = 'bg-red-100 text-red-800';
-                            
+                            $dotColor = 'bg-red-500';
+
                             if ($rawStatus === 'fully_assigned') {
                                 $statusDisplay = 'Fully Assigned';
-                                $statusColor = 'bg-green-100 text-green-800';
+                                $dotColor = 'bg-green-500';
                             } elseif ($rawStatus === 'partially_assigned') {
                                 $statusDisplay = 'Partially Assigned';
-                                $statusColor = 'bg-yellow-100 text-yellow-800';
+                                $dotColor = 'bg-yellow-500';
                             } elseif ($rawStatus === 'cancelled') {
                                 $statusDisplay = 'Cancelled';
-                                $statusColor = 'bg-gray-200 text-gray-800';
+                                $dotColor = 'bg-gray-500';
                             } elseif ($rawStatus === 'not_assigned') {
                                 $statusDisplay = 'Not Assigned';
-                                $statusColor = 'bg-red-100 text-red-800';
+                                $dotColor = 'bg-red-500';
                             }
                         @endphp
-                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
-                            {{ $statusDisplay }}
-                        </span>
-                        <span class="text-xs text-gray-400 ml-2">({{ $rawStatus ?? 'null' }})</span>
+
+                        <div class="flex items-center gap-2">
+                            <!-- Small round status dot -->
+                            <span class="h-2.5 w-2.5 rounded-full {{ $dotColor }}"></span>
+                            <span>{{ $statusDisplay }}</span>
+                        </div>
                     </td>
-                    
+  
                     <!-- Actions -->
                     <td class="px-6 py-4 text-sm">
                         @php
@@ -229,7 +271,14 @@
                             </button>
                             
                             <!-- Assign Supervisor Button -->
-                            <button onclick="openAssignSupervisorModal('{{ $viewDate }}', '{{ $data->school }}', '{{ $data->time }}')" 
+                            <button onclick="openAssignSupervisorModal('{{ $viewDate }}', '{{ $data->school }}', '{{ $data->time }}', {{ json_encode([
+                                'status' => $data->raw_class_status,
+                                'schedule_id' => $data->id,
+                                'main_tutor_id' => $data->assignedData->main_tutor ?? null,
+                                'backup_tutor_id' => $data->assignedData->backup_tutor ?? null,
+                                'main_tutor_name' => $data->main_tutor_name ?? null,
+                                'backup_tutor_name' => $data->backup_tutor_name ?? null
+                            ]) }})" 
                                     class="w-8 h-8 bg-green-100 text-green-600 rounded hover:bg-green-200 inline-flex items-center justify-center transition-colors"
                                     title="Assign Tutor">
                                 <i class="fas fa-user-plus text-xs"></i>
@@ -367,9 +416,19 @@
             </div>
             
             <!-- Footer -->
-            <div class="px-6 py-4 bg-gray-50 flex justify-end items-center border-t">
+            <div class="px-6 py-4 bg-gray-50 flex justify-between items-center border-t">
                 <input type="hidden" id="detail-schedule-id" value="">
                 <input type="hidden" id="detail-assignment-id" value="">
+                <input type="hidden" id="detail-raw-status" value="">
+                
+                <!-- Finalize Button (only for partially_assigned) -->
+                <button id="finalizeButton" onclick="confirmFinalizeSchedule()" class="hidden px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Mark as Fully Assigned</span>
+                </button>
+                
+                <div class="flex-1"></div>
+                
                 <button onclick="closeScheduleDetailsModal()" class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                     Close
                 </button>
@@ -520,6 +579,17 @@
             
             statusDiv.innerHTML = `<span class="px-3 py-1 rounded-full text-sm font-medium ${statusColor}">${statusText}</span><br><span class="text-xs text-gray-500 mt-1">DB: ${rawStatus || 'null'}</span>`;
             
+            // Store raw status
+            document.getElementById('detail-raw-status').value = rawStatus || '';
+            
+            // Show/hide finalize button based on status
+            const finalizeButton = document.getElementById('finalizeButton');
+            if (rawStatus === 'partially_assigned') {
+                finalizeButton.classList.remove('hidden');
+            } else {
+                finalizeButton.classList.add('hidden');
+            }
+            
             // Assigned Supervisor
             document.getElementById('detail-supervisor').value = data.assigned_supervisors || data.assigned_supervisor || 'None';
             
@@ -539,14 +609,31 @@
         let assignScheduleDate = '';
         let assignScheduleAccount = '';
         let assignScheduleTime = '';
+        let currentScheduleData = null;
         
-        function openAssignSupervisorModal(date, account, time = null) {
+        function openAssignSupervisorModal(date, account, time = null, scheduleData = null) {
             assignScheduleDate = date;
             assignScheduleAccount = account;
             assignScheduleTime = time;
+            currentScheduleData = scheduleData;
             
             document.getElementById('assign-schedule-info').textContent = `${account} - ${new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`;
             document.getElementById('assign-notes').value = '';
+            
+            // Reset dropdowns
+            const mainTutorDropdown = document.getElementById('assign-main-tutor');
+            const backupTutorDropdown = document.getElementById('assign-backup-tutor');
+            
+            // If status is partially_assigned, show placeholder to avoid reassigning
+            if (scheduleData && scheduleData.status === 'partially_assigned') {
+                if (scheduleData.main_tutor_id) {
+                    mainTutorDropdown.innerHTML = `<option value="">Select a different main tutor (Current: ${scheduleData.main_tutor_name || 'Assigned'})</option>`;
+                }
+                if (scheduleData.backup_tutor_id) {
+                    backupTutorDropdown.innerHTML = `<option value="">Select a different backup tutor (Current: ${scheduleData.backup_tutor_name || 'Assigned'})</option>`;
+                }
+            }
+            
             document.getElementById('assignSupervisorModal').classList.remove('hidden');
             
             // Fetch available tutors for this date/time and supervisor's account
@@ -555,8 +642,8 @@
             if (supervisorAccount) {
                 fetchAvailableTutors(date, time, supervisorAccount);
             } else {
-                const tutorDropdown = document.getElementById('assign-tutor');
-                tutorDropdown.innerHTML = '<option value="">No supervisor account found</option>';
+                mainTutorDropdown.innerHTML = '<option value="">No supervisor account found</option>';
+                backupTutorDropdown.innerHTML = '<option value="">No supervisor account found</option>';
             }
         }
         
@@ -566,13 +653,20 @@
         function fetchAvailableTutors(date, time, account) {
             const mainTutorDropdown = document.getElementById('assign-main-tutor');
             const backupTutorDropdown = document.getElementById('assign-backup-tutor');
-            mainTutorDropdown.innerHTML = '<option value="">Loading tutors...</option>';
-            backupTutorDropdown.innerHTML = '<option value="">-- Select Backup Tutor --</option>';
+            
+            // Show loading state unless partially assigned status has set placeholders
+            if (!mainTutorDropdown.innerHTML.includes('Current:')) {
+                mainTutorDropdown.innerHTML = '<option value="">Loading tutors...</option>';
+            }
+            if (!backupTutorDropdown.innerHTML.includes('Current:')) {
+                backupTutorDropdown.innerHTML = '<option value="">-- Select Backup Tutor --</option>';
+            }
             
             // Build query parameters
             const params = new URLSearchParams({
                 date: date,
-                account: account
+                account: account,
+                exclude_time_conflicts: 1  // Request backend to filter out tutors with time conflicts
             });
             
             if (time) {
@@ -585,11 +679,23 @@
                 .then(data => {
                     if (data.success && data.tutors.length > 0) {
                         allAvailableTutors = data.tutors;
-                        mainTutorDropdown.innerHTML = '<option value="">-- Select Main Tutor --</option>';
+                        
+                        // Set main tutor dropdown with placeholder for partially assigned
+                        const mainPlaceholder = currentScheduleData && currentScheduleData.status === 'partially_assigned' && currentScheduleData.main_tutor_id
+                            ? `Select a different main tutor (Current: ${currentScheduleData.main_tutor_name || 'Assigned'})`
+                            : '-- Select Main Tutor --';
+                        mainTutorDropdown.innerHTML = `<option value="">${mainPlaceholder}</option>`;
+                        
                         data.tutors.forEach(tutor => {
+                            // Skip if this tutor is currently assigned to avoid reassignment
+                            if (currentScheduleData && (tutor.id == currentScheduleData.main_tutor_id || tutor.id == currentScheduleData.backup_tutor_id)) {
+                                return;
+                            }
+                            
                             const option = document.createElement('option');
                             option.value = tutor.id;
-                            option.textContent = `${tutor.name} (${tutor.tutorID}) - ${tutor.availability}`;
+                            // Format: "TutorID - Full Name - Availability"
+                            option.textContent = `${tutor.tutorID} - ${tutor.name} - ${tutor.availability}`;
                             mainTutorDropdown.appendChild(option);
                         });
                         updateBackupTutorOptions();
@@ -609,14 +715,21 @@
             const mainTutorId = document.getElementById('assign-main-tutor').value;
             const backupTutorDropdown = document.getElementById('assign-backup-tutor');
             
-            backupTutorDropdown.innerHTML = '<option value="">-- Select Backup Tutor --</option>';
+            // Set backup tutor dropdown with placeholder for partially assigned
+            const backupPlaceholder = currentScheduleData && currentScheduleData.status === 'partially_assigned' && currentScheduleData.backup_tutor_id
+                ? `Select a different backup tutor (Current: ${currentScheduleData.backup_tutor_name || 'Assigned'})`
+                : '-- Select Backup Tutor --';
+            backupTutorDropdown.innerHTML = `<option value="">${backupPlaceholder}</option>`;
             
-            // Populate backup tutor options, excluding the selected main tutor
+            // Populate backup tutor options, excluding the selected main tutor and currently assigned tutors
             allAvailableTutors.forEach(tutor => {
-                if (tutor.id != mainTutorId) {
+                // Exclude if: selected as main, or currently assigned to this schedule
+                if (tutor.id != mainTutorId && 
+                    !(currentScheduleData && (tutor.id == currentScheduleData.main_tutor_id || tutor.id == currentScheduleData.backup_tutor_id))) {
                     const option = document.createElement('option');
                     option.value = tutor.id;
-                    option.textContent = `${tutor.name} (${tutor.tutorID}) - ${tutor.availability}`;
+                    // Format: "TutorID - Full Name - Availability"
+                    option.textContent = `${tutor.tutorID} - ${tutor.name} - ${tutor.availability}`;
                     backupTutorDropdown.appendChild(option);
                 }
             });
@@ -675,6 +788,61 @@
                 alert('An error occurred while assigning the tutor');
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
+            });
+        }
+        
+        // Finalize schedule functions
+        function confirmFinalizeSchedule() {
+            const assignmentId = document.getElementById('detail-assignment-id').value;
+            const scheduleId = document.getElementById('detail-schedule-id').value;
+            
+            if (!assignmentId) {
+                alert('Assignment ID not found');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to mark this schedule as Fully Assigned? This action will finalize the assignment and notify the assigned tutors.')) {
+                finalizeSchedule(assignmentId, scheduleId);
+            }
+        }
+        
+        function finalizeSchedule(assignmentId, scheduleId) {
+            const finalizeButton = document.getElementById('finalizeButton');
+            const originalText = finalizeButton.innerHTML;
+            
+            // Show loading state
+            finalizeButton.disabled = true;
+            finalizeButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Finalizing...';
+            
+            // Send AJAX request
+            fetch('{{ route("api.finalize-schedule") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    assignment_id: assignmentId,
+                    schedule_id: scheduleId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message || 'Schedule finalized successfully! Tutors have been notified.');
+                    closeScheduleDetailsModal();
+                    location.reload(); // Refresh to show updated data
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to finalize schedule'));
+                    finalizeButton.disabled = false;
+                    finalizeButton.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while finalizing the schedule');
+                finalizeButton.disabled = false;
+                finalizeButton.innerHTML = originalText;
             });
         }
     </script>

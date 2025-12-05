@@ -67,7 +67,7 @@
             <!-- Calendar -->
             <a href="{{ route('schedules.index', ['tab' => 'employee']) }}"
                 class="flex-shrink-0 py-3 md:py-4 px-2 md:px-1 
-           {{ request('tab', 'employee') == 'employee' ? 'border-b-2 border-[#0E335D] text-[#0E335D]' : 'text-[#0E335D] hover:text-[#0E335D]/70' }} 
+           {{ request('tab', 'employee') == 'employee' ? 'border-b-2 border-[#4ADE80] text-[#16A34A] font-bold' : 'text-gray-600 hover:text-[#1E40AF]' }} 
            font-medium text-sm md:text-base flex items-center space-x-2">
                 <i class="fas fa-calendar-alt"></i>
                 <span class="hidden sm:inline">Calendar</span>
@@ -76,7 +76,7 @@
             <!-- Class Scheduling-->
             <a href="{{ route('schedules.index', ['tab' => 'class']) }}"
                 class="flex-shrink-0 py-3 md:py-4 px-2 md:px-1 
-           {{ request('tab') == 'class' ? 'border-b-2 border-[#4AC066] text-[#4AC066]' : 'text-[#4AC066] hover:text-[#4AC066]/70' }} 
+           {{ request('tab') == 'class' ? 'border-b-2 border-[#4ADE80] text-[#16A34A] font-bold' : 'text-gray-600 hover:text-[#1E40AF]' }} 
            font-medium text-sm md:text-base flex items-center space-x-2">
                 <i class="fas fa-calendar-plus"></i>
                 <span class="hidden sm:inline">Class Scheduling</span>
@@ -85,7 +85,7 @@
             <!-- Schedule History-->
             <a href="{{ route('schedules.index', ['tab' => 'history']) }}"
                 class="flex-shrink-0 py-3 md:py-4 px-2 md:px-1 
-           {{ request('tab') == 'history' ? 'border-b-2 border-[#D97B15] text-[#D97B15]' : 'text-[#D97B15] hover:text-[#D97B15]/70' }} 
+           {{ request('tab') == 'history' ? 'border-b-2 border-[#4ADE80] text-[#16A34A] font-bold' : 'text-gray-600 hover:text-[#1E40AF]' }} 
            font-medium text-sm md:text-base flex items-center space-x-2">
                 <i class="fas fa-history"></i>
                 <span class="hidden sm:inline">Schedule History</span>
