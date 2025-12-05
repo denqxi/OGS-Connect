@@ -179,6 +179,8 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
             ->name('work-detail.approve');
         Route::post('/work-detail/{id}/reject', [PayrollController::class, 'rejectWorkDetail'])
             ->name('work-detail.reject');
+        Route::post('/log-email', [PayrollController::class, 'logPayrollEmail'])->name('log-email');
+        Route::post('/log-pdf', [PayrollController::class, 'logPayrollPdf'])->name('log-pdf');
 
     });
     Route::post('/payroll/tutor/{tutor}/send-email', [PayrollController::class, 'sendPayslipEmail']);
@@ -200,6 +202,7 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
             'applicant.qualification', 
             'applicant.requirement', 
             'applicant.workPreference',
+            'workDetails.approvals',
             // TODO: Uncomment when employee_payment_information table exists
             // 'paymentInformation', 
             // TODO: Uncomment when security_questions relationship is fixed

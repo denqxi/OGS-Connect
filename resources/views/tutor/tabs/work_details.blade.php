@@ -52,21 +52,18 @@
         </thead>
         <tbody class="bg-white divide-y divide-gray-200" id="tutorTableBody">
             @php
-                // Prefer a dedicated $workDetails collection passed from controller.
-                // Fallback: collect work details from tutors if available.
-                $rows =
-                    $workDetails ??
-                    (isset($tutors) ? $tutors->flatMap(fn($t) => $t->workDetails ?? collect()) : collect());
+                // Use workDetails from the authenticated tutor
+                $rows = $workDetails ?? $tutor->workDetails ?? collect();
             @endphp
 
             @forelse($rows as $detail)
                 @php
                     // Some DBs store tutor identifier in tutor_id as formatted tutorID
                     $tutorId = $detail->tutor_id ?? null;
-                    $displayDate = $detail->date ?? ($detail->created_at?->format('Y-m-d') ?? 'N/A');
+                    $displayDate = $detail->date ?? $detail->day ?? ($detail->created_at?->format('Y-m-d') ?? 'N/A');
                     $StartTime = $detail->start_time ?? 'N/A';
                     $EndTime = $detail->end_time ?? 'N/A';
-                    $classNo = $detail->class_no ?? ($detail->work_type ?? '—');
+                    $classNo = $detail->class_no ?? $detail->work_type ?? '—';
                     $rate = $detail->rate_per_class ?? 'N/A';
                     $status = $detail->status ?? 'pending';
                     $isApproved = is_string($status) && strtolower($status) === 'approved';
@@ -79,8 +76,18 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $classNo }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">₱{{ $rate }}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <span
-                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $isApproved ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">{{ ucfirst($status) }}</span>
+                        <div class="flex items-center gap-2">
+                            @php
+                                $statusColors = [
+                                    'pending' => 'bg-yellow-400',
+                                    'approved' => 'bg-green-500',
+                                    'reject' => 'bg-red-500',
+                                ];
+                                $circleColor = $statusColors[strtolower($status)] ?? 'bg-gray-500';
+                            @endphp
+                            <span class="w-2.5 h-2.5 rounded-full {{ $circleColor }}"></span>
+                            <span class="text-xs font-medium text-gray-500">{{ ucfirst($status) }}</span>
+                        </div>
                     </td>
 
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $detail->approval_note ?? ($detail->approvals->first()->note ?? '') }}</td>
@@ -89,17 +96,29 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                         <div class="flex items-center space-x-2">
                             @if (!$isApproved)
-                                <button type="button" class="px-3 py-1 bg-indigo-600 text-white rounded text-xs"
-                                    onclick="openWorkDetailEditor('{{ $detail->id ?? ($detail->work_detail_id ?? $detail->id) }}')">Edit</button>
-                                <button type="button" class="px-3 py-1 bg-red-100 text-red-600 rounded text-xs"
-                                    onclick="confirmDeleteWorkDetail('{{ $detail->id ?? ($detail->work_detail_id ?? $detail->id) }}')">Delete</button>
+                                <button type="button" 
+                                    class="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
+                                    onclick="openWorkDetailEditor('{{ $detail->id ?? ($detail->work_detail_id ?? $detail->id) }}')"
+                                    title="Edit">
+                                    <i class="fas fa-eye text-xs"></i>
+                                </button>
+                                <button type="button" 
+                                    class="w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+                                    onclick="confirmDeleteWorkDetail('{{ $detail->id ?? ($detail->work_detail_id ?? $detail->id) }}')"
+                                    title="Delete">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
                             @else
                                 <button type="button" disabled
-                                    class="px-3 py-1 bg-gray-200 text-gray-500 rounded text-xs cursor-not-allowed"
-                                    title="Approved records cannot be edited">Edit</button>
+                                    class="w-8 h-8 flex items-center justify-center bg-gray-200 text-gray-400 rounded cursor-not-allowed"
+                                    title="Approved records cannot be edited">
+                                    <i class="fas fa-eye text-xs"></i>
+                                </button>
                                 <button type="button" disabled
-                                    class="px-3 py-1 bg-gray-200 text-gray-500 rounded text-xs cursor-not-allowed"
-                                    title="Approved records cannot be deleted">Delete</button>
+                                    class="w-8 h-8 flex items-center justify-center bg-gray-200 text-gray-400 rounded cursor-not-allowed"
+                                    title="Approved records cannot be deleted">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
                             @endif
                         </div>
                     </td>

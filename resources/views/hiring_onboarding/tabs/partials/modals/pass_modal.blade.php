@@ -42,7 +42,7 @@
                         <option value="" selected disabled>Select an Account</option>
                         <option value="tutlo">Tutlo</option>
                         <option value="talk915">Talk915</option>
-                        <option value="gl5">GL5</option>
+                        <option value="gls">GLS</option>
                         <option value="babilala">BabiLala</option>
                     </select>
                     <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">

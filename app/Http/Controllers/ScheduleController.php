@@ -129,23 +129,23 @@ class ScheduleController extends Controller
      */
     private function showEmployeeAvailability(Request $request)
     {
-        $query = Tutor::with(['accounts' => function($query) {
-            $query->where('account_name', 'GLS')->where('status', 'active');
-        }])
-        ->whereHas('accounts', function($query) {
-            $query->where('account_name', 'GLS')->where('status', 'active');
-        });
+        $query = Tutor::with(['account', 'applicant', 'workPreferences'])
+        ->whereHas('account', function($query) {
+            $query->where('account_name', 'GLS');
+        })
+        ->where('status', 'active');
         
         // Apply filters (search applicant name via relationship instead of non-existent tutor columns)
         if ($request->filled('search')) {
             $searchTerm = $request->search;
             $query->where(function($q) use ($searchTerm) {
-                $q->where('tusername', 'like', '%' . $searchTerm . '%')
+                $q->where('username', 'like', '%' . $searchTerm . '%')
                   ->orWhere('email', 'like', '%' . $searchTerm . '%')
-                  ->orWhere('phone_number', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('tutorID', 'like', '%' . $searchTerm . '%')
                   ->orWhereHas('applicant', function($appQ) use ($searchTerm) {
                       $appQ->where('first_name', 'like', '%' . $searchTerm . '%')
                            ->orWhere('last_name', 'like', '%' . $searchTerm . '%')
+                           ->orWhere('contact_number', 'like', '%' . $searchTerm . '%')
                            ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ['%' . $searchTerm . '%']);
                   });
             });
@@ -160,13 +160,12 @@ class ScheduleController extends Controller
             $dayName = $this->normalizeDayName($request->day);
             $dayNameLower = strtolower($dayName);
             
-            
-            $query->whereHas('accounts', function($q) use ($dayName, $dayNameLower) {
-                $q->where('account_name', 'GLS')->where('status', 'active')
-                  ->where(function($subQuery) use ($dayName, $dayNameLower) {
-                      $subQuery->where('available_times', 'like', '%' . $dayName . '%')
-                               ->orWhere('available_times', 'like', '%' . $dayNameLower . '%');
-                  });
+            $query->whereHas('workPreferences', function($q) use ($dayName, $dayNameLower) {
+                $q->where(function($subQuery) use ($dayName, $dayNameLower) {
+                    $subQuery->whereJsonContains('days_available', $dayName)
+                             ->orWhereJsonContains('days_available', $dayNameLower)
+                             ->orWhereJsonContains('days_available', ucfirst($dayNameLower));
+                });
             });
         }
         
@@ -180,43 +179,16 @@ class ScheduleController extends Controller
             if (strpos($timeSlot, '-') !== false) {
                 list($requestedStart, $requestedEnd) = explode('-', $timeSlot);
                 
-                // Convert to minutes for comparison
-                $requestedStartMinutes = $this->timeToMinutes($requestedStart);
-                $requestedEndMinutes = $this->timeToMinutes($requestedEnd);
-                
-                // Use a simpler approach: get all tutors and filter in PHP
-                $allTutorIds = $query->pluck('tutorID')->toArray();
-                
-                if (!empty($allTutorIds)) {
-                    $filteredTutorIds = [];
-                    
-                    // Get tutors with their accounts
-                    $tutorsWithAccounts = Tutor::with(['accounts' => function($query) {
-                        $query->where('account_name', 'GLS')->where('status', 'active');
-                    }])->whereIn('tutorID', $allTutorIds)->get();
-                    
-                    foreach ($tutorsWithAccounts as $tutor) {
-                        $glsAccount = $tutor->accounts->first(function($account) {
-                            return $account->account && $account->account->account_name === 'GLS';
-                        });
-                        if ($glsAccount && $this->isTimeRangeAvailable($glsAccount->available_times, $requestedStart, $requestedEnd)) {
-                            $filteredTutorIds[] = $tutor->tutorID;
-                        }
-                    }
-                    
-                    // Apply the filtered tutor IDs
-                    if (!empty($filteredTutorIds)) {
-                        $query->whereIn('tutorID', $filteredTutorIds);
-                    } else {
-                        // No tutors match the time range, return empty result
-                        $query->where('tutorID', '=', 'impossible_id_that_does_not_exist');
-                    }
-                }
+                // Filter by work preferences time range
+                $query->whereHas('workPreferences', function($q) use ($requestedStart, $requestedEnd) {
+                    $q->whereTime('start_time', '<=', $requestedStart)
+                      ->whereTime('end_time', '>=', $requestedEnd);
+                });
             } else {
-                // Fallback to simple string matching for single time values
-                $query->whereHas('accounts', function($q) use ($timeSlot) {
-                    $q->where('account_name', 'GLS')->where('status', 'active')
-                      ->where('available_times', 'like', '%' . $timeSlot . '%');
+                // Fallback to simple time matching
+                $query->whereHas('workPreferences', function($q) use ($timeSlot) {
+                    $q->whereTime('start_time', '<=', $timeSlot)
+                      ->whereTime('end_time', '>=', $timeSlot);
                 });
             }
         }
@@ -1185,33 +1157,30 @@ class ScheduleController extends Controller
      */
     private function getAvailableDaysFromTutorAccounts()
     {
-        $tutorAccounts = \App\Models\TutorAccount::where('status', 'active')
-            ->whereNotNull('available_days')
+        // Get days from work_preferences table
+        $workPreferences = \App\Models\WorkPreference::whereNotNull('days_available')
             ->get();
         
         $allDays = collect();
         
-        foreach ($tutorAccounts as $account) {
-            $availableDays = $account->available_days;
+        foreach ($workPreferences as $pref) {
+            $daysAvailable = $pref->days_available;
             
-            // Handle case where available_days might be a string instead of array
-            if (is_string($availableDays)) {
-                $availableDays = json_decode($availableDays, true) ?? [];
-            }
-            
-            if (is_array($availableDays)) {
-                $allDays = $allDays->merge($availableDays);
+            if (is_array($daysAvailable)) {
+                $allDays = $allDays->merge($daysAvailable);
             }
         }
         
-        // Get unique days and filter out empty values and weekends
-        $weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-        $uniqueDays = $allDays->filter()->unique()->filter(function($day) use ($weekdays) {
+        // Get unique days and normalize to capitalize first letter
+        $weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        $uniqueDays = $allDays->map(function($day) {
+            return ucfirst(strtolower($day));
+        })->filter()->unique()->filter(function($day) use ($weekdays) {
             return in_array($day, $weekdays);
         })->values();
         
-        // Sort days in chronological order (weekdays only)
-        $dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        // Sort days in chronological order
+        $dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         return $uniqueDays->sortBy(function($day) use ($dayOrder) {
             return array_search($day, $dayOrder);
         })->values();

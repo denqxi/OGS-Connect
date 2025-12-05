@@ -31,7 +31,7 @@ return new class extends Migration
         DB::statement('
             UPDATE work_preferences wp
             INNER JOIN applicants a ON wp.applicant_id = a.applicant_id
-            INNER JOIN tutor t ON a.applicant_id = t.applicant_id
+            INNER JOIN tutors t ON a.applicant_id = t.applicant_id
             INNER JOIN tutor_accounts ta ON t.tutor_id = ta.tutor_id
             SET wp.timezone = COALESCE(ta.timezone, "UTC")
             WHERE ta.timezone IS NOT NULL
@@ -60,7 +60,7 @@ return new class extends Migration
             $table->timestamps();
 
             // Foreign keys
-            $table->foreign('tutor_id')->references('tutor_id')->on('tutor')->onDelete('cascade');
+            $table->foreign('tutor_id')->references('tutor_id')->on('tutors')->onDelete('cascade');
             $table->foreign('account_id')->references('account_id')->on('accounts')->onDelete('cascade');
             
             // Unique constraint

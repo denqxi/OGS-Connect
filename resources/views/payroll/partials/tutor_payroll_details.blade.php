@@ -30,23 +30,36 @@
                     @endphp
                     <tr class="hover:bg-gray-50 tutor-row" data-searchable="{{ strtolower(($tutor->tutorID ?? '') . ' ' . ($tutor->email ?? '') . ' ' . ($classNo ?? '')) }}">
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $displayDate }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $tutor?->full_name ?? ($tutor?->tusername ?? 'N/A') }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $tutor?->full_name ?? ($tutor?->username ?? 'N/A') }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $StartTime }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $EndTime }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $classNo }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">₱{{ $rate }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">{{ ucfirst($status) }}</span>
+                            <div class="flex items-center gap-2">
+                                @php
+                                    $statusColors = [
+                                        'pending' => 'bg-yellow-400',
+                                        'approved' => 'bg-green-500',
+                                        'reject' => 'bg-red-500',
+                                    ];
+                                    $circleColor = $statusColors[strtolower($status)] ?? 'bg-gray-500';
+                                @endphp
+                                <span class="w-2.5 h-2.5 rounded-full {{ $circleColor }}"></span>
+                                <span class="text-xs font-medium text-gray-500">{{ ucfirst($status) }}</span>
+                            </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                             <div class="flex items-center space-x-2">
                                 @if(!empty($detail->screenshot))
                                     <img src="{{ asset('storage/' . ltrim($detail->screenshot, '/')) }}" alt="screenshot" class="w-10 h-10 object-cover rounded twd-table-thumb cursor-pointer border" style="max-width:40px; max-height:40px;" />
                                 @endif
-                                <div>
-                                    <button type="button" class="px-3 py-1 bg-indigo-600 text-white rounded text-xs" onclick="approveWorkDetail('{{ $detail->id ?? $detail->work_detail_id ?? $detail->id }}')">Approve</button>
-                                    <button type="button" class="px-3 py-1 bg-red-100 text-red-600 rounded text-xs" onclick="rejectWorkDetail('{{ $detail->id ?? $detail->work_detail_id ?? $detail->id }}')">Reject</button>
-                                </div>
+                                <button type="button" 
+                                    class="px-4 py-1.5 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 transition-colors"
+                                    onclick="approveWorkDetail('{{ $detail->id ?? $detail->work_detail_id ?? $detail->id }}')">Approve</button>
+                                <button type="button" 
+                                    class="px-4 py-1.5 bg-red-100 text-red-600 rounded text-xs hover:bg-red-200 transition-colors"
+                                    onclick="rejectWorkDetail('{{ $detail->id ?? $detail->work_detail_id ?? $detail->id }}')">Reject</button>
                             </div>
                         </td>
                     </tr>

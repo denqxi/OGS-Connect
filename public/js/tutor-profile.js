@@ -673,11 +673,18 @@ class AvailabilityManager {
             emailElement.textContent = tutorInfo.email;
         }
         
+        // Convert ISO date to yyyy-MM-dd format for date input
+        let dateOfBirth = tutorInfo.date_of_birth;
+        if (dateOfBirth) {
+            const dateObj = new Date(dateOfBirth);
+            dateOfBirth = dateObj.toISOString().split('T')[0];
+        }
+        
         // Update personal information form fields
         const fields = [
             { selector: 'input[type="text"]:nth-of-type(1)', value: tutorInfo.first_name },
             { selector: 'input[type="text"]:nth-of-type(2)', value: tutorInfo.last_name },
-            { selector: 'input[type="date"]', value: tutorInfo.date_of_birth },
+            { selector: 'input[type="date"]', value: dateOfBirth },
             { selector: 'input[type="text"]:nth-of-type(3)', value: tutorInfo.address },
             { selector: 'input[type="email"]', value: tutorInfo.email },
             { selector: 'input[type="text"]:nth-of-type(4)', value: tutorInfo.contact_number },

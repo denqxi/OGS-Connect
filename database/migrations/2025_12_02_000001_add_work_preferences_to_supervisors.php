@@ -11,15 +11,25 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('supervisor', function (Blueprint $table) {
-            // Remove shift column
-            $table->dropColumn('shift');
+        Schema::table('supervisors', function (Blueprint $table) {
+            // Remove shift column if it exists
+            if (Schema::hasColumn('supervisors', 'shift')) {
+                $table->dropColumn('shift');
+            }
             
             // Add work preference columns similar to tutors
-            $table->time('start_time')->nullable()->after('ms_teams');
-            $table->time('end_time')->nullable()->after('start_time');
-            $table->json('days_available')->nullable()->after('end_time');
-            $table->string('timezone', 50)->default('UTC')->after('days_available');
+            if (!Schema::hasColumn('supervisors', 'start_time')) {
+                $table->time('start_time')->nullable()->after('ms_teams');
+            }
+            if (!Schema::hasColumn('supervisors', 'end_time')) {
+                $table->time('end_time')->nullable()->after('start_time');
+            }
+            if (!Schema::hasColumn('supervisors', 'days_available')) {
+                $table->json('days_available')->nullable()->after('end_time');
+            }
+            if (!Schema::hasColumn('supervisors', 'timezone')) {
+                $table->string('timezone', 50)->default('UTC')->after('days_available');
+            }
         });
     }
 
@@ -28,12 +38,25 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('supervisor', function (Blueprint $table) {
+        Schema::table('supervisors', function (Blueprint $table) {
             // Restore shift column
-            $table->string('shift', 75)->nullable()->after('ms_teams');
+            if (!Schema::hasColumn('supervisors', 'shift')) {
+                $table->string('shift', 75)->nullable()->after('ms_teams');
+            }
             
             // Remove work preference columns
-            $table->dropColumn(['start_time', 'end_time', 'days_available', 'timezone']);
+            if (Schema::hasColumn('supervisors', 'start_time')) {
+                $table->dropColumn('start_time');
+            }
+            if (Schema::hasColumn('supervisors', 'end_time')) {
+                $table->dropColumn('end_time');
+            }
+            if (Schema::hasColumn('supervisors', 'days_available')) {
+                $table->dropColumn('days_available');
+            }
+            if (Schema::hasColumn('supervisors', 'timezone')) {
+                $table->dropColumn('timezone');
+            }
         });
     }
 };

@@ -14,7 +14,7 @@
 
 @php
     // Common dropdown data
-    $accounts = ['tutlo', 'talk915', 'gl5', 'babilala'];
+    $accounts = ['tutlo', 'talk915', 'gls', 'babilala'];
     $statuses = ['screening', 'training', 'demo', 'onboarding'];
 @endphp
 

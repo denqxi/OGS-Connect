@@ -29,15 +29,18 @@ class TutorAvailabilityController extends Controller
             }
 
             // Load applicant relationships for tutor details
-            $tutor->load(['applicant.qualification', 'applicant.requirement']);
+            $tutor->load(['applicant.qualification', 'applicant.requirement', 'applicant.workPreference', 'account']);
 
-            // Get all accounts for this tutor
-            $accounts = $tutor->accounts()->get();
+            // Get work preferences for this tutor's applicant
+            $workPreference = $tutor->applicant?->workPreference;
             
             $availability = [];
-            foreach ($accounts as $account) {
-                // Ensure available_days is an array
-                $availableDays = $account->available_days;
+            if ($workPreference) {
+                // Get account name from tutor's assigned account
+                $accountName = $tutor->account?->account_name ?? 'Default Account';
+                
+                // Ensure available_days is an array (column is called days_available)
+                $availableDays = $workPreference->days_available ?? [];
                 if (is_string($availableDays)) {
                     $availableDays = json_decode($availableDays, true) ?? [];
                 }
@@ -49,53 +52,30 @@ class TutorAvailabilityController extends Controller
                 $dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
                 $availableDays = array_values(array_intersect($dayOrder, $availableDays));
 
-                // Ensure available_times is an object/array
-                $availableTimes = $account->available_times;
-                if (is_string($availableTimes)) {
-                    $availableTimes = json_decode($availableTimes, true) ?? [];
-                }
-                if (!is_array($availableTimes)) {
-                    $availableTimes = [];
-                }
-
-                // Sort available_times keys in chronological order
-                $sortedAvailableTimes = [];
-                foreach ($dayOrder as $day) {
-                    if (isset($availableTimes[$day])) {
-                        $sortedAvailableTimes[$day] = $availableTimes[$day];
-                    }
-                }
-                $availableTimes = $sortedAvailableTimes;
-
-                // Normalize time format and limit to one time slot per day for display
-                foreach ($availableTimes as $day => $timeSlots) {
-                    if (is_array($timeSlots) && !empty($timeSlots)) {
-                        // Take only the first time slot for each day
-                        $firstTimeSlot = $timeSlots[0];
-                        // Convert "20:00-21:00" to "20:00 - 21:00"
-                        $normalizedTimeSlot = str_replace('-', ' - ', $firstTimeSlot);
-                        $availableTimes[$day] = [$normalizedTimeSlot];
+                // Build available times from work_preference start/end times
+                $availableTimes = [];
+                if ($workPreference->start_time && $workPreference->end_time) {
+                    $timeSlot = $workPreference->start_time . ' - ' . $workPreference->end_time;
+                    foreach ($availableDays as $day) {
+                        $availableTimes[$day] = [$timeSlot];
                     }
                 }
 
-                $availability[$account->account_name] = [
-                    'id' => $account->id,
-                    'account_name' => $account->account_name,
+                $availability[$accountName] = [
+                    'id' => $workPreference->id,
+                    'account_name' => $accountName,
                     'available_days' => $availableDays,
                     'available_times' => $availableTimes,
-                    'timezone' => $account->timezone,
-                    'notes' => $account->notes,
-                    'operating_start_time' => $account->account?->operating_start_time,
-                    'operating_end_time' => $account->account?->operating_end_time,
-                    'company_rules' => $account->account?->company_rules,
+                    'timezone' => $workPreference->timezone ?? 'UTC',
+                    'notes' => $workPreference->notes ?? '',
+                    'operating_start_time' => $tutor->account?->operating_start_time,
+                    'operating_end_time' => $tutor->account?->operating_end_time,
+                    'company_rules' => $tutor->account?->company_rules,
                 ];
             }
 
-            // Get tutor details, payment information, and security questions for additional information
+            // Get tutor details
             $tutorDetails = $tutor->tutorDetails;
-            // TODO: Uncomment when employee_payment_information table exists
-            // $paymentMethods = $tutor->paymentMethods;
-            // $securityQuestions = $tutor->securityQuestions()->take(2)->get();
             
             return response()->json([
                 'success' => true,
@@ -293,114 +273,111 @@ class TutorAvailabilityController extends Controller
 
             DB::beginTransaction();
 
-            $updatedAccounts = [];
-
-            foreach ($accountsData as $accountData) {
-                $validator = Validator::make($accountData, [
-                    'account_name' => 'required|string|max:255',
-                    'available_days' => 'required|array',
-                    'available_days.*' => 'string|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
-                    'available_times' => 'required|array',
-                    'timezone' => 'nullable|string|max:10',
-                    'notes' => 'nullable|string|max:1000',
-                ]);
-
-                if ($validator->fails()) {
-                    DB::rollback();
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Validation failed for account: {$accountData['account_name']}",
-                        'errors' => $validator->errors()
-                    ], 422);
-                }
-
-                $accountName = $accountData['account_name'];
-                $availableDays = $accountData['available_days'];
-                $availableTimes = $accountData['available_times'];
-
-                // Sort available_days in chronological order
-                $dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-                $availableDays = array_values(array_intersect($dayOrder, $availableDays));
-
-                // Sort available_times keys in chronological order
-                $sortedAvailableTimes = [];
-                foreach ($dayOrder as $day) {
-                    if (isset($availableTimes[$day])) {
-                        $sortedAvailableTimes[$day] = $availableTimes[$day];
-                    }
-                }
-                $availableTimes = $sortedAvailableTimes;
-
-                // Validate time restrictions for this account
-                foreach ($availableTimes as $day => $times) {
-                    if (is_array($times)) {
-                        foreach ($times as $timeRange) {
-                            $timeValidation = $this->validateTimeRestrictions($accountName, $timeRange);
-                            if (!$timeValidation['valid']) {
-                                DB::rollback();
-                                return response()->json([
-                                    'success' => false,
-                                    'message' => $timeValidation['message']
-                                ], 422);
-                            }
-                        }
-                    }
-                }
-
-                // Find or create the tutor account
-                $tutorAccount = $tutor->accounts()
-                    ->where('account_name', $accountName)
-                    ->first();
-
-                if (!$tutorAccount) {
-                    // Get account_id from accounts table
-                    $account = \App\Models\Account::where('account_name', $accountName)->first();
-                    if (!$account) {
-                        DB::rollback();
-                        return response()->json([
-                            'success' => false,
-                            'message' => "Account {$accountName} not found in accounts table"
-                        ], 404);
-                    }
-
-                    $tutorAccount = new TutorAccount([
-                        'tutor_id' => $tutor->tutorID,
-                        'account_id' => $account->account_id,
-                        'account_name' => $accountName,
-                    ]);
-                }
-
-                // Update availability data
-                $tutorAccount->available_days = $availableDays;
-                $tutorAccount->available_times = $availableTimes;
-                $tutorAccount->timezone = $accountData['timezone'] ?? 'UTC';
-                $tutorAccount->notes = $accountData['notes'] ?? null;
-
-                $tutorAccount->save();
-
-                $updatedAccounts[] = $accountName;
+            // Since tutor_accounts was dropped and consolidated to work_preferences,
+            // update the applicant's work_preference record
+            $applicant = $tutor->applicant;
+            if (!$applicant) {
+                DB::rollback();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Applicant not found for this tutor'
+                ], 404);
             }
+
+            // Process the first account data (since we only have one work_preference now)
+            $accountData = $accountsData[0] ?? null;
+            
+            if (!$accountData) {
+                DB::rollback();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No account data provided'
+                ], 422);
+            }
+
+            $validator = Validator::make($accountData, [
+                'account_name' => 'required|string|max:255',
+                'available_days' => 'required|array',
+                'available_days.*' => 'string|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
+                'available_times' => 'nullable|array',
+                'timezone' => 'nullable|string|max:10',
+                'notes' => 'nullable|string|max:1000',
+            ]);
+
+            if ($validator->fails()) {
+                DB::rollback();
+                return response()->json([
+                    'success' => false,
+                    'message' => "Validation failed for account: {$accountData['account_name']}",
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $availableDays = $accountData['available_days'];
+            $availableTimes = $accountData['available_times'] ?? [];
+
+            // Sort available_days in chronological order
+            $dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            $availableDays = array_values(array_intersect($dayOrder, $availableDays));
+
+            // Extract start and end time from available_times (first time slot)
+            // Default to full day availability (00:00 - 23:59) if no times specified
+            $startTime = '00:00:00';
+            $endTime = '23:59:59';
+            
+            if (!empty($availableTimes)) {
+                // Get the first available time slot from the first day
+                foreach ($dayOrder as $day) {
+                    if (isset($availableTimes[$day]) && is_array($availableTimes[$day]) && !empty($availableTimes[$day])) {
+                        $timeRange = $availableTimes[$day][0];
+                        // Parse "HH:MM - HH:MM" format
+                        $times = explode(' - ', $timeRange);
+                        if (count($times) === 2) {
+                            $startTime = trim($times[0]);
+                            $endTime = trim($times[1]);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Get or create work preference for this applicant
+            $workPreference = $applicant->workPreference;
+            
+            if (!$workPreference) {
+                $workPreference = new \App\Models\WorkPreference([
+                    'applicant_id' => $applicant->applicant_id,
+                    'days_available' => json_encode($availableDays),
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                ]);
+            } else {
+                $workPreference->days_available = json_encode($availableDays);
+                $workPreference->start_time = $startTime;
+                $workPreference->end_time = $endTime;
+            }
+
+            $workPreference->save();
 
             DB::commit();
 
-            Log::info('Multiple tutor accounts updated', [
+            Log::info('Tutor availability updated', [
                 'tutor_id' => $tutor->tutorID,
-                'updated_accounts' => $updatedAccounts
+                'applicant_id' => $applicant->applicant_id
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'All accounts updated successfully',
-                'updated_accounts' => $updatedAccounts
+                'message' => 'Availability updated successfully'
             ]);
 
         } catch (\Exception $e) {
             DB::rollback();
-            Log::error('Error updating multiple tutor accounts: ' . $e->getMessage());
+            Log::error('Error updating tutor availability: ' . $e->getMessage());
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update accounts'
+                'message' => 'Failed to update availability'
             ], 500);
         }
     }

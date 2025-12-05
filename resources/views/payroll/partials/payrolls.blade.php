@@ -16,8 +16,8 @@
                 @if(isset($tutors) && $tutors->count())
                     @foreach($tutors as $tutor)
                         <tr>
-                            <td class="px-6 py-4 text-sm text-gray-700">{{ $tutor->full_name ?? $tutor->tusername }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700">{{ $tutor->account?->account_name ?? ($tutor->accounts()->first()?->account_name ?? 'N/A') }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700">{{ $tutor->full_name ?? $tutor->username }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700">{{ $tutor->account?->account_name ?? 'N/A' }}</td>
                             <td class="px-6 py-4 text-sm">
                                 <button type="button" class="px-3 py-1 bg-slate-700 text-white rounded text-xs" onclick="openTutorSummary('{{ $tutor->tutorID }}')">View Summary</button>
                             </td>

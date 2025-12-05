@@ -8,6 +8,7 @@ use App\Models\Tutor;
 use App\Models\Applicant;
 use App\Models\TutorWorkDetail;
 use App\Models\TutorWorkDetailApproval;
+use App\Models\PayrollHistory;
 use Illuminate\Support\Facades\Auth;
 use App\Mail\PayslipMail;
 use Illuminate\Support\Facades\Mail;
@@ -19,7 +20,7 @@ class PayrollController extends Controller
     {
         try {
             // Base query with relationships
-            $query = Tutor::with(['paymentInformation', 'applicant', 'workDetails'])
+            $query = Tutor::with(['applicant', 'workDetails', 'account'])
                 ->where('status', 'active');
 
             // Search
@@ -29,7 +30,7 @@ class PayrollController extends Controller
 
                 $query->where(function ($q) use ($search) {
 
-                    $q->where('tusername', 'like', "%{$search}%")
+                    $q->where('username', 'like', "%{$search}%")
                       ->orWhere('email', 'like', "%{$search}%")
                       ->orWhere('phone_number', 'like', "%{$search}%")
                       ->orWhereHas('applicant', function ($aq) use ($search) {
@@ -56,11 +57,12 @@ class PayrollController extends Controller
             // Add computed payroll values
             $tutors->getCollection()->transform(function ($tutor) {
 
-                $payment = $tutor->paymentInformation;
-                $amount = $payment ? ($payment->monthly_salary ?? $payment->hourly_rate) : null;
-
-                $tutor->salary = $amount;
-                $tutor->amount = $amount;
+                // TODO: Uncomment when employee_payment_information table and relationship exists
+                // $payment = $tutor->paymentInformation;
+                // $amount = $payment ? ($payment->monthly_salary ?? $payment->hourly_rate) : null;
+                
+                $tutor->salary = null;
+                $tutor->amount = null;
                 $tutor->pay_date = null;
 
                 return $tutor;
@@ -80,6 +82,16 @@ class PayrollController extends Controller
                     ->withQueryString();
 
                 $viewData['workApprovals'] = $approvals;
+            }
+
+            // If payroll-history tab requested, load payroll submissions
+            if ($request->query('tab') === 'payroll-history') {
+                $payrollHistory = PayrollHistory::with(['tutor.applicant'])
+                    ->orderBy('submitted_at', 'desc')
+                    ->paginate(10)
+                    ->withQueryString();
+
+                $viewData['payrollHistory'] = $payrollHistory;
             }
 
             return view('payroll.index', $viewData);
@@ -294,7 +306,7 @@ public function workDetails(Request $request)
     public function tutorSummary(Request $request, $tutor)
     {
         try {
-            $tutorModel = Tutor::where('tutorID', $tutor)->with(['applicant', 'accounts'])->first();
+            $tutorModel = Tutor::where('tutorID', $tutor)->with(['applicant', 'account'])->first();
             if (! $tutorModel) {
                 return response('Tutor not found', 404);
             }
@@ -403,6 +415,79 @@ public function workDetails(Request $request)
         } catch (\Exception $e) {
             Log::error('PayrollController@sendPayslipEmail error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to send payslip']);
+        }
+    }
+
+    /**
+     * Log payroll email submission
+     */
+    public function logPayrollEmail(Request $request)
+    {
+        try {
+            Log::info('PayrollHistory: logPayrollEmail called', ['payload' => $request->all()]);
+
+            $validated = $request->validate([
+                'tutor_id' => 'required|integer|exists:tutors,tutor_id',
+                'pay_period' => 'required|string',
+                'recipient_email' => 'required|email'
+            ]);
+
+            Log::info('PayrollHistory: Validation passed', ['validated' => $validated]);
+
+            $record = PayrollHistory::create([
+                'tutor_id' => $validated['tutor_id'],
+                'pay_period' => $validated['pay_period'],
+                'submission_type' => 'email',
+                'status' => 'sent',
+                'recipient_email' => $validated['recipient_email'],
+                'submitted_at' => now()
+            ]);
+
+            Log::info('PayrollHistory: Email record created', ['record_id' => $record->payroll_history_id]);
+
+            return response()->json(['success' => true, 'message' => 'Payroll submission logged']);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('PayrollController@logPayrollEmail validation error: ' . json_encode($e->errors()));
+            return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            Log::error('PayrollController@logPayrollEmail error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to log submission: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Log payroll PDF export
+     */
+    public function logPayrollPdf(Request $request)
+    {
+        try {
+            Log::info('PayrollHistory: logPayrollPdf called', ['payload' => $request->all()]);
+
+            $validated = $request->validate([
+                'tutor_id' => 'required|integer|exists:tutors,tutor_id',
+                'pay_period' => 'required|string',
+                'submission_type' => 'required|in:pdf,print'
+            ]);
+
+            Log::info('PayrollHistory: Validation passed', ['validated' => $validated]);
+
+            $record = PayrollHistory::create([
+                'tutor_id' => $validated['tutor_id'],
+                'pay_period' => $validated['pay_period'],
+                'submission_type' => $validated['submission_type'],
+                'status' => 'sent',
+                'submitted_at' => now()
+            ]);
+
+            Log::info('PayrollHistory: PDF record created', ['record_id' => $record->payroll_history_id]);
+
+            return response()->json(['success' => true, 'message' => 'Payroll submission logged']);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('PayrollController@logPayrollPdf validation error: ' . json_encode($e->errors()));
+            return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            Log::error('PayrollController@logPayrollPdf error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to log submission: ' . $e->getMessage()], 500);
         }
     }
 

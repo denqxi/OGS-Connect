@@ -182,31 +182,95 @@
         </div>
     </div>
 
-    {{-- <script>
+    <script>
+        // Store tutor data for debugging
+        const TUTOR_DATA = {
+            tutor_id: {{ $tutor->tutor_id }},
+            tutor_name: '{{ $tutor->full_name ?? $tutor->tusername }}',
+            tutor_email: '{{ $tutor->email ?? ($tutor->account?->email ?? '') }}'
+        };
+        
+        console.log('TUTOR_DATA initialized:', TUTOR_DATA);
+
         function printPayslip() {
             var content = document.getElementById('payslipContent').innerHTML;
             var printWindow = window.open('', '_blank');
             printWindow.document.write('<html><head><title>Payslip</title>');
             printWindow.document.write(
-                '<style>body{font-family:Arial,Helvetica,sans-serif;padding:20px;color:#111}.header{display:flex;justify-content:space-between;align-items:center}.header .title{font-size:18px;font-weight:700}.header .meta{font-size:12px;color:#666}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{border:1px solid #e5e7eb;padding:8px;text-align:left}th{background:#f3f4f6;font-weight:600} .text-right{text-align:right} .totals{font-weight:700}</style>'
+                '<style>body{font-family:Arial,Helvetica,sans-serif;padding:20px;color:#111}.header{display:flex;justify-content:space-between;align-items:center}.header .title{font-size:18px;font-weight:700}.header .meta{font-size:12px;color:#666}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{border:1px solid #e5e7eb;padding:8px;text-align:left}th{background:#f3f4f6;font-weight:600}.text-right{text-align:right}.totals{font-weight:700}</style>'
             );
             printWindow.document.write('</head><body>');
             printWindow.document.write(content);
             printWindow.document.write('</body></html>');
             printWindow.document.close();
             printWindow.focus();
+            
+            // Log PDF/Print action
+            const payPeriod = '{{ now()->format('Y-m') }}';
+            
+            console.log('Logging PDF export with TUTOR_DATA:', TUTOR_DATA);
+            
+            fetch('{{ route("payroll.log-pdf") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    tutor_id: TUTOR_DATA.tutor_id,
+                    pay_period: payPeriod,
+                    submission_type: 'pdf'
+                })
+            })
+            .then(response => {
+                console.log('PDF log response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('PDF log response:', data);
+            })
+            .catch(error => console.error('Error logging PDF export:', error));
+            
             setTimeout(function() {
                 printWindow.print();
             }, 250);
         }
 
         function emailPayslip(tutorID) {
-            var tutorName = `{!! addslashes($tutor->full_name ?? $tutor->tusername) !!}`;
-            var tutorEmail = `{!! $tutor->email ?? ($tutor->account?->email ?? '') !!}`;
+            var tutorName = TUTOR_DATA.tutor_name;
+            var tutorEmail = TUTOR_DATA.tutor_email;
+            
             if (!tutorEmail) {
                 alert('No email address available for this tutor.');
                 return;
             }
+            
+            // Log email submission
+            const payPeriod = '{{ now()->format('Y-m') }}';
+            
+            console.log('Logging email with TUTOR_DATA:', TUTOR_DATA);
+            
+            fetch('{{ route("payroll.log-email") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    tutor_id: TUTOR_DATA.tutor_id,
+                    pay_period: payPeriod,
+                    recipient_email: tutorEmail
+                })
+            })
+            .then(response => {
+                console.log('Email log response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Email log response:', data);
+            })
+            .catch(error => console.error('Error logging email:', error));
+            
             var subject = encodeURIComponent('Payslip for ' + tutorName);
             var bodyLines = [];
             bodyLines.push('Hello ' + tutorName + ',');
@@ -221,5 +285,5 @@
             var body = encodeURIComponent(bodyLines.join('\n'));
             window.location.href = 'mailto:' + tutorEmail + '?subject=' + subject + '&body=' + body;
         }
-    </script> --}}
+    </script>
 </div>

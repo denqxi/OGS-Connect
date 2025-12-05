@@ -87,14 +87,14 @@ class EmployeeManagementController extends Controller
         $sortDirection = $request->get('direction', 'asc');
         
         if ($sortField === 'name' && $sortDirection) {
-            $query->join('applicants', 'tutor.applicant_id', '=', 'applicants.applicant_id')
+            $query->join('applicants', 'tutors.applicant_id', '=', 'applicants.applicant_id')
                 ->orderBy('applicants.first_name', $sortDirection)
-                ->select('tutor.*');
+                ->select('tutors.*');
         } elseif ($sortField === 'status' && $sortDirection) {
-            $query->orderBy('tutor.status', $sortDirection);
+            $query->orderBy('tutors.status', $sortDirection);
         } else {
             // Default sort by tutorID ascending
-            $query->orderBy('tutor.tutorID', 'asc');
+            $query->orderBy('tutors.tutorID', 'asc');
         }
 
         $tutors = $query->paginate(5)->withQueryString();
@@ -159,14 +159,14 @@ class EmployeeManagementController extends Controller
         $sortDirection = $request->get('direction', 'asc');
         
         if ($sortField === 'name' && $sortDirection) {
-            $query->join('applicants', 'tutor.applicant_id', '=', 'applicants.applicant_id')
+            $query->join('applicants', 'tutors.applicant_id', '=', 'applicants.applicant_id')
                 ->orderBy('applicants.first_name', $sortDirection)
-                ->select('tutor.*');
+                ->select('tutors.*');
         } elseif ($sortField === 'status' && $sortDirection) {
-            $query->orderBy('tutor.status', $sortDirection);
+            $query->orderBy('tutors.status', $sortDirection);
         } else {
             // Default sort by tutorID ascending
-            $query->orderBy('tutor.tutorID', 'asc');
+            $query->orderBy('tutors.tutorID', 'asc');
         }
 
         $tutors = $query->paginate(5)->withQueryString();
@@ -231,14 +231,14 @@ class EmployeeManagementController extends Controller
         $sortDirection = $request->get('direction', 'asc');
         
         if ($sortField === 'name' && $sortDirection) {
-            $query->join('applicants', 'tutor.applicant_id', '=', 'applicants.applicant_id')
+            $query->join('applicants', 'tutors.applicant_id', '=', 'applicants.applicant_id')
                 ->orderBy('applicants.first_name', $sortDirection)
-                ->select('tutor.*');
+                ->select('tutors.*');
         } elseif ($sortField === 'status' && $sortDirection) {
-            $query->orderBy('tutor.status', $sortDirection);
+            $query->orderBy('tutors.status', $sortDirection);
         } else {
             // Default sort by tutorID ascending
-            $query->orderBy('tutor.tutorID', 'asc');
+            $query->orderBy('tutors.tutorID', 'asc');
         }
 
         $tutors = $query->paginate(5)->withQueryString();
@@ -292,14 +292,14 @@ class EmployeeManagementController extends Controller
         $sortDirection = $request->get('direction', 'asc');
         
         if ($sortField === 'name' && $sortDirection) {
-            $query->join('applicants', 'tutor.applicant_id', '=', 'applicants.applicant_id')
+            $query->join('applicants', 'tutors.applicant_id', '=', 'applicants.applicant_id')
                 ->orderBy('applicants.first_name', $sortDirection)
-                ->select('tutor.*');
+                ->select('tutors.*');
         } elseif ($sortField === 'status' && $sortDirection) {
-            $query->orderBy('tutor.status', $sortDirection);
+            $query->orderBy('tutors.status', $sortDirection);
         } else {
             // Default sort by tutorID ascending
-            $query->orderBy('tutor.tutorID', 'asc');
+            $query->orderBy('tutors.tutorID', 'asc');
         }
 
         $tutors = $query->paginate(5)->withQueryString();

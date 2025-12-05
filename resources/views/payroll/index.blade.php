@@ -25,7 +25,7 @@
             </a>
             <a href="{{ route('payroll.index', ['tab' => 'history']) }}"
                 class="flex-shrink-0 py-3 md:py-4 px-2 md:px-1 
-               {{ request('tab') == 'history' ? 'border-b-2 border-[#0E335D] text-[#0E335D]' : 'text-[#0E335D] hover:text-[#0E335D]/70' }} 
+               {{ request('tab') == 'history' || request('tab') == 'payroll-history' ? 'border-b-2 border-[#0E335D] text-[#0E335D]' : 'text-[#0E335D] hover:text-[#0E335D]/70' }} 
                font-medium text-sm md:text-base flex items-center space-x-2">
                 <i class="fas fa-history"></i>
                 <span class="hidden sm:inline">History</span>
@@ -34,6 +34,28 @@
 
         
     </div>
+
+    <!-- Subtabs for History Section -->
+    @if(request('tab') == 'history' || request('tab') == 'payroll-history')
+        <div class="bg-gray-50 border-b border-gray-200 px-4 md:px-6">
+            <nav class="flex overflow-x-auto md:space-x-4 no-scrollbar">
+                <a href="{{ route('payroll.index', ['tab' => 'history']) }}"
+                    class="flex-shrink-0 py-3 md:py-4 px-2 md:px-1 
+                   {{ request('tab', 'history') == 'history' ? 'border-b-2 border-[#0E335D] text-[#0E335D]' : 'text-gray-600 hover:text-gray-800' }} 
+                   font-medium text-sm md:text-base flex items-center space-x-2">
+                    <i class="fas fa-check-circle"></i>
+                    <span class="hidden sm:inline">Approval History</span>
+                </a>
+                <a href="{{ route('payroll.index', ['tab' => 'payroll-history']) }}"
+                    class="flex-shrink-0 py-3 md:py-4 px-2 md:px-1 
+                   {{ request('tab') == 'payroll-history' ? 'border-b-2 border-[#0E335D] text-[#0E335D]' : 'text-gray-600 hover:text-gray-800' }} 
+                   font-medium text-sm md:text-base flex items-center space-x-2">
+                    <i class="fas fa-file-invoice"></i>
+                    <span class="hidden sm:inline">Payroll History</span>
+                </a>
+            </nav>
+        </div>
+    @endif
 
     <div>
         <div class="max-w-full mx-auto">
@@ -44,6 +66,8 @@
                     @include('payroll.partials.payrolls')
                 @elseif(request('tab') == 'history')
                     @include('payroll.partials.history')
+                @elseif(request('tab') == 'payroll-history')
+                    @include('payroll.partials.payroll-history')
                 @endif
         </div>
     </div>

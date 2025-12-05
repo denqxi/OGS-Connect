@@ -793,7 +793,7 @@ class ApplicationFormController extends Controller
     {
         $request->validate([
             'interviewer' => 'required|string|max:255',
-            'assigned_account' => 'required|string|in:tutlo,talk915,gl5,babilala',
+            'assigned_account' => 'required|string|in:tutlo,talk915,gls,babilala',
             'next_status' => 'required|string|in:demo,screening,training',
             'notes' => 'nullable|string|max:1000',
             'demo_schedule' => 'required|date|after:now',
@@ -1150,7 +1150,7 @@ class ApplicationFormController extends Controller
             'interviewer' => 'required|string|max:255',
             'start_time' => 'required|string',
             'end_time' => 'required|string',
-            'assigned_account' => 'required|string|in:tutlo,talk915,gl5,babilala',
+            'assigned_account' => 'required|string|in:tutlo,talk915,gls,babilala',
             'hiring_status' => 'required|string|in:screening,training,demo',
             'schedule' => 'nullable|date|after:now',
             'notes' => 'nullable|string|max:1000',

@@ -17,7 +17,10 @@ class TutorWorkDetail extends Model
         'duration_minutes',
         'rate_per_hour',
         'rate_per_class',
-        'screenshot'
+        'screenshot',
+        'status',
+        'date',
+        'class_no'
     ];
 
     public function tutor()

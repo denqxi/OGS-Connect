@@ -182,6 +182,11 @@ class Tutor extends Authenticatable
         return $this->hasMany(TutorAssignment::class, 'tutor_id', 'tutorID');
     }
 
+    public function payrollHistory()
+    {
+        return $this->hasMany(PayrollHistory::class, 'tutor_id', 'tutor_id');
+    }
+
     // Add the search scope method
     /**
      * Search scope for tutors

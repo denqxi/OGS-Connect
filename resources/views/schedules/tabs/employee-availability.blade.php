@@ -228,10 +228,9 @@
                                     ];
                                     $displayDay = $dayMap[$dayName] ?? ucfirst($dayName);
                                     
-                                    // Extract times for this specific day from the available_times
-                                    $availableTimes = $glsAccount->available_times ?? '';
-                                    
-                                    $dayTimes = [];
+                    // Extract times for this specific day from the available_times
+                    $workPref = $tutor->workPreferences;
+                    $availableTimes = [];                                    $dayTimes = [];
                                     
                                     // Handle array format of available_times
                                     if (is_array($availableTimes)) {
@@ -275,9 +274,9 @@
                                         $requestedTimeSlot = $requestedTimeSlot[0] ?? '';
                                     }
                                     
-                                    $availableTimes = $glsAccount->available_times ?? '';
-                                    
-                                    $matchingRanges = [];
+                    
+                    $workPref = $tutor->workPreferences;
+                    $availableTimes = [];                                    $matchingRanges = [];
                                     
                                     // Handle array format of available_times
                                     if (is_array($availableTimes)) {
@@ -352,23 +351,25 @@
                                     if (!empty($matchingRanges)) {
                                         $filteredTime = implode(', ', $matchingRanges);
                                     } else {
-                                        $formattedTime = $glsAccount->formatted_available_time;
-                                        $filteredTime = is_array($formattedTime) ? implode(', ', $formattedTime) : $formattedTime;
+                                        $workPref = $tutor->workPreferences;
+                                        $startTime = $workPref->start_time ? \Carbon\Carbon::parse($workPref->start_time)->format('H:i') : 'N/A';
+                                        $endTime = $workPref->end_time ? \Carbon\Carbon::parse($workPref->end_time)->format('H:i') : 'N/A';
+                                        $filteredTime = $startTime . '-' . $endTime;
                                     }
                                 }
                                 // If no filters applied, show full availability
                                 else {
-                                    $formattedTime = $glsAccount->formatted_available_time;
-                                    $filteredTime = is_array($formattedTime) ? implode(', ', $formattedTime) : $formattedTime;
+                                    $workPref = $tutor->workPreferences;
+                                    $daysAvailable = is_array($workPref->days_available) ? $workPref->days_available : [];
+                                    $startTime = $workPref->start_time ? \Carbon\Carbon::parse($workPref->start_time)->format('H:i') : 'N/A';
+                                    $endTime = $workPref->end_time ? \Carbon\Carbon::parse($workPref->end_time)->format('H:i') : 'N/A';
+                                    $daysText = !empty($daysAvailable) ? implode(', ', array_map('ucfirst', $daysAvailable)) : 'All days';
+                                    $filteredTime = $daysText . ': ' . $startTime . '-' . $endTime;
                                 }
                             @endphp
                             
-                            @php
-                                $displayTime = $filteredTime ?: $glsAccount->formatted_available_time;
-                                $displayTime = is_array($displayTime) ? implode(', ', $displayTime) : $displayTime;
-                            @endphp
-                            <span class="font-medium text-gray-700">{{ $displayTime }}</span>
-                            <span class="text-xs text-green-600 font-medium">(GLS Account)</span>
+                            <span class="font-medium text-gray-700">{{ $filteredTime }}</span>
+                            <span class="text-xs text-green-600 font-medium">({{ $tutor->account->account_name ?? 'GLS' }} Account)</span>
                         </div>
                     @else
                         <span class="text-red-500 text-sm">No GLS availability</span>

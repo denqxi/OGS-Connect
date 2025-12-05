@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Application;
 use App\Models\Demo;
 use App\Models\Tutor;
-use App\Models\TutorAccount;
 use App\Models\TutorDetails;
 use App\Models\Notification;
 use App\Mail\ApplicantPassedMail;
@@ -16,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class ApplicationController extends Controller
@@ -119,26 +119,9 @@ class ApplicationController extends Controller
                         'green'
                     );
 
-                    // Create tutor account record with time availability
-                    $accountName = $account ? $account->account_name : ($demo->assigned_account ?? 'Unknown');
-                    
-                    $tutorAccount = TutorAccount::create([
-                        'tutor_id' => $tutor->tutorID,
-                        'account_name' => $accountName,
-                        'account_number' => null,
-                        'username' => $username,
-                        'screen_name' => $tutorName,
-                        'available_days' => $demo->days ?? [],
-                        'available_times' => [
-                            'interview_time' => $applicant ? $applicant->interview_time : null,
-                        ],
-                        'preferred_time_range' => 'flexible',
-                        'timezone' => 'UTC',
-                        'availability_notes' => $request->notes ?? $demo->notes,
-                        'status' => 'active'
-                    ]);
-                    
-                    Log::info('TutorAccount created:', ['tutorAccount' => $tutorAccount->toArray()]);
+                    // Note: tutor_accounts table was removed in consolidation migration
+                    // Availability data is now stored in work_preferences table (linked via applicant_id)
+                    // The work_preferences record should already exist from the applicant's onboarding phase
 
                     // TODO: Create tutor details record with comprehensive data from demos table
                     // Commented out until tutor_details table is created
@@ -311,15 +294,24 @@ class ApplicationController extends Controller
                         ? Auth::guard('supervisor')->user()->supervisor_id 
                         : $demo->supervisor_id;
                     
-                    // Create onboarding record
-                    $onboarding = \App\Models\Onboarding::create([
+                    // Create onboarding record - check which columns exist
+                    $onboardingData = [
                         'applicant_id' => $demo->applicant_id,
                         'account_id' => $demo->account_id,
-                        'assessed_by' => $supervisorId,
                         'phase' => 'onboarding',
                         'notes' => $request->notes ?? 'Passed demo - moved to onboarding',
-                        'onboarding_date_time' => $request->next_schedule ?? $demo->screening_date_time ?? now(),
-                    ]);
+                    ];
+                    
+                    // Only add columns if they exist in the table
+                    if (Schema::hasColumn('onboardings', 'assessed_by')) {
+                        $onboardingData['assessed_by'] = $supervisorId;
+                    }
+                    
+                    if (Schema::hasColumn('onboardings', 'onboarding_date_time')) {
+                        $onboardingData['onboarding_date_time'] = $request->next_schedule ?? $demo->screening_date_time ?? now();
+                    }
+                    
+                    $onboarding = \App\Models\Onboarding::create($onboardingData);
                     
                     // Sync with applicant's interview_time
                     if ($demo->applicant && ($request->next_schedule ?? $demo->screening_date_time)) {
