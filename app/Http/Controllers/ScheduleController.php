@@ -592,8 +592,8 @@ class ScheduleController extends Controller
                 'assigned_daily_data.finalized_at',
                 'assigned_daily_data.main_tutor',
                 'assigned_daily_data.backup_tutor',
-                \DB::raw('CONCAT(main_tutor_info.first_name, " ", main_tutor_info.last_name) as main_tutor_name'),
-                \DB::raw('CONCAT(backup_tutor_info.first_name, " ", backup_tutor_info.last_name) as backup_tutor_name')
+                DB::raw('CONCAT(main_tutor_info.first_name, " ", main_tutor_info.last_name) as main_tutor_name'),
+                DB::raw('CONCAT(backup_tutor_info.first_name, " ", backup_tutor_info.last_name) as backup_tutor_name')
             )
             ->orderBy('schedules_daily_data.date', 'desc')
             ->orderBy('schedules_daily_data.time', 'asc')
@@ -1219,8 +1219,8 @@ class ScheduleController extends Controller
     {
         // Get all active tutors with GLS account and their work preferences
         $workPreferences = \App\Models\WorkPreference::join('applicants', 'work_preferences.applicant_id', '=', 'applicants.applicant_id')
-            ->join('tutor', 'tutor.applicant_id', '=', 'applicants.applicant_id')
-            ->join('accounts', 'tutor.account_id', '=', 'accounts.account_id')
+            ->join('tutors', 'tutors.applicant_id', '=', 'applicants.applicant_id')
+            ->join('accounts', 'tutors.account_id', '=', 'accounts.account_id')
             ->where('accounts.account_name', 'GLS')
             ->whereNotNull('work_preferences.days_available')
             ->select('work_preferences.days_available')
