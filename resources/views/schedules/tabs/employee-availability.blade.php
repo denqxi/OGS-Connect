@@ -30,7 +30,7 @@
                     </button>
                 </div>
                 
-                <select name="status" id="filterStatus" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="handleTutorFilterChange('status')">
+                <select name="status" id="filterStatus" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
                     <option value="">All Status</option>
                     <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
                     <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
@@ -94,7 +94,7 @@
                         
                         <span class="text-sm text-gray-400">+</span>
                 
-                <select name="day" id="filterDay" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="handleTutorFilterChange('day')">
+                <select name="day" id="filterDay" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
                     <option value="">All Days</option>
                     @if(isset($availableDays) && $availableDays->count() > 0)
                         @foreach($availableDays as $day)
@@ -137,23 +137,20 @@
                     </div>
                 </div>
 
-                @if(request()->hasAny(['search', 'status', 'time_slot', 'day']))
-                    <div class="flex items-center space-x-2">
-                        @if(request('time_slot') && request('day'))
-                            @php
-                                $dayMap = [
-                                    'mon' => 'Monday', 'tue' => 'Tuesday', 'wed' => 'Wednesday',
-                                    'thur' => 'Thursday', 'fri' => 'Friday'
-                                ];
-                                $displayDay = $dayMap[request('day')] ?? ucfirst(request('day'));
-                            @endphp
-                        @endif
-                    <a href="{{ route('schedules.index', ['tab' => 'employee']) }}" 
-                       class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors">
-                        Clear
-                    </a>
-                    </div>
-                @endif
+                <div class="flex items-center space-x-2">
+                    <button type="submit" 
+                            class="bg-[#0E335D] text-white px-6 py-2 rounded-md text-sm font-medium hover:bg-[#0E335D]/90 transition-colors flex items-center space-x-2">
+                        <i class="fas fa-search"></i>
+                        <span>Apply</span>
+                    </button>
+                    
+                    @if(request()->hasAny(['search', 'status', 'time_slot', 'day']))
+                        <a href="{{ route('schedules.index', ['tab' => 'employee']) }}" 
+                           class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors">
+                            Clear
+                        </a>
+                    @endif
+                </div>
             </div>
         </div>
     </form>
@@ -182,13 +179,16 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline">
                     <a href="mailto:{{ $tutor->email ?? '' }}">{{ $tutor->email ?? 'N/A' }}</a>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    @if($tutor->workPreferences)
+                <td class="px-6 py-4 text-sm text-gray-500">
+                    @if(isset($tutor->formatted_available_time) && $tutor->formatted_available_time)
                         <div class="flex flex-col">
                             @php
-                                $filteredTime = '';
-                                $filteredDay = '';
+                                // Display the formatted available time directly from the query result
+                                $displayTime = is_array($tutor->formatted_available_time) 
+                                    ? implode(', ', $tutor->formatted_available_time) 
+                                    : $tutor->formatted_available_time;
                                 
+                                // Filtering is now handled in the controller query
                                 // If both day and time filters are applied, show only the filtered combination
                                 if (request('day') && request('time_slot')) {
                                     $dayName = request('day');
@@ -228,9 +228,10 @@
                                     ];
                                     $displayDay = $dayMap[$dayName] ?? ucfirst($dayName);
                                     
-                    // Extract times for this specific day from the available_times
-                    $workPref = $tutor->workPreferences;
-                    $availableTimes = [];                                    $dayTimes = [];
+                                    // Extract times for this specific day from the available_times
+                                    $availableTimes = $tutor->available_times ?? '';
+                                    
+                                    $dayTimes = [];
                                     
                                     // Handle array format of available_times
                                     if (is_array($availableTimes)) {
@@ -274,9 +275,9 @@
                                         $requestedTimeSlot = $requestedTimeSlot[0] ?? '';
                                     }
                                     
-                    
-                    $workPref = $tutor->workPreferences;
-                    $availableTimes = [];                                    $matchingRanges = [];
+                                    $availableTimes = $tutor->available_times ?? '';
+                                    
+                                    $matchingRanges = [];
                                     
                                     // Handle array format of available_times
                                     if (is_array($availableTimes)) {
@@ -351,25 +352,19 @@
                                     if (!empty($matchingRanges)) {
                                         $filteredTime = implode(', ', $matchingRanges);
                                     } else {
-                                        $workPref = $tutor->workPreferences;
-                                        $startTime = $workPref->start_time ? \Carbon\Carbon::parse($workPref->start_time)->format('H:i') : 'N/A';
-                                        $endTime = $workPref->end_time ? \Carbon\Carbon::parse($workPref->end_time)->format('H:i') : 'N/A';
-                                        $filteredTime = $startTime . '-' . $endTime;
+                                        $formattedTime = $tutor->formatted_available_time;
+                                        $filteredTime = is_array($formattedTime) ? implode(', ', $formattedTime) : $formattedTime;
                                     }
                                 }
                                 // If no filters applied, show full availability
                                 else {
-                                    $workPref = $tutor->workPreferences;
-                                    $daysAvailable = is_array($workPref->days_available) ? $workPref->days_available : [];
-                                    $startTime = $workPref->start_time ? \Carbon\Carbon::parse($workPref->start_time)->format('H:i') : 'N/A';
-                                    $endTime = $workPref->end_time ? \Carbon\Carbon::parse($workPref->end_time)->format('H:i') : 'N/A';
-                                    $daysText = !empty($daysAvailable) ? implode(', ', array_map('ucfirst', $daysAvailable)) : 'All days';
-                                    $filteredTime = $daysText . ': ' . $startTime . '-' . $endTime;
+                                    $formattedTime = $tutor->formatted_available_time;
+                                    $filteredTime = is_array($formattedTime) ? implode(', ', $formattedTime) : $formattedTime;
                                 }
                             @endphp
                             
-                            <span class="font-medium text-gray-700">{{ $filteredTime }}</span>
-                            <span class="text-xs text-green-600 font-medium">({{ $tutor->account->account_name ?? 'GLS' }} Account)</span>
+                            <span class="font-medium text-gray-700">{{ $displayTime }}</span>
+                            <span class="text-xs text-green-600 font-medium">(GLS Account)</span>
                         </div>
                     @else
                         <span class="text-red-500 text-sm">No GLS availability</span>

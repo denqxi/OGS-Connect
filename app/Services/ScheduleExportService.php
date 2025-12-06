@@ -438,6 +438,91 @@ class ScheduleExportService
     public function exportSelectedSchedules($schedules)
     {
         try {
+            // Export as read-only PDF-style HTML document
+            $html = $this->generateSchedulePDF($schedules);
+            
+            $fileName = 'Schedule_History_' . now()->format('Ymd_His') . '.html';
+            
+            return response($html, 200)
+                ->header('Content-Type', 'text/html')
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+        } catch (\Exception $e) {
+            Log::error('Error exporting selected schedules: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+    
+    /**
+     * Generate HTML for PDF export
+     */
+    private function generateSchedulePDF($schedules)
+    {
+        $html = '<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: Arial, sans-serif; font-size: 12px; }
+                .header { text-align: center; margin-bottom: 20px; }
+                .header h1 { margin: 0; color: #0E335D; }
+                .header p { margin: 5px 0; color: #666; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                th { background-color: #0E335D; color: white; padding: 10px; text-align: left; font-weight: bold; }
+                td { padding: 8px; border-bottom: 1px solid #ddd; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                .status { display: inline-block; padding: 4px 8px; border-radius: 4px; background-color: #10b981; color: white; font-size: 11px; }
+                .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px solid #0E335D; color: #666; font-size: 10px; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>Schedule History Report</h1>
+                <p>Generated on: ' . now()->format('F j, Y g:i A') . '</p>
+                <p>This document is read-only</p>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Day</th>
+                        <th>Time</th>
+                        <th>School</th>
+                        <th>Class</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>';
+        
+        foreach ($schedules as $schedule) {
+            $date = \Carbon\Carbon::parse($schedule->date);
+            $time = $schedule->time ? \Carbon\Carbon::parse($schedule->time)->format('g:i A') : '-';
+            
+            $html .= '<tr>
+                <td>' . $date->format('F j, Y') . '</td>
+                <td>' . ($schedule->day ?? '-') . '</td>
+                <td>' . $time . '</td>
+                <td>' . ($schedule->school ?? '-') . '</td>
+                <td>' . ($schedule->class ?? '-') . '</td>
+                <td><span class="status">Fully Assigned</span></td>
+            </tr>';
+        }
+        
+        $html .= '</tbody>
+            </table>
+            <div class="footer">
+                <p><strong>OGS Connect</strong> - Schedule Management System</p>
+                <p>This is an official document. All information is confidential.</p>
+            </div>
+        </body>
+        </html>';
+        
+        return $html;
+    }
+    
+    // Keep the old exportSelectedSchedules logic for backward compatibility
+    private function exportSelectedSchedulesOld($schedules)
+    {
+        try {
             $spreadsheet = new Spreadsheet();
             $classSheetsData = [];
             $groupedSchedules = [];

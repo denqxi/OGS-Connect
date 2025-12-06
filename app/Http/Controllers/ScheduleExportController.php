@@ -89,13 +89,18 @@ class ScheduleExportController extends Controller
                 ], 400);
             }
 
-            $schedules = DailyData::whereIn('date', $dates)
-                ->where('schedule_status', 'finalized')
-                ->with(['tutorAssignments.tutor.accounts' => function($query) {
-                    $query->where('account_name', 'GLS')->active();
-                }])
-                ->orderBy('date')
-                ->orderBy('time_jst')
+            // Use new table structure
+            $schedules = \App\Models\ScheduleDailyData::leftJoin('assigned_daily_data', 'schedules_daily_data.id', '=', 'assigned_daily_data.schedule_daily_data_id')
+                ->whereIn('schedules_daily_data.date', $dates)
+                ->where('assigned_daily_data.class_status', 'fully_assigned')
+                ->select(
+                    'schedules_daily_data.*',
+                    'assigned_daily_data.main_tutor',
+                    'assigned_daily_data.backup_tutor',
+                    'assigned_daily_data.finalized_at'
+                )
+                ->orderBy('schedules_daily_data.date')
+                ->orderBy('schedules_daily_data.time')
                 ->get();
 
             if ($schedules->isEmpty()) {

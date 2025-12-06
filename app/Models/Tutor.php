@@ -58,6 +58,10 @@ class Tutor extends Authenticatable
         'last_name',
         'phone_number',
         'date_of_birth',
+        'assigned_account',
+        'start_time',
+        'end_time',
+        'days_available',
     ];
 
     // Override getAuthPassword to use password field
@@ -247,6 +251,41 @@ class Tutor extends Authenticatable
         return implode(', ', $days) . ': ' . $startTime . ' - ' . $endTime;
     }
 
+
+    // Assigned account accessor - get account name from account relationship
+    public function getAssignedAccountAttribute()
+    {
+        return $this->account ? $this->account->account_name : null;
+    }
+
+    // Start time accessor - get from work preferences
+    public function getStartTimeAttribute()
+    {
+        return $this->workPreferences ? $this->workPreferences->start_time : null;
+    }
+
+    // End time accessor - get from work preferences
+    public function getEndTimeAttribute()
+    {
+        return $this->workPreferences ? $this->workPreferences->end_time : null;
+    }
+
+    // Days available accessor - get from work preferences
+    public function getDaysAvailableAttribute()
+    {
+        if (!$this->workPreferences || !$this->workPreferences->days_available) {
+            return null;
+        }
+        
+        // Handle both array and JSON string
+        if (is_array($this->workPreferences->days_available)) {
+            return $this->workPreferences->days_available;
+        } elseif (is_string($this->workPreferences->days_available)) {
+            return json_decode($this->workPreferences->days_available, true);
+        }
+        
+        return null;
+    }
 
     // Full name accessor - get from applicant relationship
     public function getFullNameAttribute()

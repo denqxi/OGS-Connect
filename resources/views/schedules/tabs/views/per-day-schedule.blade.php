@@ -687,12 +687,12 @@
 @endif
 
 <!-- Modal Script -->
-<script src="{{ asset('js/per-day-schedule-modal.js') }}"></script>
+<script src="{{ asset('js/per-day-schedule-modal.js') }}?v={{ time() }}"></script>
 
 <!-- Include the class scheduling JavaScript for auto-assign functionality -->
-<script src="{{ asset('js/class-scheduling.js') }}"></script>
+<script src="{{ asset('js/class-scheduling.js') }}?v={{ time() }}"></script>
 
 <!-- Include class cancellation functionality -->
-<script src="{{ asset('js/class-cancellation.js') }}"></script>
+<script src="{{ asset('js/class-cancellation.js') }}?v={{ time() }}"></script>
 
-<script src="{{ asset('js/save-schedule.js') }}"></script>
+<script src="{{ asset('js/save-schedule.js') }}?v={{ time() }}"></script>

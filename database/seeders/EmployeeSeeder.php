@@ -11,6 +11,7 @@ use App\Models\Supervisor;
 use App\Models\Account;
 use App\Models\Qualification;
 use App\Models\Requirement;
+use App\Models\WorkPreference;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 
@@ -195,8 +196,16 @@ class EmployeeSeeder extends Seeder
             ->where('tutor_id', $tutor->tutor_id)
             ->update(['hired_date_time' => Carbon::now()->subDays(rand(15, 150))]);
 
-        // Availability is now managed through work_preferences (connected to applicant)
-        // No need to create tutor_accounts entries
+        // Create work preferences for this tutor's applicant
+        WorkPreference::create([
+            'applicant_id' => $applicant->applicant_id,
+            'start_time' => '08:00:00',
+            'end_time' => '17:00:00',
+            'timezone' => 'Asia/Manila',
+            'days_available' => json_encode(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']),
+            'platform' => json_encode(['Zoom', 'Google Meet']),
+            'can_teach' => json_encode(['English', 'Math', 'Science']),
+        ]);
     }
 
     /**
@@ -207,18 +216,18 @@ class EmployeeSeeder extends Seeder
         $this->command->info('Seeding supervisors...');
         
         $supervisorData = [
-            ['first_name' => 'Angela', 'middle_name' => 'Rose', 'last_name' => 'Thompson', 'assigned_account' => 'GLS', 'shift' => 'Morning (8AM-5PM)', 'status' => 'active'],
-            ['first_name' => 'Marcus', 'middle_name' => 'James', 'last_name' => 'Williams', 'assigned_account' => 'GLS', 'shift' => 'Evening (5PM-2AM)', 'status' => 'active'],
-            ['first_name' => 'Catherine', 'middle_name' => 'Marie', 'last_name' => 'Johnson', 'assigned_account' => 'GLS', 'shift' => 'Graveyard (10PM-7AM)', 'status' => 'active'],
-            ['first_name' => 'Raymond', 'middle_name' => 'Paul', 'last_name' => 'Brown', 'assigned_account' => 'Tutlo', 'shift' => 'Morning (8AM-5PM)', 'status' => 'active'],
-            ['first_name' => 'Victoria', 'middle_name' => 'Lynn', 'last_name' => 'Davis', 'assigned_account' => 'Tutlo', 'shift' => 'Evening (5PM-2AM)', 'status' => 'active'],
-            ['first_name' => 'Harold', 'middle_name' => 'Lee', 'last_name' => 'Miller', 'assigned_account' => 'Tutlo', 'shift' => 'Morning (8AM-5PM)', 'status' => 'inactive'],
-            ['first_name' => 'Samantha', 'middle_name' => 'Grace', 'last_name' => 'Wilson', 'assigned_account' => 'Babilala', 'shift' => 'Morning (8AM-5PM)', 'status' => 'active'],
-            ['first_name' => 'Vincent', 'middle_name' => 'Alexander', 'last_name' => 'Moore', 'assigned_account' => 'Babilala', 'shift' => 'Evening (5PM-2AM)', 'status' => 'active'],
-            ['first_name' => 'Natalie', 'middle_name' => 'Ann', 'last_name' => 'Taylor', 'assigned_account' => 'Babilala', 'shift' => 'Graveyard (10PM-7AM)', 'status' => 'active'],
-            ['first_name' => 'Gregory', 'middle_name' => 'Scott', 'last_name' => 'Anderson', 'assigned_account' => 'Talk915', 'shift' => 'Morning (8AM-5PM)', 'status' => 'active'],
-            ['first_name' => 'Christina', 'middle_name' => 'Joy', 'last_name' => 'Thomas', 'assigned_account' => 'Talk915', 'shift' => 'Evening (5PM-2AM)', 'status' => 'active'],
-            ['first_name' => 'Douglas', 'middle_name' => 'Ray', 'last_name' => 'Jackson', 'assigned_account' => 'Talk915', 'shift' => 'Morning (8AM-5PM)', 'status' => 'inactive'],
+            ['first_name' => 'Angela', 'middle_name' => 'Rose', 'last_name' => 'Thompson', 'assigned_account' => 'GLS', 'start_time' => '08:00:00', 'end_time' => '17:00:00', 'status' => 'active'],
+            ['first_name' => 'Marcus', 'middle_name' => 'James', 'last_name' => 'Williams', 'assigned_account' => 'GLS', 'start_time' => '17:00:00', 'end_time' => '02:00:00', 'status' => 'active'],
+            ['first_name' => 'Catherine', 'middle_name' => 'Marie', 'last_name' => 'Johnson', 'assigned_account' => 'GLS', 'start_time' => '22:00:00', 'end_time' => '07:00:00', 'status' => 'active'],
+            ['first_name' => 'Raymond', 'middle_name' => 'Paul', 'last_name' => 'Brown', 'assigned_account' => 'Tutlo', 'start_time' => '08:00:00', 'end_time' => '17:00:00', 'status' => 'active'],
+            ['first_name' => 'Victoria', 'middle_name' => 'Lynn', 'last_name' => 'Davis', 'assigned_account' => 'Tutlo', 'start_time' => '17:00:00', 'end_time' => '02:00:00', 'status' => 'active'],
+            ['first_name' => 'Harold', 'middle_name' => 'Lee', 'last_name' => 'Miller', 'assigned_account' => 'Tutlo', 'start_time' => '08:00:00', 'end_time' => '17:00:00', 'status' => 'inactive'],
+            ['first_name' => 'Samantha', 'middle_name' => 'Grace', 'last_name' => 'Wilson', 'assigned_account' => 'Babilala', 'start_time' => '08:00:00', 'end_time' => '17:00:00', 'status' => 'active'],
+            ['first_name' => 'Vincent', 'middle_name' => 'Alexander', 'last_name' => 'Moore', 'assigned_account' => 'Babilala', 'start_time' => '17:00:00', 'end_time' => '02:00:00', 'status' => 'active'],
+            ['first_name' => 'Natalie', 'middle_name' => 'Ann', 'last_name' => 'Taylor', 'assigned_account' => 'Babilala', 'start_time' => '22:00:00', 'end_time' => '07:00:00', 'status' => 'active'],
+            ['first_name' => 'Gregory', 'middle_name' => 'Scott', 'last_name' => 'Anderson', 'assigned_account' => 'Talk915', 'start_time' => '08:00:00', 'end_time' => '17:00:00', 'status' => 'active'],
+            ['first_name' => 'Christina', 'middle_name' => 'Joy', 'last_name' => 'Thomas', 'assigned_account' => 'Talk915', 'start_time' => '17:00:00', 'end_time' => '02:00:00', 'status' => 'active'],
+            ['first_name' => 'Douglas', 'middle_name' => 'Ray', 'last_name' => 'Jackson', 'assigned_account' => 'Talk915', 'start_time' => '08:00:00', 'end_time' => '17:00:00', 'status' => 'inactive'],
         ];
 
         foreach ($supervisorData as $data) {
@@ -240,7 +249,10 @@ class EmployeeSeeder extends Seeder
                 'contact_number' => $this->generatePhoneNumber(),
                 'assigned_account' => $data['assigned_account'],
                 'ms_teams' => strtolower($data['first_name'] . $data['last_name']) . rand(1, 999) . '@ogsconnect.com',
-                'shift' => $data['shift'],
+                'start_time' => $data['start_time'],
+                'end_time' => $data['end_time'],
+                'days_available' => json_encode(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']),
+                'timezone' => 'Asia/Manila',
                 'status' => $data['status'],
             ]);
         }

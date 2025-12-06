@@ -109,4 +109,15 @@ class NotificationController extends Controller
             default => 'blue'
         };
     }
+
+    /**
+     * Delete a notification
+     */
+    public function delete($id)
+    {
+        $notification = Notification::findOrFail($id);
+        $notification->delete();
+        
+        return response()->json(['success' => true]);
+    }
 }

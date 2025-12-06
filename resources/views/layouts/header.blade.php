@@ -49,9 +49,8 @@
                     </template>
 
                     <template x-for="notification in notifications" :key="notification.id">
-                        <div @click="markAsRead(notification.id)"
-                            :class="notification.is_read ? 'bg-white' : 'bg-blue-50'"
-                            class="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
+                        <div :class="notification.is_read ? 'bg-white' : 'bg-blue-50'"
+                            class="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors">
                             <div class="flex items-start space-x-3">
                                 <!-- Icon -->
                                 <div :class="getIconColor(notification.color)"
@@ -60,7 +59,7 @@
                                 </div>
 
                                 <!-- Content -->
-                                <div class="flex-1 min-w-0">
+                                <div class="flex-1 min-w-0 cursor-pointer" @click="markAsRead(notification.id)">
                                     <div class="flex items-center justify-between">
                                         <p class="text-sm font-medium text-gray-900" x-text="notification.title"></p>
                                         <span class="text-xs text-gray-500"
@@ -69,9 +68,18 @@
                                     <p class="text-sm text-gray-600 mt-1" x-text="notification.message"></p>
                                 </div>
 
-                                <!-- Unread indicator -->
-                                <div x-show="!notification.is_read"
-                                    class="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full"></div>
+                                <!-- Actions -->
+                                <div class="flex items-center space-x-2">
+                                    <!-- Unread indicator -->
+                                    <div x-show="!notification.is_read"
+                                        class="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full"></div>
+                                    <!-- Delete button -->
+                                    <button @click.stop="deleteNotification(notification.id)" 
+                                        class="flex-shrink-0 text-gray-400 hover:text-red-500 transition-colors"
+                                        title="Delete notification">
+                                        <i class="fas fa-trash text-xs"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </template>
@@ -224,6 +232,29 @@
                     }
                 } catch (error) {
                     console.error('Error marking all notifications as read:', error);
+                }
+            },
+
+            async deleteNotification(notificationId) {
+                try {
+                    const response = await fetch(`/notifications/${notificationId}/delete`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+
+                    if (response.ok) {
+                        // Remove from local state
+                        const notification = this.notifications.find(n => n.id === notificationId);
+                        if (notification && !notification.is_read) {
+                            this.unreadCount = Math.max(0, this.unreadCount - 1);
+                        }
+                        this.notifications = this.notifications.filter(n => n.id !== notificationId);
+                    }
+                } catch (error) {
+                    console.error('Error deleting notification:', error);
                 }
             },
 

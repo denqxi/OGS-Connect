@@ -2,21 +2,24 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-class DailyData extends Model
+/**
+ * DailyData is now an alias for ScheduleDailyData for backward compatibility
+ * 
+ * @deprecated Use ScheduleDailyData instead
+ */
+class DailyData extends ScheduleDailyData
 {
-    use HasFactory;
-
-    protected $table = 'daily_data';
-
+    // Backward compatibility properties
     protected $fillable = [
         'date',
+        'day',
         'school',
         'class',
         'duration',
         'time_jst',
+        'time_pht',
         'number_required',
         'schedule_status',
         'finalized_at',
