@@ -24,11 +24,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('onboardings', function (Blueprint $table) {
-            // Revert to NOT NULL if rolling back
-            if (Schema::hasColumn('onboardings', 'assessed_by')) {
-                $table->unsignedBigInteger('assessed_by')->nullable(false)->change();
-            }
-        });
+        // Do nothing on rollback - keep the column nullable
+        // to avoid issues with existing NULL values
     }
 };

@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -31,8 +32,16 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('onboardings', function (Blueprint $table) {
+            // Check if assessed_by column exists before dropping
             if (Schema::hasColumn('onboardings', 'assessed_by')) {
-                $table->dropForeign(['assessed_by']);
+                // Check if the foreign key exists before dropping
+                $foreignKeys = DB::select("SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+                    WHERE TABLE_NAME = 'onboardings' AND COLUMN_NAME = 'assessed_by' 
+                    AND REFERENCED_TABLE_NAME IS NOT NULL AND TABLE_SCHEMA = DATABASE()");
+                
+                if (!empty($foreignKeys)) {
+                    $table->dropForeign(['assessed_by']);
+                }
                 $table->dropColumn('assessed_by');
             }
             

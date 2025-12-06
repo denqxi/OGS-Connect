@@ -60,7 +60,7 @@ return new class extends Migration
             $table->unique(['school', 'class', 'date', 'time']);
         });
 
-        // Step 2: Create the assigned_daily_data table for assignment details
+        // Step 2: Create the assigned_daily_data table for assignment details (without foreign keys for now)
         Schema::create('assigned_daily_data', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('schedule_daily_data_id');
@@ -73,34 +73,6 @@ return new class extends Migration
             $table->timestamp('cancelled_at')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
-
-            // Foreign key to schedules_daily_data
-            $table->foreign('schedule_daily_data_id')
-                  ->references('id')
-                  ->on('schedules_daily_data')
-                  ->onDelete('cascade');
-
-            // Foreign keys to tutor table
-            $table->foreign('main_tutor')
-                  ->references('tutor_id')
-                  ->on('tutor')
-                  ->onDelete('set null');
-
-            $table->foreign('backup_tutor')
-                  ->references('tutor_id')
-                  ->on('tutor')
-                  ->onDelete('set null');
-
-            // Foreign keys to supervisor table
-            $table->foreign('assigned_supervisor')
-                  ->references('supervisor_id')
-                  ->on('supervisor')
-                  ->onDelete('set null');
-
-            $table->foreign('finalized_by')
-                  ->references('supervisor_id')
-                  ->on('supervisor')
-                  ->onDelete('set null');
 
             // Indexes
             $table->index('schedule_daily_data_id');
@@ -175,7 +147,35 @@ return new class extends Migration
             Schema::dropIfExists('daily_data');
         }
 
-        // Step 7: Re-add foreign key constraints pointing to new table
+        // Step 7: Add foreign key constraints to assigned_daily_data
+        Schema::table('assigned_daily_data', function (Blueprint $table) {
+            $table->foreign('schedule_daily_data_id')
+                  ->references('id')
+                  ->on('schedules_daily_data')
+                  ->onDelete('cascade');
+
+            $table->foreign('main_tutor')
+                  ->references('tutor_id')
+                  ->on('tutor')
+                  ->onDelete('set null');
+
+            $table->foreign('backup_tutor')
+                  ->references('tutor_id')
+                  ->on('tutor')
+                  ->onDelete('set null');
+
+            $table->foreign('assigned_supervisor')
+                  ->references('supervisor_id')
+                  ->on('supervisor')
+                  ->onDelete('set null');
+
+            $table->foreign('finalized_by')
+                  ->references('supervisor_id')
+                  ->on('supervisor')
+                  ->onDelete('set null');
+        });
+
+        // Step 8: Re-add foreign key constraints pointing to new table
         if (Schema::hasTable('tutor_assignments')) {
             Schema::table('tutor_assignments', function (Blueprint $table) {
                 $table->foreign('daily_data_id')

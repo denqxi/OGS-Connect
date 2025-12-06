@@ -268,24 +268,24 @@ class ScheduleController extends Controller
     {
         // Get all active tutors with applicant info for sorting/display
         $query = Tutor::query()
-            ->join('applicants', 'tutor.applicant_id', '=', 'applicants.applicant_id')
-            ->where('tutor.status', 'active')
-            ->select('tutor.*');
+            ->join('applicants', 'tutors.applicant_id', '=', 'applicants.applicant_id')
+            ->where('tutors.status', 'active')
+            ->select('tutors.*');
         
         // Apply search filter
         if ($request->filled('search')) {
             $query->where(function($q) use ($request) {
-                $q->where('tutor.username', 'like', '%' . $request->search . '%')
+                $q->where('tutors.username', 'like', '%' . $request->search . '%')
                   ->orWhere('applicants.first_name', 'like', '%' . $request->search . '%')
                   ->orWhere('applicants.last_name', 'like', '%' . $request->search . '%')
-                  ->orWhere('tutor.email', 'like', '%' . $request->search . '%')
+                  ->orWhere('tutors.email', 'like', '%' . $request->search . '%')
                   ->orWhere('applicants.phone_number', 'like', '%' . $request->search . '%')
                   ->orWhereRaw("CONCAT(applicants.first_name, ' ', applicants.last_name) LIKE ?", ['%' . $request->search . '%']);
             });
         }
         
         if ($request->filled('status')) {
-            $query->where('tutor.status', $request->status);
+            $query->where('tutors.status', $request->status);
         }
         
         // Order by applicant name and paginate
