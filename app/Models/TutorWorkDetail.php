@@ -19,8 +19,7 @@ class TutorWorkDetail extends Model
         'rate_per_class',
         'screenshot',
         'status',
-        'date',
-        'class_no'
+        'note'
     ];
 
     public function tutor()

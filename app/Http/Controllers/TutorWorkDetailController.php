@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\TutorWorkDetail;
 use App\Models\TutorWorkDetailApproval;
+use App\Models\Notification;
+use App\Models\Supervisor;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -135,10 +137,8 @@ public function store(Request $request)
     }
 
     $validator = Validator::make($request->all(), [
-        'date' => 'required|date',
         'start_time' => 'required|date_format:H:i',
         'end_time' => 'required|date_format:H:i|after_or_equal:start_time',
-        'class_no' => 'nullable|string|max:50',
         'notes' => 'nullable|string|max:2000',
         'status' => 'nullable|string|in:pending,active,cancelled',
         'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
@@ -158,15 +158,51 @@ public function store(Request $request)
 
     $detail = TutorWorkDetail::create([
         'tutor_id' => $tutor->tutorID,
-        'date' => $request->date,
         'start_time' => $request->start_time,
         'end_time' => $request->end_time,
-        'class_no' => $request->class_no,
-        'notes' => $request->notes,
+        'note' => $request->notes,
         'status' => $request->status ?? 'pending',
         'work_type' => 'per class',
         'screenshot' => $imagePath,
     ]);
+
+    // Create one shared notification for all supervisors of the same account
+    try {
+        $tutorName = $tutor->applicant 
+            ? $tutor->applicant->first_name . ' ' . $tutor->applicant->last_name 
+            : $tutor->username ?? 'Unknown';
+        
+        $accountId = $tutor->account_id;
+        $supervisorCount = Supervisor::where('status', 'active')
+            ->where('assigned_account', $accountId)
+            ->count();
+        
+        // Create one notification shared among supervisors of this account
+        Notification::create([
+            'type' => 'work_detail_submitted',
+            'title' => 'New Work Detail Submitted',
+            'message' => "{$tutorName} has submitted new work details for approval.",
+            'icon' => 'fas fa-clock',
+            'color' => 'blue',
+            'is_read' => false,
+            'data' => [
+                'tutor_id' => $tutor->tutorID,
+                'work_detail_id' => $detail->id,
+                'work_type' => 'per class',
+                'account_id' => $accountId,
+                'supervisor_count' => $supervisorCount
+            ]
+        ]);
+        
+        Log::info('Work detail notification created for account supervisors', [
+            'work_detail_id' => $detail->id,
+            'tutor_id' => $tutor->tutorID,
+            'account_id' => $accountId,
+            'supervisor_count' => $supervisorCount
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Failed to create work detail notification from tutor: ' . $e->getMessage());
+    }
 
     return response()->json(['message' => 'Work detail created', 'data' => $detail]);
 }

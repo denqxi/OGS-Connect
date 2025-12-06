@@ -12,6 +12,7 @@ class PayrollHistory extends Model
     protected $fillable = [
         'tutor_id',
         'pay_period',
+        'total_amount',
         'submission_type',
         'status',
         'recipient_email',
@@ -20,7 +21,8 @@ class PayrollHistory extends Model
     ];
 
     protected $casts = [
-        'submitted_at' => 'datetime'
+        'submitted_at' => 'datetime',
+        'total_amount' => 'decimal:2'
     ];
 
     public function tutor()

@@ -1,11 +1,39 @@
-<div class="p-6 border-b border-gray-200">
-    <h2 class="text-xl font-semibold text-gray-800">Approval History</h2>
-</div>
 
 <div class="p-6 border-b border-gray-200">
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-medium text-gray-700">Recent Approvals / Rejections</h3>
     </div>
+
+    <form method="GET" action="{{ route('payroll.index') }}" class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+        <input type="hidden" name="tab" value="history">
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Tutor Name</label>
+            <input type="text" name="tutor_name" value="{{ request('tutor_name') }}" placeholder="Search tutor" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Month</label>
+            <select name="month" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="">All</option>
+                @for ($m = 1; $m <= 12; $m++)
+                    @php $value = str_pad($m, 2, '0', STR_PAD_LEFT); @endphp
+                    <option value="{{ $value }}" {{ request('month') == $value ? 'selected' : '' }}>{{ date('F', mktime(0, 0, 0, $m, 1)) }}</option>
+                @endfor
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Year</label>
+            <select name="year" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="">All</option>
+                @for ($y = date('Y'); $y >= date('Y') - 5; $y--)
+                    <option value="{{ $y }}" {{ request('year') == $y ? 'selected' : '' }}>{{ $y }}</option>
+                @endfor
+            </select>
+        </div>
+        <div class="flex items-end gap-2">
+            <button type="submit" class="px-4 py-2 bg-[#0E335D] text-white text-sm rounded-md hover:bg-[#0c294a]">Filter</button>
+            <a href="{{ route('payroll.index', ['tab' => 'history']) }}" class="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">Reset</a>
+        </div>
+    </form>
 
     <div class="overflow-x-auto">
         <table class="w-full" id="approvalsTable">

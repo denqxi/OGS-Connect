@@ -8,18 +8,17 @@
     </div>
     <div class="flex justify-between items-center space-x-4">
         <div class="flex items-center space-x-4 flex-1 max-w-lg">
-            <div class="relative flex-1">
-                          <select name="status" id="filterStatus"
-    class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white"
-    onchange="handleTutorFilterChange('status')">
-    <option value="" {{ request('status') == '' ? 'selected' : '' }}>All</option>
-    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-    <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
-    <option value="reject" {{ request('status') == 'reject' ? 'selected' : '' }}>Rejected</option>
-
-</select>
-
-            </div>
+            <form method="GET" action="{{ route('tutor.portal') }}" class="relative flex-1">
+                <input type="hidden" name="tab" value="work_details">
+                <select name="status" id="filterStatus"
+                    class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white"
+                    onchange="this.form.submit()">
+                    <option value="" {{ request('status') == '' ? 'selected' : '' }}>All</option>
+                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                    <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
+                    <option value="reject" {{ request('status') == 'reject' ? 'selected' : '' }}>Rejected</option>
+                </select>
+            </form>
         </div>
         <div class="flex items-center space-x-4">
             <div class="flex items-center space-x-2">

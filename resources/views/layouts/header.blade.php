@@ -186,6 +186,18 @@
                         if (notification) {
                             notification.is_read = true;
                             this.unreadCount = Math.max(0, this.unreadCount - 1);
+                            
+                            // Handle navigation based on notification type
+                            if (notification.type === 'work_detail_submitted') {
+                                // Redirect to work details tab in payroll page
+                                const url = new URL(window.location);
+                                url.pathname = '/payroll';
+                                url.searchParams.set('tab', 'payroll');
+                                if (notification.data?.tutor_id) {
+                                    url.searchParams.set('tutor_name', notification.data.tutor_id);
+                                }
+                                window.location.href = url.toString();
+                            }
                         }
                     }
                 } catch (error) {

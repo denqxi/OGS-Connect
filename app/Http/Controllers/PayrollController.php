@@ -9,6 +9,8 @@ use App\Models\Applicant;
 use App\Models\TutorWorkDetail;
 use App\Models\TutorWorkDetailApproval;
 use App\Models\PayrollHistory;
+use App\Models\Notification;
+use App\Models\Supervisor;
 use Illuminate\Support\Facades\Auth;
 use App\Mail\PayslipMail;
 use Illuminate\Support\Facades\Mail;
@@ -74,9 +76,34 @@ class PayrollController extends Controller
                 'tutors' => $tutors,
             ];
 
-            // If history tab requested, load approvals paginator
+            // If history tab requested, load approvals paginator with optional filters
             if ($request->query('tab') === 'history') {
-                $approvals = TutorWorkDetailApproval::with(['workDetail.tutor.applicant', 'supervisor'])
+                $approvalsQuery = TutorWorkDetailApproval::with(['workDetail.tutor.applicant', 'supervisor']);
+
+                $year = $request->query('year');
+                $month = $request->query('month');
+                $tutorName = $request->query('tutor_name');
+
+                // Filter by approved_at date (year/month)
+                if ($year && $month) {
+                    $start = Carbon::create((int) $year, (int) $month, 1)->startOfMonth();
+                    $end = $start->copy()->endOfMonth();
+                    $approvalsQuery->whereBetween('approved_at', [$start, $end]);
+                } elseif ($year) {
+                    $start = Carbon::create((int) $year, 1, 1)->startOfYear();
+                    $end = $start->copy()->endOfYear();
+                    $approvalsQuery->whereBetween('approved_at', [$start, $end]);
+                }
+
+                // Filter by tutor name (first or last)
+                if ($tutorName) {
+                    $approvalsQuery->whereHas('workDetail.tutor.applicant', function ($q) use ($tutorName) {
+                        $q->where('first_name', 'like', "%{$tutorName}%")
+                          ->orWhere('last_name', 'like', "%{$tutorName}%");
+                    });
+                }
+
+                $approvals = $approvalsQuery
                     ->orderBy('approved_at', 'desc')
                     ->paginate(10)
                     ->withQueryString();
@@ -84,12 +111,54 @@ class PayrollController extends Controller
                 $viewData['workApprovals'] = $approvals;
             }
 
-            // If payroll-history tab requested, load payroll submissions
+            // If payroll-history tab requested, load payroll submissions with optional filters
             if ($request->query('tab') === 'payroll-history') {
-                $payrollHistory = PayrollHistory::with(['tutor.applicant'])
+                $historyQuery = PayrollHistory::with(['tutor.applicant']);
+
+                $year = $request->query('year');
+                $month = $request->query('month');
+                $tutorName = $request->query('tutor_name');
+
+                // Filter by pay period (year/month)
+                if ($year && $month) {
+                    $period = sprintf('%04d-%02d', (int) $year, (int) $month);
+                    $historyQuery->where('pay_period', $period);
+                } elseif ($year) {
+                    $historyQuery->where('pay_period', 'like', sprintf('%04d-%%', (int) $year));
+                }
+
+                // Filter by tutor name (first or last)
+                if ($tutorName) {
+                    $historyQuery->whereHas('tutor.applicant', function ($q) use ($tutorName) {
+                        $q->where('first_name', 'like', "%{$tutorName}%")
+                          ->orWhere('last_name', 'like', "%{$tutorName}%");
+                    });
+                }
+
+                $payrollHistory = $historyQuery
                     ->orderBy('submitted_at', 'desc')
                     ->paginate(10)
                     ->withQueryString();
+
+                // Attach total earnings, preferring stored value and falling back to computation
+                $controller = $this;
+                $payrollHistory->getCollection()->transform(function ($record) use ($controller) {
+                    try {
+                        $tutorFormattedId = $record->tutor?->tutorID;
+
+                        // If already stored (including 0), keep it; otherwise compute on the fly
+                        if ($record->total_amount === null) {
+                            $record->total_amount = $controller->calculateTotalAmountForPeriod($tutorFormattedId, $record->pay_period);
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning('PayrollHistory total computation failed: ' . $e->getMessage(), [
+                            'payroll_history_id' => $record->payroll_history_id ?? null,
+                        ]);
+                        $record->total_amount = $record->total_amount ?? 0;
+                    }
+
+                    return $record;
+                });
 
                 $viewData['payrollHistory'] = $payrollHistory;
             }
@@ -110,48 +179,19 @@ public function workDetails(Request $request)
 {
     try {
         $search = $request->input('search');
-        $statusFilter = $request->input('status');
 
         $workQuery = TutorWorkDetail::with(['tutor.applicant'])
             ->whereHas('tutor', function ($q) {
                 $q->where('account_id', 1);
-            });
+            })
+            ->where('status', '!=', 'approved') // Hide approved work details
+            ->where('status', '!=', 'reject'); // Hide rejected work details
 
-        /**
-         * STATUS FILTER LOGIC
-         * -------------------
-         * Dropdown values supported:
-         *   ""         → show PENDING only (default)
-         *   "pending"  → show pending
-         *   "approved" → show approved
-         *   "reject"   → show rejected
-         *   "all"      → show all statuses
-         */
-        
-        if ($statusFilter === null || $statusFilter === '') {
-            // Default view → ONLY pending
-            $workQuery->where('status', 'pending');
-        } elseif ($statusFilter !== 'all') {
-            // Apply specific filter
-            $workQuery->where('status', $statusFilter);
-        }
-        // if status = all → no filtering
-
-
-        /** SEARCH FILTER */
+        /** SEARCH FILTER - Name only */
         if (!empty($search)) {
-            $workQuery->where(function ($q) use ($search) {
-                $q->where('work_type', 'like', "%{$search}%")
-                  ->orWhere('class_no', 'like', "%{$search}%")
-                  ->orWhereHas('tutor', function ($tq) use ($search) {
-                      $tq->where('tusername', 'like', "%{$search}%")
-                         ->orWhere('email', 'like', "%{$search}%")
-                         ->orWhere('phone_number', 'like', "%{$search}%")
-                         ->orWhereHas('applicant', function ($aq) use ($search) {
-                             $aq->where('first_name', 'like', "%{$search}%")
-                                ->orWhere('last_name', 'like', "%{$search}%");
-                         });
-                  });
+            $workQuery->whereHas('tutor.applicant', function ($aq) use ($search) {
+                $aq->where('first_name', 'like', "%{$search}%")
+                   ->orWhere('last_name', 'like', "%{$search}%");
             });
         }
 
@@ -341,12 +381,15 @@ public function workDetails(Request $request)
                 return $carry;
             }, 0);
 
+            $deductions = 0; // adjust if needed
+
             $summary = [
                 'tutor' => $tutorModel,
                 'total_items' => $totalItems,
                 'total_minutes' => $totalMinutes,
                 'total_hours' => round($totalMinutes / 60, 2),
                 'total_earnings' => round($totalEarnings, 2),
+                'deductions' => $deductions,
                 'details' => $approved,
                 'period_start' => $periodStart,
                 'period_end' => $periodEnd,
@@ -359,10 +402,15 @@ public function workDetails(Request $request)
             return response('Error generating summary', 500);
         }
     }
-    public function sendPayslipEmail($tutorID)
+    public function sendPayslipEmail($tutor)
     {
         try {
-            $tutor = Tutor::where('tutorID', $tutorID)->with(['account'])->firstOrFail();
+            // Handle both numeric ID and formatted tutorID
+            if (is_numeric($tutor)) {
+                $tutorModel = Tutor::where('tutor_id', $tutor)->with(['account'])->firstOrFail();
+            } else {
+                $tutorModel = Tutor::where('tutorID', $tutor)->with(['account'])->firstOrFail();
+            }
 
             // Determine current pay period like in tutorSummary
             $today = Carbon::now();
@@ -376,7 +424,7 @@ public function workDetails(Request $request)
 
             // Approved work details
             // TutorWorkDetail.tutor_id stores the formatted tutorID string (e.g. OGS-T0001)
-            $approved = TutorWorkDetail::where('tutor_id', $tutor->tutorID)
+            $approved = TutorWorkDetail::where('tutor_id', $tutorModel->tutorID)
                 ->where('status', 'approved')
                 ->whereDate('created_at', '>=', $periodStart)
                 ->whereDate('created_at', '<=', $periodEnd)
@@ -396,13 +444,13 @@ public function workDetails(Request $request)
 
             $deductions = 0; // adjust if needed
 
-            $email = $tutor->email ?? $tutor->account?->email;
+            $email = $tutorModel->email ?? $tutorModel->account?->email;
             if (!$email) {
                 return response()->json(['success' => false, 'message' => 'No email for this tutor.']);
             }
 
             Mail::to($email)->send(new PayslipMail(
-                $tutor,
+                $tutorModel,
                 $approved,
                 $totalEarnings,
                 $deductions,
@@ -413,8 +461,8 @@ public function workDetails(Request $request)
             return response()->json(['success' => true, 'message' => 'Payslip emailed successfully']);
 
         } catch (\Exception $e) {
-            Log::error('PayrollController@sendPayslipEmail error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Failed to send payslip']);
+            Log::error('PayrollController@sendPayslipEmail error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            return response()->json(['success' => false, 'message' => 'Failed to send payslip: ' . $e->getMessage()]);
         }
     }
 
@@ -434,9 +482,13 @@ public function workDetails(Request $request)
 
             Log::info('PayrollHistory: Validation passed', ['validated' => $validated]);
 
+            $tutor = Tutor::find($validated['tutor_id']);
+            $totalAmount = $this->calculateTotalAmountForPeriod($tutor?->tutorID, $validated['pay_period']);
+
             $record = PayrollHistory::create([
                 'tutor_id' => $validated['tutor_id'],
                 'pay_period' => $validated['pay_period'],
+                'total_amount' => $totalAmount,
                 'submission_type' => 'email',
                 'status' => 'sent',
                 'recipient_email' => $validated['recipient_email'],
@@ -471,9 +523,13 @@ public function workDetails(Request $request)
 
             Log::info('PayrollHistory: Validation passed', ['validated' => $validated]);
 
+            $tutor = Tutor::find($validated['tutor_id']);
+            $totalAmount = $this->calculateTotalAmountForPeriod($tutor?->tutorID, $validated['pay_period']);
+
             $record = PayrollHistory::create([
                 'tutor_id' => $validated['tutor_id'],
                 'pay_period' => $validated['pay_period'],
+                'total_amount' => $totalAmount,
                 'submission_type' => $validated['submission_type'],
                 'status' => 'sent',
                 'submitted_at' => now()
@@ -491,4 +547,39 @@ public function workDetails(Request $request)
         }
     }
 
+
+    private function calculateTotalAmountForPeriod(?string $tutorFormattedId, ?string $payPeriod): float
+    {
+        if (! $tutorFormattedId || ! $payPeriod) {
+            return 0.0;
+        }
+
+        try {
+            $start = Carbon::parse($payPeriod . '-01')->startOfMonth();
+            $end = $start->copy()->endOfMonth();
+        } catch (\Exception $e) {
+            Log::warning('PayrollHistory total_amount parse failed: ' . $e->getMessage(), [
+                'pay_period' => $payPeriod,
+                'tutor_id' => $tutorFormattedId,
+            ]);
+            return 0.0;
+        }
+
+        $details = TutorWorkDetail::where('tutor_id', $tutorFormattedId)
+            ->where('status', 'approved')
+            ->whereBetween('created_at', [$start, $end])
+            ->get();
+
+        $total = $details->reduce(function ($carry, $wd) {
+            if (($wd->work_type ?? '') === 'hourly') {
+                $hours = ($wd->duration_minutes ?? 0) / 60;
+                $carry += ($wd->rate_per_hour ?? 0) * $hours;
+            } else {
+                $carry += ($wd->rate_per_class ?? 0);
+            }
+            return $carry;
+        }, 0);
+
+        return round($total, 2);
+    }
 }

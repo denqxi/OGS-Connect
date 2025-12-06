@@ -12,13 +12,14 @@
         <div class="flex items-center gap-2">
             <button type="button" onclick="printPayslip()" class="px-3 py-1 bg-slate-700 text-white rounded text-xs">Print
                 / Save PDF</button>
-            <button type="button" onclick="emailPayslip('{{ $tutor->tutorID }}')"
+            <button type="button" onclick="emailPayslip({{ $tutor->tutor_id }})"
                 class="px-3 py-1 bg-emerald-600 text-white rounded text-xs">Email Payslip</button>
             <button type="button" onclick="closeTutorSummary()" class="text-gray-500 text-2xl">&times;</button>
         </div>
     </div>
 
         <div id="payslipContent" class="mt-4 bg-white shadow-sm rounded p-6 text-sm text-gray-800"
+            data-tutor-id="{{ $tutor->tutor_id }}"
             data-tutor-email="{{ $tutor->email ?? ($tutor->account?->email ?? '') }}"
             data-tutor-name="{{ $tutor->full_name ?? $tutor->tusername }}">
         <div class="header flex items-center justify-between mb-4">
@@ -209,6 +210,13 @@
             const payPeriod = '{{ now()->format('Y-m') }}';
             
             console.log('Logging PDF export with TUTOR_DATA:', TUTOR_DATA);
+            console.log('tutor_id value:', TUTOR_DATA.tutor_id, 'type:', typeof TUTOR_DATA.tutor_id);
+            
+            if (!TUTOR_DATA.tutor_id) {
+                console.error('ERROR: tutor_id is not set!');
+                alert('Error: Tutor ID is missing. Please refresh the page.');
+                return;
+            }
             
             fetch('{{ route("payroll.log-pdf") }}', {
                 method: 'POST',
@@ -224,10 +232,23 @@
             })
             .then(response => {
                 console.log('PDF log response status:', response.status);
+                if (!response.ok) {
+                    console.error('Response not OK, status:', response.status);
+                }
                 return response.json();
             })
             .then(data => {
                 console.log('PDF log response:', data);
+                if (data.errors) {
+                    console.error('Validation errors:', data.errors);
+                    alert('Payroll logging failed - Validation errors:\n' + JSON.stringify(data.errors, null, 2));
+                }
+                if (!data.success) {
+                    console.error('Logging failed:', data.message);
+                    alert('Failed to log payroll submission:\n' + data.message);
+                } else {
+                    console.log('Payroll logged successfully');
+                }
             })
             .catch(error => console.error('Error logging PDF export:', error));
             
@@ -245,10 +266,25 @@
                 return;
             }
             
+            console.log('Logging email with TUTOR_DATA:', TUTOR_DATA);
+            console.log('tutor_id value:', TUTOR_DATA.tutor_id, 'type:', typeof TUTOR_DATA.tutor_id);
+            
+            if (!TUTOR_DATA.tutor_id) {
+                console.error('ERROR: tutor_id is not set!');
+                alert('Error: Tutor ID is missing. Please refresh the page.');
+                return;
+            }
+            
             // Log email submission
             const payPeriod = '{{ now()->format('Y-m') }}';
             
-            console.log('Logging email with TUTOR_DATA:', TUTOR_DATA);
+            const emailLogPayload = {
+                tutor_id: TUTOR_DATA.tutor_id,
+                pay_period: payPeriod,
+                recipient_email: tutorEmail
+            };
+            
+            console.log('Logging email with payload:', JSON.stringify(emailLogPayload));
             
             fetch('{{ route("payroll.log-email") }}', {
                 method: 'POST',
@@ -256,34 +292,53 @@
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 },
-                body: JSON.stringify({
-                    tutor_id: TUTOR_DATA.tutor_id,
-                    pay_period: payPeriod,
-                    recipient_email: tutorEmail
-                })
+                body: JSON.stringify(emailLogPayload)
             })
             .then(response => {
                 console.log('Email log response status:', response.status);
+                if (!response.ok) {
+                    console.error('Response not OK, status:', response.status);
+                }
                 return response.json();
             })
             .then(data => {
                 console.log('Email log response:', data);
+                if (data.errors) {
+                    console.error('Validation errors:', data.errors);
+                    alert('Payroll logging failed - Validation errors:\n' + JSON.stringify(data.errors, null, 2));
+                }
+                if (!data.success) {
+                    console.error('Logging failed:', data.message);
+                    alert('Failed to log payroll submission:\n' + data.message);
+                } else {
+                    console.log('Payroll logged successfully');
+                }
             })
             .catch(error => console.error('Error logging email:', error));
             
-            var subject = encodeURIComponent('Payslip for ' + tutorName);
-            var bodyLines = [];
-            bodyLines.push('Hello ' + tutorName + ',');
-            bodyLines.push('');
-            bodyLines.push('Please find your payslip below:');
-            bodyLines.push('Gross Pay: ₱' + '{{ number_format($total_earnings, 2) }}');
-            bodyLines.push('Deductions: ₱' + '{{ number_format($deductions ?? 0, 2) }}');
-            bodyLines.push('Net Pay: ₱' + '{{ number_format($total_earnings - ($deductions ?? 0), 2) }}');
-            bodyLines.push('');
-            bodyLines.push('You can view the full payslip here: ' + window.location.origin +
-                '{{ url('/payroll/tutor/' . urlencode($tutor->tutorID) . '/summary') }}');
-            var body = encodeURIComponent(bodyLines.join('\n'));
-            window.location.href = 'mailto:' + tutorEmail + '?subject=' + subject + '&body=' + body;
+            // Actually send the email via the server
+            console.log('Sending payslip email to:', tutorEmail);
+            
+            fetch('/payroll/tutor/' + TUTOR_DATA.tutor_id + '/send-email', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Content-Type': 'application/json'
+                },
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log('Send email response:', data);
+                if (data.success) {
+                    alert('Payslip emailed successfully to ' + tutorEmail);
+                } else {
+                    alert('Failed to send payslip: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(err => {
+                console.error('Error sending payslip:', err);
+                alert('An error occurred while sending the payslip.');
+            });
         }
     </script>
 </div>

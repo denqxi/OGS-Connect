@@ -196,19 +196,30 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
     // ------------------------------------------------------------------------
     // TUTOR PORTAL
     // ------------------------------------------------------------------------
-    Route::get('/tutor_portal', function () {
+    Route::get('/tutor_portal', function (Illuminate\Http\Request $request) {
         $tutor = Auth::guard('tutor')->user();
+        
+        // Build work details query with optional status filter
+        $workDetailsQuery = $tutor->workDetails();
+        
+        $statusFilter = $request->query('status');
+        if ($statusFilter && in_array($statusFilter, ['pending', 'approved', 'reject'])) {
+            $workDetailsQuery->where('status', $statusFilter);
+        }
+        
+        $workDetails = $workDetailsQuery->with('approvals')->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
+        
         $tutor->load([
             'applicant.qualification', 
             'applicant.requirement', 
             'applicant.workPreference',
-            'workDetails.approvals',
             // TODO: Uncomment when employee_payment_information table exists
             // 'paymentInformation', 
             // TODO: Uncomment when security_questions relationship is fixed
             // 'securityQuestions'
         ]);
-        return view('tutor.tutor_portal', compact('tutor'));
+        
+        return view('tutor.tutor_portal', compact('tutor', 'workDetails'));
     })->name('tutor.portal');
     
     // ------------------------------------------------------------------------

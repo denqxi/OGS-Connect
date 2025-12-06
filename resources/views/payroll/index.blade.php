@@ -73,6 +73,38 @@
     </div>
     <script>
     window.printPayslip = function () {
+        // Get tutor_id from the modal
+        const tutorIdElement = document.querySelector('[data-tutor-id]');
+        const tutorId = tutorIdElement ? tutorIdElement.getAttribute('data-tutor-id') : null;
+        
+        // Log the PDF/Print action
+        if (tutorId) {
+            const payPeriod = new Date().toISOString().split('-').slice(0, 2).join('-');
+            
+            console.log('Logging PDF export with tutor_id:', tutorId);
+            fetch('/payroll/log-pdf', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    tutor_id: parseInt(tutorId),
+                    pay_period: payPeriod,
+                    submission_type: 'pdf'
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log('PDF logging response:', data);
+                if (!data.success) {
+                    console.error('Failed to log PDF:', data.message);
+                }
+            })
+            .catch(err => console.error('Error logging PDF:', err));
+        }
+        
+        // Open print dialog
         var content = document.getElementById('payslipContent').innerHTML;
         var printWindow = window.open('', '_blank');
         printWindow.document.write('<html><head><title>Payslip</title>');
@@ -126,26 +158,58 @@ function showPayslipModal(message, success = true) {
 
 
     window.emailPayslip = function (tutorID) {
-    fetch('/payroll/tutor/' + tutorID + '/send-email', {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'Content-Type': 'application/json'
-        },
-    })
-    .then(res => res.json())
-    .then(data => {
-            if (data.success) {
-                showPayslipModal(data.message || 'Payslip emailed successfully', true);
-            } else {
-                showPayslipModal('Failed to send payslip: ' + (data.message || 'Unknown error'), false);
-            }
-    })
-    .catch(err => {
-        console.error(err);
-            showPayslipModal('An error occurred while sending the payslip.', false);
-    });
-};
+        // First, log the email submission
+        const payPeriod = new Date().toISOString().split('-').slice(0, 2).join('-');
+        
+        // Get tutor email from the modal if available
+        const tutorEmailElement = document.querySelector('[data-tutor-email]');
+        const tutorEmail = tutorEmailElement ? tutorEmailElement.getAttribute('data-tutor-email') : null;
+        
+        if (tutorEmail) {
+            console.log('Logging email submission to payroll history');
+            fetch('/payroll/log-email', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    tutor_id: tutorID,
+                    pay_period: payPeriod,
+                    recipient_email: tutorEmail
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log('Email logging response:', data);
+                if (!data.success) {
+                    console.error('Failed to log email:', data.message);
+                }
+            })
+            .catch(err => console.error('Error logging email:', err));
+        }
+        
+        // Then send the email
+        fetch('/payroll/tutor/' + tutorID + '/send-email', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json'
+            },
+        })
+        .then(res => res.json())
+        .then(data => {
+                if (data.success) {
+                    showPayslipModal(data.message || 'Payslip emailed successfully', true);
+                } else {
+                    showPayslipModal('Failed to send payslip: ' + (data.message || 'Unknown error'), false);
+                }
+        })
+        .catch(err => {
+            console.error(err);
+                showPayslipModal('An error occurred while sending the payslip.', false);
+        });
+    };
 </script>
 
 <!-- Modal overlay (Tailwind) -->
