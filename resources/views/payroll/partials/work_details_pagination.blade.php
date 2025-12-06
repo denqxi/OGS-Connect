@@ -2,9 +2,7 @@
     $queryParams = request()->query();
     unset($queryParams['page']);
 
-    // Build base URL with tab=work_details
     $baseParams = array_merge($queryParams, ['tab' => 'work_details']);
-    // Use the AJAX endpoint so pagination links target the work-details controller
     $baseUrl = route('payroll.work-details', $baseParams);
     $separator = strpos($baseUrl, '?') !== false ? '&' : '?';
 

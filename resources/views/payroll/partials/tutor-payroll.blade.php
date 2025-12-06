@@ -84,7 +84,6 @@
                 const html = await res.text();
                 container.innerHTML = html;
 
-                // Attach delegated click handler for pagination links inside container
                 container.querySelectorAll('a[data-page]').forEach(a => {
                     a.addEventListener('click', function (e) {
                         e.preventDefault();
@@ -98,7 +97,6 @@
             }
         }
 
-        // Initial load
         document.addEventListener('DOMContentLoaded', function () {
             loadWorkDetails(buildUrl());
         });

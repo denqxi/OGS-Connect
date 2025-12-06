@@ -41,7 +41,7 @@
 <div id="tutorSummaryModal" class="fixed inset-0 z-50 flex items-center justify-center" style="display:none;">
     <div class="absolute inset-0 bg-black opacity-40"></div>
     <div class="relative bg-white rounded-lg shadow-lg w-full max-w-3xl mx-4 z-10 max-h-[90vh] overflow-y-auto" id="tutorSummaryModalContent">
-        <!-- Content loaded via AJAX -->
+        
     </div>
 </div>
 

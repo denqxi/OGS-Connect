@@ -321,7 +321,6 @@ document.addEventListener('change', function (e) {
 
         const csrf = getCsrfToken();
         try {
-            // if a file is present or creating, send FormData; otherwise send JSON for update
             const imageInput = document.getElementById('twd_image');
             const file = imageInput?.files?.[0] || null;
             let res;
