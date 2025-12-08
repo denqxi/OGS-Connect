@@ -812,10 +812,42 @@ public function workDetails(Request $request)
             // Pagination
             $perPage = $request->query('per_page', 10);
             
-            // Get payroll history with pagination
+            // Get payroll history with pagination - only finalized status
             $history = PayrollHistory::where('tutor_id', $tutor->tutor_id)
+                ->where('status', 'finalized')
                 ->orderBy('pay_period', 'desc')
                 ->paginate($perPage);
+
+            // Add total work hours for each finalized period
+            $historyWithHours = $history->getCollection()->map(function($record) use ($tutor) {
+                // Parse pay period to get date range
+                $payPeriod = $record->pay_period;
+                preg_match('/(\d{4})-(\d{2})\s*\((\d{1,2})-(\d{1,2})\)/', $payPeriod, $matches);
+                
+                if (count($matches) === 5) {
+                    $year = $matches[1];
+                    $month = $matches[2];
+                    $startDay = $matches[3];
+                    $endDay = $matches[4];
+                    
+                    $periodStart = Carbon::create($year, $month, $startDay)->startOfDay();
+                    $periodEnd = Carbon::create($year, $month, $endDay)->endOfDay();
+                    
+                    // Calculate total minutes from approved work details in this period
+                    $totalMinutes = TutorWorkDetail::where('tutor_id', $tutor->tutorID)
+                        ->where('status', 'approved')
+                        ->whereBetween('created_at', [$periodStart, $periodEnd])
+                        ->sum('duration_minutes');
+                    
+                    $record->total_hours = round($totalMinutes / 60, 2);
+                } else {
+                    $record->total_hours = 0;
+                }
+                
+                return $record;
+            });
+            
+            $history->setCollection($historyWithHours);
 
             return response()->json([
                 'success' => true,

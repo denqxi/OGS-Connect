@@ -233,18 +233,28 @@ function showPayslipModal(message, success = true) {
                 data.history.forEach(record => {
                     const payPeriod = record.pay_period || 'N/A';
                     const totalAmount = record.total_amount ? '₱' + parseFloat(record.total_amount).toFixed(2) : 'N/A';
+                    const totalHours = record.total_hours ? parseFloat(record.total_hours).toFixed(2) + ' hrs' : '0.00 hrs';
                     const status = record.status || 'N/A';
                     const submittedAt = record.submitted_at ? new Date(record.submitted_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
-                    const type = record.submission_type || 'N/A';
+
+                    const statusColors = {
+                        'finalized': 'bg-indigo-100 text-indigo-800',
+                        'sent': 'bg-green-100 text-green-800',
+                        'pending': 'bg-yellow-100 text-yellow-800',
+                        'failed': 'bg-red-100 text-red-800',
+                        'draft': 'bg-gray-100 text-gray-800'
+                    };
+                    const statusClass = statusColors[status] || 'bg-gray-100 text-gray-800';
+                    const statusLabel = status === 'finalized' ? 'Finalized' : status.charAt(0).toUpperCase() + status.slice(1);
 
                     tableRows += `
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-3 text-sm text-gray-700">${payPeriod}</td>
                             <td class="px-6 py-3 text-sm text-gray-700">${totalAmount}</td>
-                            <td class="px-6 py-3 text-sm text-gray-700 capitalize">${type}</td>
+                            <td class="px-6 py-3 text-sm text-gray-700">${totalHours}</td>
                             <td class="px-6 py-3 text-sm">
-                                <span class="px-2 py-1 rounded text-xs font-medium ${status === 'approved' ? 'bg-green-100 text-green-800' : status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}">
-                                    ${status}
+                                <span class="px-2 py-1 rounded text-xs font-medium ${statusClass}">
+                                    ${statusLabel}
                                 </span>
                             </td>
                             <td class="px-6 py-3 text-sm text-gray-700">${submittedAt}</td>
@@ -273,7 +283,7 @@ function showPayslipModal(message, success = true) {
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Pay Period</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Total Amount</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Total Hours</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Status</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Date Processed</th>
                                 </tr>
