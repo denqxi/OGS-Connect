@@ -77,6 +77,14 @@ class AssignedDailyData extends Model
     }
 
     /**
+     * Get the work detail submitted by the tutor for this assignment
+     */
+    public function workDetail()
+    {
+        return $this->hasOne(TutorWorkDetail::class, 'assignment_id', 'id');
+    }
+
+    /**
      * Scope: Active assignments only
      */
     public function scopeActive($query)

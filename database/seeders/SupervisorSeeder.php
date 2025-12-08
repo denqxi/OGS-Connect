@@ -11,7 +11,7 @@ class SupervisorSeeder extends Seeder
     public function run(): void
     {
         // Check if supervisors already exist
-        if (DB::table('supervisor')->count() > 0) {
+        if (DB::table('supervisors')->count() > 0) {
             if ($this->command) {
                 $this->command->info('Supervisors already exist, skipping...');
             }

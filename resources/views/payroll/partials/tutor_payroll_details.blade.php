@@ -9,6 +9,9 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Time</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work Type</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hours</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proof</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -25,7 +28,9 @@
                         $StartTime = $detail->start_time ?? 'N/A';
                         $EndTime = $detail->end_time ?? 'N/A';
                         $classNo = $detail->class_no ?? ($detail->work_type ?? '—');
-                        $rate = $detail->rate_per_class ?? 'N/A';
+                        $rate = ($detail->work_type ?? '') === 'hourly'
+                            ? ($detail->rate_per_hour ?? 'N/A')
+                            : ($detail->rate_per_class ?? 'N/A');
                         $status = $detail->status ?? 'pending';
                     @endphp
                     <tr class="hover:bg-gray-50 tutor-row" data-searchable="{{ strtolower(($tutor->tutorID ?? '') . ' ' . ($tutor->email ?? '') . ' ' . ($classNo ?? '')) }}">
@@ -35,6 +40,20 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $EndTime }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $classNo }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">₱{{ $rate }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $detail->duration_hours ?? '0' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">₱{{ $detail->computed_amount ?? '0' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            @php
+                                $proofPath = $detail->proof_image ?? $detail->screenshot ?? null;
+                            @endphp
+                            @if($proofPath)
+                                <a href="{{ asset('storage/' . $proofPath) }}" target="_blank" class="text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-image"></i> View
+                                </a>
+                            @else
+                                —
+                            @endif
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center gap-2">
                                 @php
@@ -51,9 +70,6 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                             <div class="flex items-center space-x-2">
-                                @if(!empty($detail->screenshot))
-                                    <img src="{{ asset('storage/' . ltrim($detail->screenshot, '/')) }}" alt="screenshot" class="w-10 h-10 object-cover rounded twd-table-thumb cursor-pointer border" style="max-width:40px; max-height:40px;" />
-                                @endif
                                 <button type="button" 
                                     class="px-4 py-1.5 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 transition-colors"
                                     onclick="approveWorkDetail('{{ $detail->id ?? $detail->work_detail_id ?? $detail->id }}')">Approve</button>
@@ -65,7 +81,7 @@
                     </tr>
                 @empty
                     <tr id="noResultsRow">
-                        <td colspan="8" class="px-6 py-8 text-center text-gray-500">
+                        <td colspan="11" class="px-6 py-8 text-center text-gray-500">
                             <i class="fas fa-users text-4xl mb-4 opacity-50"></i>
                             <p class="text-lg font-medium">No work details found</p>
                             <p class="text-sm">Try adjusting your search criteria</p>

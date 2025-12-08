@@ -15,11 +15,9 @@
         </div>
         <div class="mt-4 md:mt-0 text-left md:text-right w-full md:w-40">
             <label class="block text-sm text-gray-700 dark:text-gray-300 mb-1">Your Account:</label>
-            <select
-                class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 hover:border-[#0E335D] focus:outline-none focus:border-[#0E335D] focus:ring-1 focus:ring-[#0E335D] transition-all duration-150">
-                <option>GLS</option>
-                <option>OGS</option>
-            </select>
+            <div class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200 font-medium">
+                {{ strtoupper($tutor->account?->account_name ?? 'NO ACCOUNT') }}
+            </div>
         </div>
     </div>
 

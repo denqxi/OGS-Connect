@@ -226,12 +226,21 @@ class AvailabilityManager {
                 this.accounts = result.data;
                 this.originalData = JSON.parse(JSON.stringify(result.data));
                 
+                // Store tutor's assigned account for filtering
+                this.tutorAccount = result.tutor_info?.account_name || null;
                 
                 this.renderAvailability();
                 
                 // Update personal information fields if tutor info is available
                 if (result.tutor_info) {
                     this.updatePersonalInfoFields(result.tutor_info);
+                    
+                    // Update the "Your Account" dropdown display
+                    const accountDropdown = document.querySelector('select[name="account"]');
+                    if (accountDropdown && result.tutor_info.account_name) {
+                        accountDropdown.value = result.tutor_info.account_name;
+                        accountDropdown.disabled = true; // Disable since tutor has one account
+                    }
                 }
             } else {
                 throw new Error(result.message || 'Failed to load availability data');
@@ -246,12 +255,17 @@ class AvailabilityManager {
         const container = document.getElementById('availabilityContainer');
         container.innerHTML = '';
 
-        // Create account boxes for each account
+        // Show all accounts, but mark which is the tutor's assigned account
         Object.keys(this.accountConfigs).forEach(accountName => {
+            // Normalize account name for comparison (case-insensitive)
+            const normalizedTutorAccount = this.tutorAccount?.toLowerCase();
+            const normalizedAccountName = accountName.toLowerCase();
+            const isAssigned = normalizedTutorAccount === normalizedAccountName;
+            
             const accountData = this.accounts[accountName] || this.getDefaultAccountData(accountName);
             const config = this.accountConfigs[accountName];
             
-            const accountBox = this.createAccountBox(accountName, accountData, config);
+            const accountBox = this.createAccountBox(accountName, accountData, config, isAssigned);
             container.appendChild(accountBox);
             
             // Initialize the display for this account
@@ -269,10 +283,26 @@ class AvailabilityManager {
         };
     }
 
-    createAccountBox(accountName, accountData, config) {
+    getDefaultAccountConfig() {
+        return {
+            icon: 'fas fa-building',
+            bgColor: 'bg-gray-100 dark:bg-gray-700',
+            textColor: 'text-gray-700 dark:text-gray-300',
+            accentColor: '#6B7280',
+            timeRestrictions: {
+                startTime: '00:00',
+                endTime: '23:30',
+                enabled: false
+            }
+        };
+    }
+
+    createAccountBox(accountName, accountData, config, isAssigned = true) {
         const box = document.createElement('div');
-        box.className = `${config.bgColor} rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow duration-200`;
+        const disabledClass = !isAssigned ? 'opacity-60 pointer-events-none' : '';
+        box.className = `${config.bgColor} rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow duration-200 ${disabledClass}`;
         box.dataset.accountName = accountName;
+        box.dataset.isAssigned = isAssigned;
 
         const availableDays = accountData.available_days || [];
         const availableTimes = accountData.available_times || {};
@@ -282,6 +312,7 @@ class AvailabilityManager {
                 <div class="flex items-center space-x-2">
                     <i class="${config.icon} ${config.textColor}"></i>
                     <h4 class="font-semibold ${config.textColor}">${accountName}</h4>
+                    ${!isAssigned ? '<span class="ml-2 text-xs px-2 py-1 bg-gray-400 text-white rounded">Not Assigned</span>' : ''}
                 </div>
                 ${config.timeRestrictions.enabled ? `
                     <div class="text-xs ${config.textColor} bg-white dark:bg-gray-700 px-2 py-1 rounded">
@@ -303,6 +334,7 @@ class AvailabilityManager {
                                class="w-4 h-4 border-gray-300 dark:border-gray-500 day-checkbox" 
                                data-day="${day}"
                                ${availableDays.includes(day) ? 'checked' : ''}
+                               ${!isAssigned ? 'disabled' : ''}
                                style="accent-color: ${config.accentColor}">
                         <span>${day.substring(0, 3)}</span>
                     </label>
@@ -345,15 +377,19 @@ class AvailabilityManager {
         const [startTime, endTime] = timeRange.split(' - ').map(time => time.trim());
         const accountTimeSlots = this.getTimeSlotsForAccount(accountName);
         
+        // Check if this account is assigned to the tutor
+        const accountBox = document.querySelector(`[data-account-name="${accountName}"]`);
+        const isAssigned = accountBox ? accountBox.dataset.isAssigned === 'true' : true;
+        const disabledAttr = !isAssigned ? 'disabled' : '';
         
         return `
             <div class="time-slot-item flex items-center gap-2 p-2 bg-white dark:bg-gray-700 rounded border" data-day="${day}" data-index="${index}">
                 <span class="text-xs text-gray-600 dark:text-gray-400 w-12">${day.substring(0, 3)}:</span>
-                <select class="start-time text-xs border rounded px-2 py-1 w-20" style="border-color: ${config.accentColor}" data-account="${accountName}" data-day="${day}">
+                <select class="start-time text-xs border rounded px-2 py-1 w-20" style="border-color: ${config.accentColor}" data-account="${accountName}" data-day="${day}" ${disabledAttr}>
                     ${accountTimeSlots.map(time => `<option value="${time}" ${time === startTime ? 'selected' : ''}>${time}</option>`).join('')}
                     </select>
                 <span class="text-xs text-gray-500">-</span>
-                <select class="end-time text-xs border rounded px-2 py-1 w-20" style="border-color: ${config.accentColor}" data-account="${accountName}" data-day="${day}">
+                <select class="end-time text-xs border rounded px-2 py-1 w-20" style="border-color: ${config.accentColor}" data-account="${accountName}" data-day="${day}" ${disabledAttr}>
                     ${accountTimeSlots.map(time => {
                         const isDisabled = this.isTimeBefore(time, startTime);
                         return `<option value="${time}" ${time === endTime ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}>${time}</option>`;
@@ -457,19 +493,19 @@ class AvailabilityManager {
 
     setupEventListeners() {
         // Save button
-        document.getElementById('saveAvailabilityBtn').addEventListener('click', () => {
+        document.getElementById('saveAvailabilityBtn')?.addEventListener('click', () => {
             this.saveAvailability();
         });
 
         // Reset button
-        document.getElementById('resetAvailabilityBtn').addEventListener('click', () => {
+        document.getElementById('resetAvailabilityBtn')?.addEventListener('click', () => {
             this.resetAvailability();
         });
 
-        // Day checkboxes
+        // Day checkboxes - use the correct handler
         document.addEventListener('change', (e) => {
             if (e.target.classList.contains('day-checkbox')) {
-                this.handleDayChange(e.target);
+                this.handleDayCheckboxChange(e.target);
             }
         });
 
@@ -482,13 +518,19 @@ class AvailabilityManager {
                 this.handleTimeSlotChange(e.target);
             }
         });
-
-
-
     }
 
-    handleDayChange(checkbox) {
-        const accountName = checkbox.closest('[data-account-name]').dataset.accountName;
+    handleDayCheckboxChange(checkbox) {
+        const accountBox = checkbox.closest('[data-account-name]');
+        const accountName = accountBox.dataset.accountName;
+        const isAssigned = accountBox.dataset.isAssigned === 'true';
+        
+        // Prevent changes on non-assigned accounts
+        if (!isAssigned) {
+            checkbox.checked = !checkbox.checked; // Revert the change
+            return;
+        }
+        
         const day = checkbox.dataset.day;
         const isChecked = checkbox.checked;
 
@@ -568,7 +610,15 @@ class AvailabilityManager {
 
     handleTimeSlotChange(select) {
         const timeSlotItem = select.closest('.time-slot-item');
-        const accountName = timeSlotItem.closest('[data-account-name]').dataset.accountName;
+        const accountBox = timeSlotItem.closest('[data-account-name]');
+        const accountName = accountBox.dataset.accountName;
+        const isAssigned = accountBox.dataset.isAssigned === 'true';
+        
+        // Prevent changes on non-assigned accounts
+        if (!isAssigned) {
+            return;
+        }
+        
         const day = timeSlotItem.dataset.day;
         const startTime = timeSlotItem.querySelector('.start-time').value;
         const endTime = timeSlotItem.querySelector('.end-time').value;
@@ -616,6 +666,13 @@ class AvailabilityManager {
         saveBtn.disabled = true;
 
         try {
+            // Only save the tutor's assigned account
+            const accountsToSave = this.tutorAccount 
+                ? Object.values(this.accounts).filter(account => 
+                    account.account_name.toLowerCase() === this.tutorAccount.toLowerCase()
+                  )
+                : Object.values(this.accounts);
+            
             const response = await fetch('/tutor/availability/update-multiple', {
                 method: 'POST',
                 headers: {
@@ -623,7 +680,7 @@ class AvailabilityManager {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    accounts: Object.values(this.accounts).map(account => ({
+                    accounts: accountsToSave.map(account => ({
                         account_name: account.account_name,
                         available_days: account.available_days,
                         available_times: account.available_times,

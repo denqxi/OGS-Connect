@@ -108,12 +108,25 @@ class ImportController extends Controller
 
                 try {
                     // Parse data according to new Excel structure
-                    // Column mapping: Date(0), Time(1), Duration(2), School(3), Class(4)
+                    // Auto-detect column layout: Date, Time, [Duration?], School, Class
                     $dateValue = $this->parseDate($row[0] ?? null, $rowNumber);
                     $timeJST = $this->parseTime($row[1] ?? null, $rowNumber);
-                    $duration = $this->parseNumber($row[2] ?? 25); // Default to 25 if not provided
-                    $schoolValue = $this->sanitizeString($row[3] ?? null);
-                    $classValue = $this->sanitizeString($row[4] ?? null);
+                    
+                    // Smart detection: if column 2 is numeric AND not empty, it's Duration; otherwise it's School
+                    $col2Value = $row[2] ?? null;
+                    $col2IsNumeric = !empty($col2Value) && (is_numeric($col2Value) || (is_string($col2Value) && preg_match('/^\d+$/', trim($col2Value))));
+                    
+                    if ($col2IsNumeric) {
+                        // Has Duration column: Date(0), Time(1), Duration(2), School(3), Class(4)
+                        $duration = $this->parseNumber($col2Value);
+                        $schoolValue = $this->sanitizeString($row[3] ?? null);
+                        $classValue = $this->sanitizeString($row[4] ?? null);
+                    } else {
+                        // No Duration column or empty Duration: Date(0), Time(1), [empty/null], School(3), Class(4)
+                        $duration = 25; // Default duration
+                        $schoolValue = $this->sanitizeString($row[3] ?? null);
+                        $classValue = $this->sanitizeString($row[4] ?? null);
+                    }
                     $numberRequired = 1; // Default to 1 tutor per class
                     
                     // Auto-calculate day from date
@@ -475,19 +488,33 @@ class ImportController extends Controller
             if (is_numeric($value) && $value < 1) {
                 return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value)->format('H:i:s');
             }
-            
-            // Handle time format like "9:40" or "10:40"
-            if (is_string($value) && preg_match('/^\d{1,2}:\d{2}$/', $value)) {
-                return Carbon::createFromFormat('H:i', $value)->format('H:i:s');
-            }
-            
-            // Handle time format like "9:40:00"
-            if (is_string($value) && preg_match('/^\d{1,2}:\d{2}:\d{2}$/', $value)) {
-                return Carbon::createFromFormat('H:i:s', $value)->format('H:i:s');
-            }
-            
-            // If it doesn't look like a time, return null instead of trying to parse it
-            if (is_string($value) && !preg_match('/^\d{1,2}[:\.]\d{2}/', $value)) {
+
+            // Normalize string input
+            if (is_string($value)) {
+                $normalized = trim($value);
+
+                // Handle ranges like "8:00 - 8:30 AM" or "8:00-8:30am"
+                if (strpos($normalized, '-') !== false) {
+                    [$start, $end] = array_map('trim', preg_split('/-/', $normalized));
+                    // If meridiem only appears on end time, reuse it for start
+                    if (!preg_match('/am|pm/i', $start) && preg_match('/(am|pm)/i', $end, $m)) {
+                        $start .= ' ' . $m[1];
+                    }
+                    $normalized = $start;
+                }
+
+                // Handle time with optional seconds and meridiem
+                if (preg_match('/^\d{1,2}:\d{2}(?::\d{2})?\s*(am|pm)?$/i', $normalized)) {
+                    return Carbon::parse($normalized)->format('H:i:s');
+                }
+
+                // Handle "9.40" style with colon or dot
+                if (preg_match('/^\d{1,2}[\.:]\d{2}$/', $normalized)) {
+                    $normalized = str_replace('.', ':', $normalized);
+                    return Carbon::createFromFormat('H:i', $normalized)->format('H:i:s');
+                }
+
+                // If it doesn't look like a time, return null instead of trying to parse it
                 Log::warning("Value doesn't look like a time format", ['input' => $value, 'row' => $rowNumber]);
                 return null;
             }

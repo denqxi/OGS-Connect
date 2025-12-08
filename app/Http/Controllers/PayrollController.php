@@ -18,12 +18,26 @@ use Illuminate\Support\Facades\Log;
 
 class PayrollController extends Controller
 {
+    // main payrol dashboard
     public function index(Request $request)
     {
         try {
             // Base query with relationships
             $query = Tutor::with(['applicant', 'workDetails', 'account'])
                 ->where('status', 'active');
+
+            // If supervisor is logged in, filter tutors by their assigned account
+            if (Auth::guard('supervisor')->check()) {
+                $supervisor = Auth::guard('supervisor')->user();
+                if ($supervisor->assigned_account) {
+                    $query->whereHas('account', function ($q) use ($supervisor) {
+                        $q->whereRaw('LOWER(account_name) = ?', [strtolower($supervisor->assigned_account)]);
+                    });
+                } else {
+                    // Supervisor with no assigned account sees no tutors
+                    return view('payroll.index')->with(['payrolls' => collect(), 'workDetails' => collect(), 'tutors' => collect()]);
+                }
+            }
 
             // Search
             if ($request->filled('search')) {
@@ -59,7 +73,6 @@ class PayrollController extends Controller
             // Add computed payroll values
             $tutors->getCollection()->transform(function ($tutor) {
 
-                // TODO: Uncomment when employee_payment_information table and relationship exists
                 // $payment = $tutor->paymentInformation;
                 // $amount = $payment ? ($payment->monthly_salary ?? $payment->hourly_rate) : null;
                 
@@ -79,6 +92,20 @@ class PayrollController extends Controller
             // If history tab requested, load approvals paginator with optional filters
             if ($request->query('tab') === 'history') {
                 $approvalsQuery = TutorWorkDetailApproval::with(['workDetail.tutor.applicant', 'supervisor']);
+
+                // If supervisor is logged in, filter by their assigned account
+                if (Auth::guard('supervisor')->check()) {
+                    $supervisor = Auth::guard('supervisor')->user();
+                    if ($supervisor->assigned_account) {
+                        $approvalsQuery->whereHas('workDetail.tutor.account', function ($q) use ($supervisor) {
+                            $q->whereRaw('LOWER(account_name) = ?', [strtolower($supervisor->assigned_account)]);
+                        });
+                    } else {
+                        // Supervisor with no assigned account sees no approvals
+                        $viewData['workApprovals'] = collect();
+                        return view('payroll.index', $viewData);
+                    }
+                }
 
                 $year = $request->query('year');
                 $month = $request->query('month');
@@ -170,24 +197,29 @@ class PayrollController extends Controller
             return view('payroll.index')->with('error', 'Something went wrong.');
         }
     }
-    /**
-     * Return the work details table HTML for account_id = 1 (GLS).
-     * This is a separate method so the original index() stays unchanged
-     * (used by tutor side elsewhere).
-     */
+
+    // display ang tutors work details para sa supervisor
 public function workDetails(Request $request)
 {
     try {
         $search = $request->input('search');
 
         $workQuery = TutorWorkDetail::with(['tutor.applicant'])
-            ->whereHas('tutor', function ($q) {
-                $q->where('account_id', 1);
-            })
-            ->where('status', '!=', 'approved') // Hide approved work details
-            ->where('status', '!=', 'reject'); // Hide rejected work details
+            ->where('status', '!=', 'approved') 
+            ->where('status', '!=', 'reject'); 
 
-        /** SEARCH FILTER - Name only */
+        if (Auth::guard('supervisor')->check()) {
+            $supervisor = Auth::guard('supervisor')->user();
+            if ($supervisor->assigned_account) {
+                $workQuery->whereHas('tutor.account', function ($q) use ($supervisor) {
+                    $q->whereRaw('LOWER(account_name) = ?', [strtolower($supervisor->assigned_account)]);
+                });
+            } else {
+                // Supervisor with no assigned account sees no work details
+                return view('payroll.partials.tutor_payroll_details', ['workDetails' => collect()]);
+            }
+        }
+
         if (!empty($search)) {
             $workQuery->whereHas('tutor.applicant', function ($aq) use ($search) {
                 $aq->where('first_name', 'like', "%{$search}%")
@@ -208,16 +240,21 @@ public function workDetails(Request $request)
     }
 }
 
+// buhat ug bagong work detail gikan kay tutor
     public function storeWorkDetail(Request $request)
 {
     $request->validate([
         'tutor_id'      => 'required|exists:tutors,id',
-        'work_type'     => 'required|in:hourly,per_class',
+        'work_type'     => 'nullable|in:hourly,per_class', 
         'day'           => 'required|date',
         'start_time'    => 'required|date_format:H:i',
         'end_time'      => 'required|date_format:H:i|after:start_time',
         'screenshot'    => 'nullable|image|mimes:jpg,png,jpeg|max:2048',
     ]);
+
+    $tutor = Tutor::with('account')->findOrFail($request->tutor_id);
+    $accountId = (int) ($tutor->account_id ?? 0);
+    $isTutlo = $accountId === 2; // account_id 2 = Tutlo
 
     $start = Carbon::parse($request->start_time);
     $end   = Carbon::parse($request->end_time);
@@ -228,12 +265,14 @@ public function workDetails(Request $request)
         $path = $request->file('screenshot')->store('screenshots', 'public');
     }
 
-    $rateHourly = 120;
-    $rateClass  = 50;
+    //Tutlo (account_id 2) = hourly @ 120; others = per class @ 50
+    $actualWorkType = $isTutlo ? 'hourly' : 'per class';
+    $rateHourly = $isTutlo ? 120 : 0;
+    $rateClass  = $isTutlo ? 0 : 50;
 
     $record = TutorWorkDetail::create([
         'tutor_id'        => $request->tutor_id,
-        'work_type'       => $request->work_type,
+        'work_type'       => $actualWorkType,
         'day'             => $request->day,
         'start_time'      => $request->start_time,
         'end_time'        => $request->end_time,
@@ -245,6 +284,8 @@ public function workDetails(Request $request)
 
     return back()->with('success', 'Work details added successfully.');
 }
+
+// sa tutor ni nga side, iapprove or not ang work detail
     public function approveWorkDetail(Request $request, $id)
     {
         try {
@@ -258,6 +299,20 @@ public function workDetails(Request $request)
                 return response()->json(['message' => 'Unauthorized'], 401);
             }
 
+            // Check if supervisor is authorized to approve this tutor's work
+            if (Auth::guard('supervisor')->check()) {
+                $supervisor = Auth::guard('supervisor')->user();
+                $tutor = $detail->tutor;
+                
+                // Verify tutor belongs to supervisor's assigned account (case-insensitive)
+                if ($supervisor->assigned_account && $tutor->account) {
+                    if (strtolower($tutor->account->account_name) !== strtolower($supervisor->assigned_account)) {
+                        return response()->json(['message' => 'You are not authorized to approve work for this tutor'], 403);
+                    }
+                }
+            }
+
+            // diri na side kay for history log
             $newStatus = $request->input('status', 'approved');
             $oldStatus = $detail->status;
 
@@ -290,9 +345,7 @@ public function workDetails(Request $request)
         }
     }
 
-    /**
-     * Reject a work detail with required note.
-     */
+// sa tutor ni nga side, ireject ang work detail
     public function rejectWorkDetail(Request $request, $id)
     {
         try {
@@ -307,6 +360,19 @@ public function workDetails(Request $request)
 
             if (! (Auth::guard('supervisor')->check() || Auth::check())) {
                 return response()->json(['message' => 'Unauthorized'], 401);
+            }
+
+            // Check if supervisor is authorized to reject this tutor's work
+            if (Auth::guard('supervisor')->check()) {
+                $supervisor = Auth::guard('supervisor')->user();
+                $tutor = $detail->tutor;
+                
+                // Verify tutor belongs to supervisor's assigned account (case-insensitive)
+                if ($supervisor->assigned_account && $tutor->account) {
+                    if (strtolower($tutor->account->account_name) !== strtolower($supervisor->assigned_account)) {
+                        return response()->json(['message' => 'You are not authorized to reject work for this tutor'], 403);
+                    }
+                }
             }
 
             $oldStatus = $detail->status;
@@ -330,6 +396,36 @@ public function workDetails(Request $request)
                 Log::warning('Failed to record rejection: ' . $e->getMessage());
             }
 
+            // Create notification for tutor
+            try {
+                $tutor = $detail->tutor;
+                $supervisorName = $supervisor->name ?? $supervisor->username ?? 'Supervisor';
+                $rejectionNote = $request->input('note');
+
+                Notification::create([
+                        'user_id' => $tutor->tutor_id,
+                    'user_type' => 'tutor',
+                    'type' => 'work_detail_rejected',
+                    'title' => 'Work Detail Rejected',
+                    'message' => "Your work detail has been rejected by {$supervisorName}. Reason: {$rejectionNote}",
+                    'icon' => 'fas fa-times-circle',
+                    'color' => 'red',
+                    'is_read' => false,
+                    'data' => [
+                        'work_detail_id' => $detail->id,
+                        'supervisor_id' => $supervisorId,
+                        'rejection_note' => $rejectionNote
+                    ]
+                ]);
+
+                Log::info('Rejection notification created for tutor', [
+                    'work_detail_id' => $detail->id,
+                        'tutor_id' => $tutor->tutor_id
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to create rejection notification: ' . $e->getMessage());
+            }
+
             return response()->json(['message' => 'Work detail rejected successfully']);
         } catch (\Illuminate\Validation\ValidationException $ve) {
             return response()->json(['message' => 'Validation failed', 'errors' => $ve->errors()], 422);
@@ -339,10 +435,7 @@ public function workDetails(Request $request)
         }
     }
 
-    /**
-     * Return a small summary view for a tutor's approved work details.
-     * Used by the frontend modal to show totals for a specific tutor.
-     */
+//payslip para sa tutor
     public function tutorSummary(Request $request, $tutor)
     {
         try {
@@ -350,6 +443,17 @@ public function workDetails(Request $request)
             if (! $tutorModel) {
                 return response('Tutor not found', 404);
             }
+
+            // Check if supervisor is authorized to view this tutor's summary
+            if (Auth::guard('supervisor')->check()) {
+                $supervisor = Auth::guard('supervisor')->user();
+                if ($supervisor->assigned_account && $tutorModel->account) {
+                    if (strtolower($tutorModel->account->account_name) !== strtolower($supervisor->assigned_account)) {
+                        return response('Unauthorized', 403);
+                    }
+                }
+            }
+
             $today = Carbon::now();
             $day = (int) $today->format('j');
             if ($day <= 15) {
@@ -402,6 +506,8 @@ public function workDetails(Request $request)
             return response('Error generating summary', 500);
         }
     }
+
+    // send payslip email sa tutor
     public function sendPayslipEmail($tutor)
     {
         try {
@@ -466,9 +572,7 @@ public function workDetails(Request $request)
         }
     }
 
-    /**
-     * Log payroll email submission
-     */
+// log payroll email submission
     public function logPayrollEmail(Request $request)
     {
         try {
@@ -507,9 +611,7 @@ public function workDetails(Request $request)
         }
     }
 
-    /**
-     * Log payroll PDF export
-     */
+// log payroll PDF export
     public function logPayrollPdf(Request $request)
     {
         try {
@@ -547,7 +649,7 @@ public function workDetails(Request $request)
         }
     }
 
-
+    // calculate total amount for a given tutor and pay period
     private function calculateTotalAmountForPeriod(?string $tutorFormattedId, ?string $payPeriod): float
     {
         if (! $tutorFormattedId || ! $payPeriod) {

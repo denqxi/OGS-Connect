@@ -8,12 +8,38 @@ use App\Models\Notification;
 class NotificationController extends Controller
 {
     /**
-     * Get all notifications
+     * Get all notifications for the authenticated supervisor
      */
     public function index()
     {
-        $notifications = Notification::orderBy('created_at', 'desc')->get();
-        $unreadCount = Notification::where('is_read', false)->count();
+        $supervisor = auth()->guard('supervisor')->user() ?? auth()->user();
+        
+        if (!$supervisor) {
+            return response()->json([
+                'notifications' => [],
+                'unread_count' => 0
+            ]);
+        }
+        
+        // Get supervisor ID
+        $supervisorId = $supervisor->supervisor_id ?? $supervisor->id ?? null;
+        
+        // Fetch notifications for supervisors only
+        $notifications = Notification::where(function($query) use ($supervisorId) {
+                $query->where('user_type', 'supervisor')
+                      ->where('user_id', $supervisorId);
+            })
+            ->orWhereNull('user_type')
+            ->orderBy('created_at', 'desc')
+            ->get();
+            
+        $unreadCount = Notification::where(function($query) use ($supervisorId) {
+                $query->where('user_type', 'supervisor')
+                      ->where('user_id', $supervisorId);
+            })
+            ->orWhereNull('user_type')
+            ->where('is_read', false)
+            ->count();
         
         return response()->json([
             'notifications' => $notifications,
@@ -22,12 +48,35 @@ class NotificationController extends Controller
     }
 
     /**
-     * Display all notifications page
+     * Display all notifications page for the authenticated supervisor
      */
     public function viewAll()
     {
-        $notifications = Notification::orderBy('created_at', 'desc')->paginate(10);
-        $unreadCount = Notification::where('is_read', false)->count();
+        $supervisor = auth()->guard('supervisor')->user() ?? auth()->user();
+        
+        if (!$supervisor) {
+            return redirect()->route('login');
+        }
+        
+        // Get supervisor ID
+        $supervisorId = $supervisor->supervisor_id ?? $supervisor->id ?? null;
+        
+        // Fetch notifications for supervisors only
+        $notifications = Notification::where(function($query) use ($supervisorId) {
+                $query->where('user_type', 'supervisor')
+                      ->where('user_id', $supervisorId);
+            })
+            ->orWhereNull('user_type')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+            
+        $unreadCount = Notification::where(function($query) use ($supervisorId) {
+                $query->where('user_type', 'supervisor')
+                      ->where('user_id', $supervisorId);
+            })
+            ->orWhereNull('user_type')
+            ->where('is_read', false)
+            ->count();
         
         return view('notifications.index', compact('notifications', 'unreadCount'));
     }

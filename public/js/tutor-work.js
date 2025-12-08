@@ -91,10 +91,8 @@ document.addEventListener('change', function (e) {
                 <div class="p-4">
                     <form id="tutorWorkForm">
                         <input type="hidden" name="id" id="twd_id">
-                        <div class="mb-3">
-                            <label class="block text-xs text-gray-600">Date</label>
-                            <input type="date" id="twd_date" name="date" class="mt-1 block w-full border rounded px-2 py-1">
-                        </div>
+                        <input type="hidden" name="assignment_id" id="twd_assignment_id">
+                        <input type="hidden" name="schedule_daily_data_id" id="twd_schedule_id">
                         <div class="mb-3">
                             <label class="block text-xs text-gray-600">Start Time</label>
                             <input type="time" id="twd_start_time" name="start_time" class="mt-1 block w-full border rounded px-2 py-1">
@@ -223,7 +221,7 @@ document.addEventListener('change', function (e) {
     }
 
     // Fetch detail and open modal
-    window.openWorkDetailEditor = async function (id) {
+    window.openWorkDetailEditor = async function (id, assignmentId = null, scheduleId = null) {
         if (!id) return showToast('Missing work detail id', 'error');
         ensureModal();
         const saveBtn = document.getElementById('twd_save');
@@ -249,6 +247,8 @@ document.addEventListener('change', function (e) {
             const w = data.data ?? data;
 
             document.getElementById('twd_id').value = w.id ?? w.work_detail_id ?? id;
+            document.getElementById('twd_assignment_id').value = assignmentId || w.assignment_id || '';
+            document.getElementById('twd_schedule_id').value = scheduleId || w.schedule_daily_data_id || '';
             if (document.getElementById('twd_date')) document.getElementById('twd_date').value = w.date ? (new Date(w.date)).toISOString().slice(0, 10) : '';
             if (document.getElementById('twd_start_time')) document.getElementById('twd_start_time').value = w.start_time ?? '';
             if (document.getElementById('twd_end_time')) document.getElementById('twd_end_time').value = w.end_time ?? '';
@@ -256,7 +256,7 @@ document.addEventListener('change', function (e) {
             if (document.getElementById('twd_status')) document.getElementById('twd_status').value = w.status ?? 'pending';
             const imgPreview = document.getElementById('twd_image_preview');
             if (imgPreview) {
-                const path = w.screenshot ?? w.screenshot;
+                const path = w.proof_image ?? w.screenshot;
                 if (path) {
                     imgPreview.src = '/storage/' + path;
                     imgPreview.classList.remove('hidden');
@@ -281,17 +281,17 @@ document.addEventListener('change', function (e) {
     };
 
     // Create new work detail
-    window.createWorkDetail = function () {
+    window.createWorkDetail = function (assignmentId = null, scheduleId = null) {
         ensureModal();
-        // clear fields for creating
         document.getElementById('twd_id').value = '';
+        document.getElementById('twd_assignment_id').value = assignmentId || '';
+        document.getElementById('twd_schedule_id').value = scheduleId || '';
         if (document.getElementById('twd_date')) document.getElementById('twd_date').value = '';
         if (document.getElementById('twd_start_time')) document.getElementById('twd_start_time').value = '';
         if (document.getElementById('twd_end_time')) document.getElementById('twd_end_time').value = '';
         if (document.getElementById('twd_class')) document.getElementById('twd_class').value = '';
         if (document.getElementById('twd_image')) document.getElementById('twd_image').value = '';
         if (document.getElementById('twd_status')) document.getElementById('twd_status').value = 'pending';
-        // hide image preview when creating a new work detail
         const imgPreview = document.getElementById('twd_image_preview');
         if (imgPreview) {
             imgPreview.src = '';
@@ -299,6 +299,14 @@ document.addEventListener('change', function (e) {
             imgPreview.classList.add('hidden');
         }
         showModal();
+    };
+
+    // Unified entry point from the Work Details table buttons
+    window.openWorkDetailForm = function (assignmentId, workDetailId = null, scheduleId = null) {
+        if (workDetailId) {
+            return window.openWorkDetailEditor(workDetailId, assignmentId, scheduleId);
+        }
+        return window.createWorkDetail(assignmentId, scheduleId);
     };
 
     // Save handler
@@ -309,12 +317,13 @@ document.addEventListener('change', function (e) {
         const isCreate = !id;
 
         const payload = {
+            assignment_id: document.getElementById('twd_assignment_id')?.value || null,
+            schedule_daily_data_id: document.getElementById('twd_schedule_id')?.value || null,
             date: document.getElementById('twd_date')?.value || null,
             class_no: document.getElementById('twd_class')?.value || null,
             start_time: document.getElementById('twd_start_time')?.value || null,
             end_time: document.getElementById('twd_end_time')?.value || null,
-            status: document.getElementById('twd_status')?.value || null,
-
+            status: document.getElementById('twd_status')?.value || 'pending',
         };
         console.log(payload);
 
@@ -325,7 +334,13 @@ document.addEventListener('change', function (e) {
             const file = imageInput?.files?.[0] || null;
             let res;
             if (isCreate || file) {
+                if (isCreate && !file) {
+                    showToast('Screenshot is required', 'error');
+                    return;
+                }
                 const form = new FormData();
+                if (payload.assignment_id) form.append('assignment_id', payload.assignment_id);
+                if (payload.schedule_daily_data_id) form.append('schedule_daily_data_id', payload.schedule_daily_data_id);
                 if (payload.date) form.append('date', payload.date);
                 if (payload.start_time) form.append('start_time', payload.start_time);
                 if (payload.end_time) form.append('end_time', payload.end_time);
@@ -375,22 +390,8 @@ document.addEventListener('change', function (e) {
             showToast('Saved', 'success');
             hideModal();
 
-            // Update the table row values if present
-            try {
-                const btn = document.querySelector(`button[onclick="openWorkDetailEditor('${id}')"]`);
-                const tr = btn ? btn.closest('tr') : null;
-                if (tr) {
-                    if (payload.date) tr.children[0].textContent = payload.date;
-                    if (payload.ph_time) tr.children[1].textContent = payload.ph_time;
-                    if (payload.class_no) tr.children[2].textContent = payload.class_no;
-                    if (payload.status) tr.children[3].querySelector('span').textContent = payload.status.charAt(0).toUpperCase() + payload.status.slice(1);
-                } else {
-                    // fallback: notify payroll partial or reload
-                    const container = document.getElementById('payrollWorkDetailsContainer');
-                    if (container) document.dispatchEvent(new CustomEvent('workDetails:reload'));
-                    else setTimeout(() => location.reload(), 600);
-                }
-            } catch (err) { console.warn(err); setTimeout(() => location.reload(), 600); }
+            // Always reload the page to refresh the table with updated data including proof images
+            setTimeout(() => location.reload(), 600);
 
         } catch (err) {
             console.error(err);

@@ -25,12 +25,17 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AccountSeeder::class,
             SupervisorSeeder::class,
+            MultiAccountSupervisorSeeder::class, // Add supervisors for each account
             TutorSeeder::class,
+            MultiAccountTutorSeeder::class, // Add tutors for each account
             ApplicantSeeder::class,
             ScreeningSeeder::class,
             OnboardingSeeder::class,
             ArchiveSeeder::class,
             EmployeeSeeder::class, // Add sample employee data
+
+            // Targeted test data to make the "Assign Supervisor to Watch Tutor" flow selectable
+            AvailableTutorTestSeeder::class,
         ]);
     }
 }

@@ -86,6 +86,7 @@ class TutorAvailabilityController extends Controller
                     'last_name' => $tutor->last_name,
                     'email' => $tutor->email,
                     'tutorID' => $tutor->tutorID,
+                    'account_name' => $tutor->account?->account_name ?? null,
                     'date_of_birth' => $tutor->date_of_birth ?? null,
                     'address' => $tutorDetails->address ?? null,
                     'contact_number' => $tutor->phone_number ?? null,
@@ -297,10 +298,12 @@ class TutorAvailabilityController extends Controller
 
             $validator = Validator::make($accountData, [
                 'account_name' => 'required|string|max:255',
-                'available_days' => 'required|array',
+                // Allow tutors to clear availability; default to empty array when not provided
+                'available_days' => 'nullable|array',
                 'available_days.*' => 'string|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
                 'available_times' => 'nullable|array',
-                'timezone' => 'nullable|string|max:10',
+                // Timezone strings like "Asia/Manila" exceed 10 chars; be permissive
+                'timezone' => 'nullable|string|max:50',
                 'notes' => 'nullable|string|max:1000',
             ]);
 
@@ -313,12 +316,14 @@ class TutorAvailabilityController extends Controller
                 ], 422);
             }
 
-            $availableDays = $accountData['available_days'];
+            $availableDays = $accountData['available_days'] ?? [];
             $availableTimes = $accountData['available_times'] ?? [];
 
-            // Sort available_days in chronological order
-            $dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-            $availableDays = array_values(array_intersect($dayOrder, $availableDays));
+            // Sort available_days in chronological order (handle empty arrays)
+            if (!empty($availableDays)) {
+                $dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                $availableDays = array_values(array_intersect($dayOrder, $availableDays));
+            }
 
             // Extract start and end time from available_times (first time slot)
             // Default to full day availability (00:00 - 23:59) if no times specified
@@ -350,6 +355,8 @@ class TutorAvailabilityController extends Controller
                     'days_available' => json_encode($availableDays),
                     'start_time' => $startTime,
                     'end_time' => $endTime,
+                    'platform' => json_encode(['Online']), // Default platform
+                    'can_teach' => json_encode([]), // Default empty
                 ]);
             } else {
                 $workPreference->days_available = json_encode($availableDays);

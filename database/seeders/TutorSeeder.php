@@ -55,11 +55,6 @@ class TutorSeeder extends Seeder
             'password' => 'tutor1234', // Will be hashed automatically by the model
             'status' => 'active',
         ]);
-        
-        // Update hired_date_time using DB to avoid fillable restrictions
-        DB::table('tutor')
-            ->where('tutor_id', $tutor->tutor_id)
-            ->update(['hired_date_time' => now()]);
 
         if ($this->command) {
             $this->command->info('✅ Created test tutor account:');

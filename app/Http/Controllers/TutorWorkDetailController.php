@@ -10,6 +10,7 @@ use App\Models\Supervisor;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class TutorWorkDetailController extends Controller
 {
@@ -69,7 +70,7 @@ class TutorWorkDetailController extends Controller
             try {
                 $filename = time().'_'.$request->file('image')->getClientOriginalName();
                 $imagePath = $request->file('image')->storeAs('tutor_work_screenshots', $filename, 'public');
-                $detail->screenshot = $imagePath;
+                $detail->proof_image = $imagePath;
             } catch (\Exception $e) {
                 Log::warning('Failed to store tutor work image on update: ' . $e->getMessage());
             }
@@ -137,33 +138,55 @@ public function store(Request $request)
     }
 
     $validator = Validator::make($request->all(), [
+        'assignment_id' => 'required|integer|exists:assigned_daily_data,id',
+        'schedule_daily_data_id' => 'required|integer|exists:schedules_daily_data,id',
         'start_time' => 'required|date_format:H:i',
-        'end_time' => 'required|date_format:H:i|after_or_equal:start_time',
+        'end_time' => 'required|date_format:H:i',
         'notes' => 'nullable|string|max:2000',
-        'status' => 'nullable|string|in:pending,active,cancelled',
+        'status' => 'nullable|string|in:pending,approved,reject',
         'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
     ]);
+
+    if ($validator->fails()) {
+        return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
+    }
 
     $imagePath = null;
 
     if ($request->hasFile('image')){
         $filename = time().'_'.$request->file('image')->getClientOriginalName();
         $imagePath = $request->file('image')->storeAs('tutor_work_screenshots', $filename, 'public');
-        $data['screenshot'] =  $imagePath;
     }
 
-    if ($validator->fails()) {
-        return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
+    $date = $request->input('date') ?: now()->toDateString();
+
+    // Compute duration in minutes; allow shifts that cross midnight
+    $start = Carbon::createFromFormat('H:i', $request->start_time);
+    $end = Carbon::createFromFormat('H:i', $request->end_time);
+    if ($end->lessThanOrEqualTo($start)) {
+        $end->addDay();
     }
+    $duration = abs($end->diffInMinutes($start));
+
+    // Business rule: Tutlo (account_id 2) is hourly @ 120; others per-class @ 50
+    $workType = ($tutor->account_id == 2) ? 'hourly' : 'per class';
+    $ratePerHour = $workType === 'hourly' ? 120 : 0;
+    $ratePerClass = $workType === 'per class' ? 50 : 0;
 
     $detail = TutorWorkDetail::create([
         'tutor_id' => $tutor->tutorID,
+        'assignment_id' => $request->assignment_id,
+        'schedule_daily_data_id' => $request->schedule_daily_data_id,
+        'date' => $date,
         'start_time' => $request->start_time,
         'end_time' => $request->end_time,
+        'duration_minutes' => $duration,
         'note' => $request->notes,
         'status' => $request->status ?? 'pending',
-        'work_type' => 'per class',
-        'screenshot' => $imagePath,
+        'work_type' => $workType,
+        'rate_per_hour' => $ratePerHour,
+        'rate_per_class' => $ratePerClass,
+        'proof_image' => $imagePath,
     ]);
 
     // Create one shared notification for all supervisors of the same account
@@ -188,7 +211,7 @@ public function store(Request $request)
             'data' => [
                 'tutor_id' => $tutor->tutorID,
                 'work_detail_id' => $detail->id,
-                'work_type' => 'per class',
+                'work_type' => $workType,
                 'account_id' => $accountId,
                 'supervisor_count' => $supervisorCount
             ]

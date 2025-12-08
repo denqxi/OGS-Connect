@@ -1426,6 +1426,7 @@ class ScheduleController extends Controller
             $date = $request->input('date');
             $time = $request->input('time');
             $supervisorAccount = $request->input('account');
+            $normalizedAccount = $supervisorAccount ? strtolower($supervisorAccount) : null;
             $excludeTimeConflicts = $request->input('exclude_time_conflicts', false);
             
             if (!$supervisorAccount) {
@@ -1457,15 +1458,18 @@ class ScheduleController extends Controller
             }
             
             // Get ALL active tutors from the supervisor's account with their work preferences
-            $availableTutors = Tutor::where('tutor.status', 'active')
-                ->join('accounts', 'tutor.account_id', '=', 'accounts.account_id')
-                ->join('applicants', 'tutor.applicant_id', '=', 'applicants.applicant_id')
+            $availableTutors = Tutor::where('tutors.status', 'active')
+                ->join('accounts', 'tutors.account_id', '=', 'accounts.account_id')
+                ->join('applicants', 'tutors.applicant_id', '=', 'applicants.applicant_id')
                 ->leftJoin('work_preferences', 'applicants.applicant_id', '=', 'work_preferences.applicant_id')
-                ->where('accounts.account_name', $supervisorAccount)
+                ->when($normalizedAccount, function ($query) use ($normalizedAccount) {
+                    // Use case-insensitive match so seeds using lowercase account names still work
+                    $query->whereRaw('LOWER(accounts.account_name) = ?', [$normalizedAccount]);
+                })
                 ->select(
-                    'tutor.tutor_id',
-                    'tutor.tutorID',
-                    'tutor.applicant_id',
+                    'tutors.tutor_id',
+                    'tutors.tutorID',
+                    'tutors.applicant_id',
                     'applicants.first_name',
                     'applicants.last_name',
                     'accounts.account_name',
@@ -1473,7 +1477,7 @@ class ScheduleController extends Controller
                     'work_preferences.end_time',
                     'work_preferences.days_available'
                 )
-                ->orderBy('tutor.tutorID')
+                ->orderBy('tutors.tutorID')
                 ->get();
             
             // Debug: Log the raw query results
@@ -1575,8 +1579,8 @@ class ScheduleController extends Controller
             $validated = $request->validate([
                 'date' => 'required|date',
                 'school' => 'required|string',
-                'main_tutor_id' => 'required|exists:tutor,tutor_id',
-                'backup_tutor_id' => 'nullable|exists:tutor,tutor_id',
+                'main_tutor_id' => 'required|exists:tutors,tutor_id',
+                'backup_tutor_id' => 'nullable|exists:tutors,tutor_id',
                 'notes' => 'nullable|string',
                 'time' => 'nullable|string'
             ]);

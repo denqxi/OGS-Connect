@@ -16,18 +16,8 @@
                     <option value="" {{ request('status') == '' ? 'selected' : '' }}>All</option>
                     <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
                     <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
-                    <option value="reject" {{ request('status') == 'reject' ? 'selected' : '' }}>Rejected</option>
                 </select>
             </form>
-        </div>
-        <div class="flex items-center space-x-4">
-            <div class="flex items-center space-x-2">
-                <button type="button" id="addClassModal"
-                    class="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white rounded text-xs"
-                    onclick="createWorkDetail()">
-                    Add Class
-                </button>
-            </div>
         </div>
     </div>
 </div>
@@ -38,85 +28,124 @@
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Time
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Time</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work Type
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scheduled Time</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">School</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actual Start</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actual End</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proof</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supervisor Note</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200" id="tutorTableBody">
             @php
-                // Use workDetails from the authenticated tutor
-                $rows = $workDetails ?? $tutor->workDetails ?? collect();
+                $rows = $workDetails ?? collect();
             @endphp
 
-            @forelse($rows as $detail)
+            @forelse($rows as $assignment)
                 @php
-                    // Some DBs store tutor identifier in tutor_id as formatted tutorID
-                    $tutorId = $detail->tutor_id ?? null;
-                    $displayDate = $detail->date ?? $detail->day ?? ($detail->created_at?->format('Y-m-d') ?? 'N/A');
-                    $StartTime = $detail->start_time ?? 'N/A';
-                    $EndTime = $detail->end_time ?? 'N/A';
-                    $classNo = $detail->class_no ?? $detail->work_type ?? '—';
-                    $rate = $detail->rate_per_class ?? 'N/A';
-                    $status = $detail->status ?? 'pending';
-                    $isApproved = is_string($status) && strtolower($status) === 'approved';
+                    $schedule = $assignment->schedule;
+                    
+                    // Status primarily from tutor_work_details (fallback to assignment class_status)
+                    $workDetail = $assignment->workDetail ?? null;
+                    $detailStatus = $workDetail->status ?? null;
+                    $statusMap = [
+                        'pending' => 'Pending',
+                        'approved' => 'Approved',
+                        'rejected' => 'Rejected',
+                        'not_assigned' => 'Not Assigned',
+                        'partially_assigned' => 'Pending',
+                        'fully_assigned' => 'Pending',
+                    ];
+                    $statusColors = [
+                        'pending' => 'bg-yellow-400',
+                        'approved' => 'bg-green-500',
+                        'rejected' => 'bg-red-500',
+                        'not_assigned' => 'bg-gray-400',
+                        'partially_assigned' => 'bg-yellow-400',
+                        'fully_assigned' => 'bg-yellow-400',
+                    ];
+                    $statusKey = $detailStatus ?? $assignment->class_status;
+                    $status = $statusMap[$statusKey] ?? ucfirst($statusKey ?? 'Pending');
+                    $circleColor = $statusColors[$statusKey] ?? 'bg-gray-500';
+                    
+                    // Check if tutor has submitted work details for this assignment
+                    $hasSubmitted = $workDetail !== null;
+                    // Only approved if work detail status is 'approved' (from supervisor in payroll tab)
+                    $isApproved = $hasSubmitted && strtolower($workDetail->status ?? '') === 'approved';
                 @endphp
-                <tr class="hover:bg-gray-50 tutor-row"
-                    data-searchable="{{ strtolower($tutorId . ' ' . ($detail->ph_time ?? '') . ' ' . ($classNo ?? '')) }}">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $displayDate }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $StartTime }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $EndTime }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $classNo }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">₱{{ $rate }}</td>
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {{ $schedule ? \Carbon\Carbon::parse($schedule->date)->format('M d, Y') : 'N/A' }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {{ $schedule ? \Carbon\Carbon::parse($schedule->date)->format('l') : 'N/A' }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {{ $schedule ? \Carbon\Carbon::parse($schedule->time)->format('g:i A') : 'N/A' }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $schedule->school ?? 'N/A' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $schedule->duration ?? 'N/A' }} min</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {{ $workDetail && $workDetail->start_time ? \Carbon\Carbon::parse($workDetail->start_time)->format('g:i A') : '—' }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {{ $workDetail && $workDetail->end_time ? \Carbon\Carbon::parse($workDetail->end_time)->format('g:i A') : '—' }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        @if($workDetail && $workDetail->proof_image)
+                            <a href="{{ asset('storage/' . $workDetail->proof_image) }}" target="_blank" class="text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-image"></i> View
+                            </a>
+                        @else
+                            —
+                        @endif
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        @php
+                            // Show supervisor note for both approved and rejected statuses (get the latest approval)
+                            $supervisorNote = null;
+                            if ($workDetail) {
+                                $workStatus = strtolower($workDetail->status ?? '');
+                                if (in_array($workStatus, ['approved', 'reject', 'rejected'])) {
+                                    $supervisorNote = $workDetail->approvals?->sortByDesc('approved_at')->first()?->note ?? null;
+                                }
+                            }
+                        @endphp
+                        {{ $supervisorNote ?? '—' }}
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center gap-2">
-                            @php
-                                $statusColors = [
-                                    'pending' => 'bg-yellow-400',
-                                    'approved' => 'bg-green-500',
-                                    'reject' => 'bg-red-500',
-                                ];
-                                $circleColor = $statusColors[strtolower($status)] ?? 'bg-gray-500';
-                            @endphp
                             <span class="w-2.5 h-2.5 rounded-full {{ $circleColor }}"></span>
-                            <span class="text-xs font-medium text-gray-500">{{ ucfirst($status) }}</span>
+                            <span class="text-xs font-medium text-gray-500">{{ $status }}</span>
                         </div>
                     </td>
-
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $detail->approval_note ?? ($detail->approvals->first()->note ?? '') }}</td>
-
-                    {{-- pag approve na dili na clickable ang button --}}
                     <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                         <div class="flex items-center space-x-2">
                             @if (!$isApproved)
                                 <button type="button" 
                                     class="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
-                                    onclick="openWorkDetailEditor('{{ $detail->id ?? ($detail->work_detail_id ?? $detail->id) }}')"
-                                    title="Edit">
-                                    <i class="fas fa-eye text-xs"></i>
+                                    onclick="openWorkDetailForm({{ $assignment->id }}, {{ $workDetail ? $workDetail->id : 'null' }}, {{ $assignment->schedule_daily_data_id }})"
+                                    title="{{ $hasSubmitted ? 'Edit Work Details' : 'Add Work Details' }}">
+                                    <i class="fas {{ $hasSubmitted ? 'fa-edit' : 'fa-plus' }} text-xs"></i>
                                 </button>
-                                <button type="button" 
-                                    class="w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
-                                    onclick="confirmDeleteWorkDetail('{{ $detail->id ?? ($detail->work_detail_id ?? $detail->id) }}')"
-                                    title="Delete">
-                                    <i class="fas fa-trash text-xs"></i>
-                                </button>
+                                @if($hasSubmitted)
+                                    <button type="button" 
+                                        class="w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+                                        onclick="confirmDeleteWorkDetail({{ $workDetail->id }})"
+                                        title="Delete Work Details">
+                                        <i class="fas fa-trash text-xs"></i>
+                                    </button>
+                                @endif
                             @else
-                                <button type="button" disabled
-                                    class="w-8 h-8 flex items-center justify-center bg-gray-200 text-gray-400 rounded cursor-not-allowed"
-                                    title="Approved records cannot be edited">
+                                <button type="button" 
+                                    class="w-8 h-8 flex items-center justify-center bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors"
+                                    onclick="viewWorkDetail({{ $workDetail->id }})"
+                                    title="View Work Details">
                                     <i class="fas fa-eye text-xs"></i>
-                                </button>
-                                <button type="button" disabled
-                                    class="w-8 h-8 flex items-center justify-center bg-gray-200 text-gray-400 rounded cursor-not-allowed"
-                                    title="Approved records cannot be deleted">
-                                    <i class="fas fa-trash text-xs"></i>
                                 </button>
                             @endif
                         </div>
@@ -124,27 +153,22 @@
                 </tr>
             @empty
                 <tr id="noResultsRow">
-                    <td colspan="7" class="px-6 py-8 text-center text-gray-500">
-                        <i class="fas fa-users text-4xl mb-4 opacity-50"></i>
-                        <p class="text-lg font-medium">No work details found</p>
-                        <p class="text-sm">Try adjusting your search criteria</p>
+                    <td colspan="10" class="px-6 py-8 text-center text-gray-500">
+                        <i class="fas fa-calendar-times text-4xl mb-4 opacity-50"></i>
+                        <p class="text-lg font-medium">No assigned classes found</p>
+                        <p class="text-sm">You will see your class schedule here once a supervisor assigns you as main tutor</p>
                     </td>
                 </tr>
             @endforelse
         </tbody>
     </table>
-
-    <!-- No Search Results Message -->
-    <div id="noSearchResults" class="hidden bg-white px-6 py-8 text-center text-gray-500 border-t">
-        <i class="fas fa-search text-4xl mb-4 opacity-50"></i>
-        <p class="text-lg font-medium">No tutors found</p>
-        <p class="text-sm">Try adjusting your search terms</p>
-    </div>
 </div>
 
 <!-- Pagination -->
 @if (isset($workDetails) && method_exists($workDetails, 'links'))
-    @include('tutor.tabs.partials.work_details_pagination', ['workDetails' => $workDetails])
+    <div class="px-6 py-4 border-t border-gray-200">
+        {{ $workDetails->links() }}
+    </div>
 @else
     <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between h-16 w-full"
         id="paginationSection">
@@ -166,4 +190,5 @@
         </div>
     </div>
 @endif
+
 <script src="{{ asset('js/tutor-work.js') }}"></script>

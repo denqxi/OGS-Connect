@@ -205,15 +205,25 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
     Route::get('/tutor_portal', function (Illuminate\Http\Request $request) {
         $tutor = Auth::guard('tutor')->user();
         
-        // Build work details query with optional status filter
-        $workDetailsQuery = $tutor->workDetails();
+        // Get assigned schedules where this tutor is main tutor only
+        $workDetailsQuery = \App\Models\AssignedDailyData::query()
+            ->where('main_tutor', $tutor->tutor_id)
+            ->with(['schedule', 'mainTutor.applicant', 'backupTutor.applicant', 'supervisor', 'workDetail.approvals']);
         
         $statusFilter = $request->query('status');
-        if ($statusFilter && in_array($statusFilter, ['pending', 'approved', 'reject'])) {
-            $workDetailsQuery->where('status', $statusFilter);
+        if ($statusFilter) {
+            // Map filter values to class_status
+            $statusMap = [
+                'pending' => 'partially_assigned',
+                'approved' => 'fully_assigned',
+                'reject' => 'not_assigned'
+            ];
+            if (isset($statusMap[$statusFilter])) {
+                $workDetailsQuery->where('class_status', $statusMap[$statusFilter]);
+            }
         }
         
-        $workDetails = $workDetailsQuery->with('approvals')->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
+        $workDetails = $workDetailsQuery->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
         
         $tutor->load([
             'applicant.qualification', 
@@ -253,6 +263,9 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
     Route::prefix('tutor/notifications')->name('tutor.notifications.')->group(function () {
         Route::get('/api', function () {
             $tutor = Auth::guard('tutor')->user();
+            if (! $tutor) {
+                return response()->json(['message' => 'Unauthenticated'], 401);
+            }
             $limit = request()->query('limit', 10);
             
             // Get notifications for this specific tutor only
