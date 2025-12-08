@@ -507,6 +507,110 @@ public function workDetails(Request $request)
         }
     }
 
+    // Finalize payroll for a specific tutor and period
+    public function finalizePayroll(Request $request)
+    {
+        try {
+            $tutorID = $request->input('tutor_id');
+            $periodStart = $request->input('period_start');
+            $periodEnd = $request->input('period_end');
+
+            $tutor = Tutor::where('tutorID', $tutorID)->first();
+            if (!$tutor) {
+                return response()->json(['success' => false, 'message' => 'Tutor not found'], 404);
+            }
+
+            // Check supervisor authorization
+            if (Auth::guard('supervisor')->check()) {
+                $supervisor = Auth::guard('supervisor')->user();
+                if ($supervisor->assigned_account && $tutor->account) {
+                    if (strtolower($tutor->account->account_name) !== strtolower($supervisor->assigned_account)) {
+                        return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+                    }
+                }
+            }
+
+            // Determine pay period format
+            $startDate = Carbon::parse($periodStart);
+            $endDate = Carbon::parse($periodEnd);
+            $day = (int) $startDate->format('j');
+            
+            if ($day === 1 && $endDate->format('j') == 15) {
+                $payPeriod = $startDate->format('Y-m') . ' (1-15)';
+            } else {
+                $payPeriod = $startDate->format('Y-m') . ' (16-30)';
+            }
+
+            // Check if already finalized
+            $existing = PayrollHistory::where('tutor_id', $tutor->tutor_id)
+                ->where('pay_period', $payPeriod)
+                ->first();
+
+            if ($existing) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Payroll for this period is already finalized'
+                ], 400);
+            }
+
+            // Get approved work details for this period
+            $workDetails = TutorWorkDetail::where('tutor_id', $tutorID)
+                ->where('status', 'approved')
+                ->whereBetween('created_at', [$periodStart . ' 00:00:00', $periodEnd . ' 23:59:59'])
+                ->get();
+
+            // Calculate total amount
+            $totalAmount = $workDetails->reduce(function ($carry, $wd) {
+                if (($wd->work_type ?? '') === 'hourly') {
+                    $hours = ($wd->duration_minutes ?? 0) / 60;
+                    $carry += ($wd->rate_per_hour ?? 0) * $hours;
+                } else {
+                    $carry += ($wd->rate_per_class ?? 0);
+                }
+                return $carry;
+            }, 0);
+
+            $totalAmount = round($totalAmount, 2);
+
+            // Create PayrollHistory record
+            $payrollHistory = PayrollHistory::create([
+                'tutor_id' => $tutor->tutor_id,
+                'pay_period' => $payPeriod,
+                'total_amount' => $totalAmount,
+                'submission_type' => 'email',
+                'status' => 'finalized',
+                'recipient_email' => $tutor->email,
+                'notes' => "Finalized by supervisor. Work details count: {$workDetails->count()}",
+                'submitted_at' => now(),
+            ]);
+
+            // Create PayrollFinalization record
+            \App\Models\PayrollFinalization::create([
+                'tutor_id' => $tutor->tutor_id,
+                'pay_period' => $payPeriod,
+                'total_amount' => $totalAmount,
+                'work_details_count' => $workDetails->count(),
+                'status' => 'locked',
+                'finalized_at' => now(),
+                'notes' => "Manually finalized by supervisor " . Auth::guard('supervisor')->user()->username ?? 'system',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Payroll finalized successfully! Amount locked: ₱" . number_format($totalAmount, 2),
+                'pay_period' => $payPeriod,
+                'amount' => $totalAmount
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('PayrollController@finalizePayroll error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error finalizing payroll: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     // send payslip email sa tutor
     public function sendPayslipEmail($tutor)
     {
@@ -683,5 +787,59 @@ public function workDetails(Request $request)
         }, 0);
 
         return round($total, 2);
+    }
+
+    /**
+     * Fetch salary history for a tutor (API endpoint)
+     */
+    public function salaryHistory(Request $request, $tutorID)
+    {
+        try {
+            // Get tutor
+            $tutor = Tutor::where('tutorID', $tutorID)->firstOrFail();
+
+            // Check authorization - only supervisors with matching account can view
+            if (Auth::guard('supervisor')->check()) {
+                $supervisor = Auth::guard('supervisor')->user();
+                if ($supervisor->assigned_account) {
+                    $tutorAccount = $tutor->account?->account_name ?? '';
+                    if (strtolower($tutorAccount) !== strtolower($supervisor->assigned_account)) {
+                        return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+                    }
+                }
+            }
+
+            // Pagination
+            $perPage = $request->query('per_page', 10);
+            
+            // Get payroll history with pagination
+            $history = PayrollHistory::where('tutor_id', $tutor->tutor_id)
+                ->orderBy('pay_period', 'desc')
+                ->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'tutor' => [
+                    'id' => $tutor->tutorID,
+                    'name' => $tutor->full_name ?? $tutor->username,
+                    'account' => $tutor->account?->account_name ?? 'N/A'
+                ],
+                'history' => $history->items(),
+                'pagination' => [
+                    'total' => $history->total(),
+                    'per_page' => $history->perPage(),
+                    'current_page' => $history->currentPage(),
+                    'last_page' => $history->lastPage(),
+                    'from' => $history->firstItem(),
+                    'to' => $history->lastItem(),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching salary history', [
+                'tutor_id' => $tutorID,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json(['success' => false, 'message' => 'Error fetching salary history'], 500);
+        }
     }
 }

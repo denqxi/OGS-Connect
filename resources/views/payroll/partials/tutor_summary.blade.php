@@ -10,6 +10,8 @@
         </div>
 
         <div class="flex items-center gap-2">
+            <button type="button" onclick="finalizePayroll('{{ $tutor->tutorID }}', '{{ $period_start }}', '{{ $period_end }}')"
+                class="px-3 py-1 bg-orange-600 text-white rounded text-xs hover:bg-orange-700">Finalize & Lock Payroll</button>
             <button type="button" onclick="printPayslip()" class="px-3 py-1 bg-slate-700 text-white rounded text-xs">Print
                 / Save PDF</button>
             <button type="button" onclick="emailPayslip({{ $tutor->tutor_id }})"

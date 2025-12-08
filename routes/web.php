@@ -181,12 +181,14 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
         Route::get('/', [PayrollController::class, 'index'])->name('index');
         Route::get('/work-details', [PayrollController::class, 'workDetails'])->name('work-details');
         Route::get('/tutor/{tutor}/summary', [PayrollController::class, 'tutorSummary'])->name('tutor.summary');
+        Route::get('/tutor/{tutorID}/salary-history', [PayrollController::class, 'salaryHistory'])->name('tutor.salary-history');
         Route::post('/work-detail/{id}/approve', [PayrollController::class, 'approveWorkDetail'])
             ->name('work-detail.approve');
         Route::post('/work-detail/{id}/reject', [PayrollController::class, 'rejectWorkDetail'])
             ->name('work-detail.reject');
         Route::post('/log-email', [PayrollController::class, 'logPayrollEmail'])->name('log-email');
         Route::post('/log-pdf', [PayrollController::class, 'logPayrollPdf'])->name('log-pdf');
+        Route::post('/finalize', [PayrollController::class, 'finalizePayroll'])->name('payroll.finalize');
 
     });
     Route::post('/payroll/tutor/{tutor}/send-email', [PayrollController::class, 'sendPayslipEmail']);
@@ -205,16 +207,19 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
     Route::get('/tutor_portal', function (Illuminate\Http\Request $request) {
         $tutor = Auth::guard('tutor')->user();
         
-        // Get assigned schedules where this tutor is main tutor only
+        // Get assigned schedules where this tutor is main tutor OR backup tutor
         $workDetailsQuery = \App\Models\AssignedDailyData::query()
-            ->where('main_tutor', $tutor->tutor_id)
+            ->where(function($query) use ($tutor) {
+                $query->where('main_tutor', $tutor->tutor_id)
+                      ->orWhere('backup_tutor', $tutor->tutor_id);
+            })
             ->with(['schedule', 'mainTutor.applicant', 'backupTutor.applicant', 'supervisor', 'workDetail.approvals']);
         
         $statusFilter = $request->query('status');
         if ($statusFilter) {
             // Map filter values to class_status
             $statusMap = [
-                'pending' => 'partially_assigned',
+                'pending' => 'pending_acceptance',
                 'approved' => 'fully_assigned',
                 'reject' => 'not_assigned'
             ];
@@ -255,6 +260,14 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
         Route::post('/setup-payment', [TutorAvailabilityController::class, 'setupPayment'])->name('setup-payment');
         Route::put('/payment-method/{paymentId}', [TutorAvailabilityController::class, 'updatePaymentMethod'])->name('update-payment-method');
         Route::delete('/payment-method/{paymentId}', [TutorAvailabilityController::class, 'deletePaymentMethod'])->name('delete-payment-method');
+    });
+    
+    // ------------------------------------------------------------------------
+    // TUTOR ASSIGNMENT ACTIONS
+    // ------------------------------------------------------------------------
+    Route::prefix('tutor/assignment')->name('tutor.assignment.')->group(function () {
+        Route::post('/accept', [ScheduleController::class, 'acceptAssignment'])->name('accept');
+        Route::post('/reject', [ScheduleController::class, 'rejectAssignment'])->name('reject');
     });
     
     // ------------------------------------------------------------------------

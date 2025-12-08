@@ -19,7 +19,10 @@
                             <td class="px-6 py-4 text-sm text-gray-700">{{ $tutor->full_name ?? $tutor->username }}</td>
                             <td class="px-6 py-4 text-sm text-gray-700">{{ $tutor->account?->account_name ?? 'N/A' }}</td>
                             <td class="px-6 py-4 text-sm">
-                                <button type="button" class="px-3 py-1 bg-slate-700 text-white rounded text-xs" onclick="openTutorSummary('{{ $tutor->tutorID }}')">View Summary</button>
+                                <div class="flex gap-2">
+                                    <button type="button" class="px-3 py-1 bg-slate-700 text-white rounded text-xs" onclick="openTutorSummary('{{ $tutor->tutorID }}')">View Summary</button>
+                                    <button type="button" class="px-3 py-1 bg-blue-600 text-white rounded text-xs" onclick="openSalaryHistory('{{ $tutor->tutorID }}')">View Salary History</button>
+                                </div>
                             </td>
                         </tr>
                     @endforeach
@@ -73,6 +76,39 @@
         window.closeTutorSummary = function () {
             modal.style.display = 'none';
             modalContent.innerHTML = '';
+        };
+
+        window.finalizePayroll = function(tutorID, periodStart, periodEnd) {
+            if (!confirm('Finalize and lock payroll for this period? This cannot be undone.')) {
+                return;
+            }
+
+            fetch('{{ url("payroll/finalize") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    tutor_id: tutorID,
+                    period_start: periodStart,
+                    period_end: periodEnd
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✓ ' + data.message);
+                    closeTutorSummary();
+                } else {
+                    alert('✗ ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error finalizing payroll');
+            });
         };
 
         // Close when clicking overlay or pressing ESC

@@ -58,6 +58,7 @@
                         'rejected' => 'Rejected',
                         'not_assigned' => 'Not Assigned',
                         'partially_assigned' => 'Pending',
+                        'pending_acceptance' => 'Pending Acceptance',
                         'fully_assigned' => 'Pending',
                     ];
                     $statusColors = [
@@ -66,6 +67,7 @@
                         'rejected' => 'bg-red-500',
                         'not_assigned' => 'bg-gray-400',
                         'partially_assigned' => 'bg-yellow-400',
+                        'pending_acceptance' => 'bg-orange-400',
                         'fully_assigned' => 'bg-yellow-400',
                     ];
                     $statusKey = $detailStatus ?? $assignment->class_status;
@@ -125,7 +127,21 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                         <div class="flex items-center space-x-2">
-                            @if (!$isApproved)
+                            @if ($assignment->class_status === 'pending_acceptance')
+                                {{-- Accept/Reject buttons for pending acceptance --}}
+                                <button type="button" 
+                                    class="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors"
+                                    onclick="acceptAssignment({{ $assignment->id }})"
+                                    title="Accept Assignment">
+                                    <i class="fas fa-check mr-1"></i> Accept
+                                </button>
+                                <button type="button" 
+                                    class="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors"
+                                    onclick="rejectAssignment({{ $assignment->id }})"
+                                    title="Reject Assignment">
+                                    <i class="fas fa-times mr-1"></i> Reject
+                                </button>
+                            @elseif (!$isApproved)
                                 <button type="button" 
                                     class="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
                                     onclick="openWorkDetailForm({{ $assignment->id }}, {{ $workDetail ? $workDetail->id : 'null' }}, {{ $assignment->schedule_daily_data_id }})"

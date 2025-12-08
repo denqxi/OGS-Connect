@@ -210,6 +210,104 @@ function showPayslipModal(message, success = true) {
                 showPayslipModal('An error occurred while sending the payslip.', false);
         });
     };
+
+    // Open Salary History Modal
+    window.openSalaryHistory = async function(tutorID) {
+        try {
+            // Fetch salary history data
+            const response = await fetch(`/payroll/tutor/${tutorID}/salary-history`);
+            const data = await response.json();
+
+            if (!data.success) {
+                alert('Failed to fetch salary history: ' + data.message);
+                return;
+            }
+
+            // Create modal
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
+            modal.id = 'salaryHistoryModal';
+
+            let tableRows = '';
+            if (data.history && data.history.length > 0) {
+                data.history.forEach(record => {
+                    const payPeriod = record.pay_period || 'N/A';
+                    const totalAmount = record.total_amount ? '₱' + parseFloat(record.total_amount).toFixed(2) : 'N/A';
+                    const status = record.status || 'N/A';
+                    const submittedAt = record.submitted_at ? new Date(record.submitted_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
+                    const type = record.submission_type || 'N/A';
+
+                    tableRows += `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-3 text-sm text-gray-700">${payPeriod}</td>
+                            <td class="px-6 py-3 text-sm text-gray-700">${totalAmount}</td>
+                            <td class="px-6 py-3 text-sm text-gray-700 capitalize">${type}</td>
+                            <td class="px-6 py-3 text-sm">
+                                <span class="px-2 py-1 rounded text-xs font-medium ${status === 'approved' ? 'bg-green-100 text-green-800' : status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}">
+                                    ${status}
+                                </span>
+                            </td>
+                            <td class="px-6 py-3 text-sm text-gray-700">${submittedAt}</td>
+                        </tr>
+                    `;
+                });
+            } else {
+                tableRows = '<tr><td colspan="5" class="px-6 py-8 text-center text-gray-500">No salary history found</td></tr>';
+            }
+
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-96 flex flex-col">
+                    <!-- Header -->
+                    <div class="border-b border-gray-200 p-6 flex justify-between items-center">
+                        <div>
+                            <h2 class="text-xl font-semibold text-gray-900">${data.tutor.name}</h2>
+                            <p class="text-sm text-gray-600">${data.tutor.account}</p>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-800">Salary History</h3>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="overflow-y-auto flex-1">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 border-b border-gray-200 sticky top-0">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Pay Period</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Total Amount</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Date Processed</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                ${tableRows}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination Info -->
+                    <div class="border-t border-gray-200 bg-gray-50 px-6 py-3 flex justify-between items-center">
+                        <span class="text-sm text-gray-600">
+                            Showing ${data.pagination.from || 0} to ${data.pagination.to || 0} of ${data.pagination.total} records
+                        </span>
+                        <button onclick="document.getElementById('salaryHistoryModal').remove()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition-colors">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Close on backdrop click
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.remove();
+            };
+
+        } catch (error) {
+            console.error('Error opening salary history:', error);
+            alert('An error occurred while fetching salary history');
+        }
+    };
 </script>
 
 <!-- Modal overlay (Tailwind) -->

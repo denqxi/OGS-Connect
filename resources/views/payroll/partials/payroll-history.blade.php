@@ -55,13 +55,16 @@
                         $tutorName = $tutor?->applicant?->first_name . ' ' . $tutor?->applicant?->last_name;
                         $submittedDate = $record->submitted_at ? $record->submitted_at->format('M d, Y H:i') : 'N/A';
                         
+                        // For finalized status, show em dash for submission type
+                        $isFinalized = ($record->status === 'finalized');
+                        
                         $typeColors = [
                             'email' => 'bg-blue-100 text-blue-800',
                             'pdf' => 'bg-purple-100 text-purple-800',
                             'print' => 'bg-orange-100 text-orange-800'
                         ];
                         $typeBadgeColor = $typeColors[$record->submission_type] ?? 'bg-gray-100 text-gray-800';
-                        $typeLabel = match($record->submission_type) {
+                        $typeLabel = $isFinalized ? '—' : match($record->submission_type) {
                             'email' => 'Email',
                             'pdf' => 'PDF Download',
                             'print' => 'Print',
@@ -74,11 +77,17 @@
                             'pending' => 'bg-yellow-100 text-yellow-800',
                             'failed' => 'bg-red-100 text-red-800',
                             'draft' => 'bg-gray-100 text-gray-800',
+                            'finalized' => 'bg-indigo-100 text-indigo-800',
                             default => 'bg-gray-100 text-gray-800'
                         };
                         
+                        $statusLabel = match($record->status ?? '') {
+                            'finalized' => 'Finalized',
+                            default => ucfirst($record->status ?? 'unknown')
+                        };
+                        
                         // Recipient/Details
-                        $details = $record->submission_type === 'email' ? $record->recipient_email : $record->notes ?? '—';
+                        $details = $isFinalized ? '—' : ($record->submission_type === 'email' ? $record->recipient_email : $record->notes ?? '—');
                     @endphp
                     <tr class="hover:bg-gray-50">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $submittedDate }}</td>
@@ -86,12 +95,18 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $record->pay_period ?? '—' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">₱{{ number_format($record->total_amount ?? 0, 2) }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $typeBadgeColor }}">
-                                {{ $typeLabel }}
-                            </span>
+                            @if($isFinalized)
+                                <span class="text-gray-500">{{ $typeLabel }}</span>
+                            @else
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $typeBadgeColor }}">
+                                    {{ $typeLabel }}
+                                </span>
+                            @endif
                         </td>
                         <td class="px-6 py-4 text-sm text-gray-700">
-                            @if($record->submission_type === 'email' && $record->recipient_email)
+                            @if($isFinalized)
+                                <span class="text-gray-500">{{ $details }}</span>
+                            @elseif($record->submission_type === 'email' && $record->recipient_email)
                                 <a href="mailto:{{ $record->recipient_email }}" class="text-blue-600 hover:underline">
                                     {{ $record->recipient_email }}
                                 </a>
@@ -101,7 +116,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
-                                {{ ucfirst($record->status ?? 'unknown') }}
+                                {{ $statusLabel }}
                             </span>
                         </td>
                     </tr>

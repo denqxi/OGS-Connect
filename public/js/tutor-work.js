@@ -402,37 +402,70 @@ document.addEventListener('change', function (e) {
     // Delete confirmation & request
     window.confirmDeleteWorkDetail = async function (id) {
         if (!id) return showToast('Missing id', 'error');
-        if (!confirm('Delete this work detail? This action cannot be undone.')) return;
+        
+        // Create modal
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center';
+        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        
+        const modalContent = document.createElement('div');
+        modalContent.className = 'bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4';
+        
+        modalContent.innerHTML = `
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Confirm Delete</h3>
+            <p class="text-gray-600 mb-6">Delete this work detail? This action cannot be undone.</p>
+            <div class="flex justify-end gap-3">
+                <button id="cancelDeleteBtn" class="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 transition-colors">
+                    Cancel
+                </button>
+                <button id="confirmDeleteBtn" class="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors">
+                    OK
+                </button>
+            </div>
+        `;
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // Handle cancel
+        const cancelBtn = modal.querySelector('#cancelDeleteBtn');
+        cancelBtn.onclick = () => modal.remove();
+        
+        // Handle backdrop click
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.remove();
+        };
+        
+        // Handle confirm
+        const confirmBtn = modal.querySelector('#confirmDeleteBtn');
+        confirmBtn.onclick = async () => {
+            modal.remove();
+            
+            const csrf = getCsrfToken();
+            try {
+                const res = await fetch(`/tutor/work-details/${encodeURIComponent(id)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf
+                    }
+                });
 
-        const csrf = getCsrfToken();
-        try {
-            const res = await fetch(`/tutor/work-details/${encodeURIComponent(id)}`, {
-                method: 'DELETE',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrf
+                if (!res.ok) {
+                    const body = await res.json().catch(() => null);
+                    console.error('Delete failed', res.status, body);
+                    showToast(body?.message || 'Failed to delete', 'error');
+                    return;
                 }
-            });
 
-            if (!res.ok) {
-                const body = await res.json().catch(() => null);
-                console.error('Delete failed', res.status, body);
-                showToast(body?.message || 'Failed to delete', 'error');
-                return;
+                showToast('Deleted', 'success');
+                setTimeout(() => window.location.reload(), 500);
+
+            } catch (err) {
+                console.error(err);
+                showToast('An error occurred while deleting', 'error');
             }
-
-            showToast('Deleted', 'success');
-            const btn = document.querySelector(`button[onclick="confirmDeleteWorkDetail('${id}')"]`);
-            const tr = btn ? btn.closest('tr') : null;
-            if (tr) tr.remove();
-            // notify payroll partial to refresh if present
-            const container = document.getElementById('payrollWorkDetailsContainer');
-            if (container) document.dispatchEvent(new CustomEvent('workDetails:reload'));
-
-        } catch (err) {
-            console.error(err);
-            showToast('An error occurred while deleting', 'error');
-        }
+        };
     };
     
 
@@ -617,6 +650,145 @@ document.addEventListener('change', function (e) {
         } catch (err) {
             console.error('handleTutorFilterChange error', err);
         }
+    };
+
+    // Accept assignment
+    window.acceptAssignment = async function(assignmentId) {
+        // Create modal
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center';
+        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        
+        const modalContent = document.createElement('div');
+        modalContent.className = 'bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4';
+        
+        modalContent.innerHTML = `
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Confirm Accept</h3>
+            <p class="text-gray-600 mb-6">Accept this assignment?</p>
+            <div class="flex justify-end gap-3">
+                <button id="cancelAcceptBtn" class="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 transition-colors">
+                    Cancel
+                </button>
+                <button id="confirmAcceptBtn" class="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors">
+                    OK
+                </button>
+            </div>
+        `;
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // Handle cancel
+        const cancelBtn = modal.querySelector('#cancelAcceptBtn');
+        cancelBtn.onclick = () => modal.remove();
+        
+        // Handle backdrop click
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.remove();
+        };
+        
+        // Handle confirm
+        const confirmBtn = modal.querySelector('#confirmAcceptBtn');
+        confirmBtn.onclick = async () => {
+            modal.remove();
+            
+            try {
+                const response = await fetch('/tutor/assignment/accept', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': getCsrfToken()
+                    },
+                    body: JSON.stringify({ assignment_id: assignmentId })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(data.message || 'Assignment accepted successfully!', 'success');
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    showToast(data.message || 'Failed to accept assignment', 'error');
+                }
+            } catch (error) {
+                console.error('Error accepting assignment:', error);
+                showToast('An error occurred while accepting the assignment', 'error');
+            }
+        };
+    };
+
+    // Reject assignment
+    window.rejectAssignment = async function(assignmentId) {
+        // Create modal
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center';
+        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        
+        const modalContent = document.createElement('div');
+        modalContent.className = 'bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4';
+        
+        modalContent.innerHTML = `
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Confirm Reject</h3>
+            <p class="text-gray-600 mb-4">Please provide a reason for rejecting this assignment (optional):</p>
+            <textarea id="rejectReasonInput" class="w-full px-3 py-2 border border-gray-300 rounded mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3" placeholder="Enter reason..."></textarea>
+            <div class="flex justify-end gap-3">
+                <button id="cancelRejectBtn" class="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 transition-colors">
+                    Cancel
+                </button>
+                <button id="confirmRejectBtn" class="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors">
+                    OK
+                </button>
+            </div>
+        `;
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // Focus on textarea
+        const textarea = modal.querySelector('#rejectReasonInput');
+        textarea.focus();
+        
+        // Handle cancel
+        const cancelBtn = modal.querySelector('#cancelRejectBtn');
+        cancelBtn.onclick = () => modal.remove();
+        
+        // Handle backdrop click
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.remove();
+        };
+        
+        // Handle confirm
+        const confirmBtn = modal.querySelector('#confirmRejectBtn');
+        confirmBtn.onclick = async () => {
+            const reason = textarea.value.trim();
+            modal.remove();
+            
+            try {
+                const response = await fetch('/tutor/assignment/reject', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': getCsrfToken()
+                    },
+                    body: JSON.stringify({ 
+                        assignment_id: assignmentId,
+                        reason: reason || 'No reason provided'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(data.message || 'Assignment rejected successfully!', 'success');
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    showToast(data.message || 'Failed to reject assignment', 'error');
+                }
+            } catch (error) {
+                console.error('Error rejecting assignment:', error);
+                showToast('An error occurred while rejecting the assignment', 'error');
+            }
+        };
     };
     
 

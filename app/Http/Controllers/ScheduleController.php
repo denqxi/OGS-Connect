@@ -1623,6 +1623,9 @@ class ScheduleController extends Controller
             
             // Assign tutor and supervisor to all matching schedules
             $assigned = 0;
+            $mainTutor = Tutor::find($validated['main_tutor_id']);
+            $backupTutor = !empty($validated['backup_tutor_id']) ? Tutor::find($validated['backup_tutor_id']) : null;
+            
             foreach ($schedules as $schedule) {
                 // Get or create assigned_daily_data record
                 $assignment = AssignedDailyData::firstOrCreate(
@@ -1630,17 +1633,65 @@ class ScheduleController extends Controller
                     ['class_status' => 'not_assigned']
                 );
                 
-                // When tutors are assigned, status is partially_assigned (waiting for confirmation)
-                // Status will become fully_assigned when finalized_at is set
+                // When tutors are assigned, status is pending_acceptance (waiting for tutor confirmation)
+                // Status will become fully_assigned when tutor accepts
                 
                 // Update with tutors and supervisor
                 $assignment->update([
                     'main_tutor' => $validated['main_tutor_id'],
                     'backup_tutor' => $validated['backup_tutor_id'] ?? null,
                     'assigned_supervisor' => $supervisor->supervisor_id,
-                    'class_status' => 'partially_assigned',
+                    'class_status' => 'pending_acceptance',
                     'notes' => $validated['notes'] ?? $assignment->notes
                 ]);
+                
+                // Create notification for main tutor
+                if ($mainTutor) {
+                    Notification::create([
+                        'user_id' => $mainTutor->tutor_id,
+                        'user_type' => 'tutor',
+                        'type' => 'assignment_request',
+                        'title' => 'New Class Assignment',
+                        'message' => "You have been assigned to {$schedule->school} - {$schedule->class} on {$schedule->date} at {$schedule->time} by {$supervisor->full_name}. Please accept or decline.",
+                        'icon' => 'fas fa-chalkboard-teacher',
+                        'color' => 'blue',
+                        'is_read' => false,
+                        'data' => [
+                            'assignment_id' => $assignment->id,
+                            'schedule_id' => $schedule->id,
+                            'school' => $schedule->school,
+                            'class' => $schedule->class,
+                            'date' => $schedule->date,
+                            'time' => $schedule->time,
+                            'role' => 'main',
+                            'supervisor_id' => $supervisor->supervisor_id
+                        ]
+                    ]);
+                }
+                
+                // Create notification for backup tutor if assigned
+                if ($backupTutor) {
+                    Notification::create([
+                        'user_id' => $backupTutor->tutor_id,
+                        'user_type' => 'tutor',
+                        'type' => 'assignment_request',
+                        'title' => 'New Class Assignment (Backup)',
+                        'message' => "You have been assigned as backup tutor to {$schedule->school} - {$schedule->class} on {$schedule->date} at {$schedule->time} by {$supervisor->full_name}. Please accept or decline.",
+                        'icon' => 'fas fa-chalkboard-teacher',
+                        'color' => 'blue',
+                        'is_read' => false,
+                        'data' => [
+                            'assignment_id' => $assignment->id,
+                            'schedule_id' => $schedule->id,
+                            'school' => $schedule->school,
+                            'class' => $schedule->class,
+                            'date' => $schedule->date,
+                            'time' => $schedule->time,
+                            'role' => 'backup',
+                            'supervisor_id' => $supervisor->supervisor_id
+                        ]
+                    ]);
+                }
                 
                 $assigned++;
             }
@@ -1839,6 +1890,223 @@ class ScheduleController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error finalizing schedule: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Tutor accepts assignment
+     */
+    public function acceptAssignment(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'assignment_id' => 'required|exists:assigned_daily_data,id'
+            ]);
+            
+            // Get the logged-in tutor
+            $tutor = Auth::guard('tutor')->user();
+            
+            if (!$tutor) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tutor not authenticated'
+                ], 401);
+            }
+            
+            // Get the assignment
+            $assignment = AssignedDailyData::with('schedule')->find($validated['assignment_id']);
+            
+            if (!$assignment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Assignment not found'
+                ], 404);
+            }
+            
+            // Check if tutor is assigned to this schedule
+            if ($assignment->main_tutor != $tutor->tutor_id && $assignment->backup_tutor != $tutor->tutor_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are not assigned to this schedule'
+                ], 403);
+            }
+            
+            // Check if assignment is pending acceptance
+            if ($assignment->class_status !== 'pending_acceptance') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This assignment is not pending acceptance'
+                ], 422);
+            }
+            
+            // Mark as fully assigned
+            $assignment->update([
+                'class_status' => 'fully_assigned',
+                'finalized_at' => now()
+            ]);
+            
+            // Get schedule details
+            $schedule = $assignment->schedule;
+            $supervisor = Supervisor::find($assignment->assigned_supervisor);
+            
+            // Notify supervisor of acceptance
+            if ($supervisor) {
+                Notification::create([
+                    'user_id' => $supervisor->supervisor_id,
+                    'user_type' => 'supervisor',
+                    'type' => 'assignment_accepted',
+                    'title' => 'Assignment Accepted',
+                    'message' => "{$tutor->full_name} has accepted the assignment for {$schedule->school} - {$schedule->class} on {$schedule->date} at {$schedule->time}.",
+                    'icon' => 'fas fa-check-circle',
+                    'color' => 'green',
+                    'is_read' => false,
+                    'data' => [
+                        'assignment_id' => $assignment->id,
+                        'schedule_id' => $schedule->id,
+                        'tutor_id' => $tutor->tutor_id,
+                        'tutor_name' => $tutor->full_name
+                    ]
+                ]);
+            }
+            
+            // Mark the notification as read
+            Notification::where('user_id', $tutor->tutor_id)
+                ->where('user_type', 'tutor')
+                ->where('type', 'assignment_request')
+                ->whereJsonContains('data->assignment_id', $assignment->id)
+                ->update(['is_read' => true, 'read_at' => now()]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Assignment accepted successfully! The supervisor has been notified.'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error accepting assignment', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error accepting assignment: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Tutor rejects assignment
+     */
+    public function rejectAssignment(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'assignment_id' => 'required|exists:assigned_daily_data,id',
+                'reason' => 'nullable|string|max:500'
+            ]);
+            
+            // Get the logged-in tutor
+            $tutor = Auth::guard('tutor')->user();
+            
+            if (!$tutor) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tutor not authenticated'
+                ], 401);
+            }
+            
+            // Get the assignment
+            $assignment = AssignedDailyData::with('schedule')->find($validated['assignment_id']);
+            
+            if (!$assignment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Assignment not found'
+                ], 404);
+            }
+            
+            // Check if tutor is assigned to this schedule
+            $isMain = $assignment->main_tutor == $tutor->tutor_id;
+            $isBackup = $assignment->backup_tutor == $tutor->tutor_id;
+            
+            if (!$isMain && !$isBackup) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are not assigned to this schedule'
+                ], 403);
+            }
+            
+            // Check if assignment is pending acceptance
+            if ($assignment->class_status !== 'pending_acceptance') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This assignment is not pending acceptance'
+                ], 422);
+            }
+            
+            // Remove tutor from assignment
+            if ($isMain) {
+                $assignment->main_tutor = null;
+            }
+            if ($isBackup) {
+                $assignment->backup_tutor = null;
+            }
+            
+            // If both tutors are now null, set status back to not_assigned
+            if (!$assignment->main_tutor && !$assignment->backup_tutor) {
+                $assignment->class_status = 'not_assigned';
+            }
+            
+            $assignment->save();
+            
+            // Get schedule details
+            $schedule = $assignment->schedule;
+            $supervisor = Supervisor::find($assignment->assigned_supervisor);
+            $reason = $validated['reason'] ?? 'No reason provided';
+            
+            // Notify supervisor of rejection
+            if ($supervisor) {
+                Notification::create([
+                    'user_id' => $supervisor->supervisor_id,
+                    'user_type' => 'supervisor',
+                    'type' => 'assignment_rejected',
+                    'title' => 'Assignment Rejected',
+                    'message' => "{$tutor->full_name} has declined the assignment for {$schedule->school} - {$schedule->class} on {$schedule->date} at {$schedule->time}. Reason: {$reason}",
+                    'icon' => 'fas fa-times-circle',
+                    'color' => 'red',
+                    'is_read' => false,
+                    'data' => [
+                        'assignment_id' => $assignment->id,
+                        'schedule_id' => $schedule->id,
+                        'tutor_id' => $tutor->tutor_id,
+                        'tutor_name' => $tutor->full_name,
+                        'reason' => $reason
+                    ]
+                ]);
+            }
+            
+            // Mark the notification as read
+            Notification::where('user_id', $tutor->tutor_id)
+                ->where('user_type', 'tutor')
+                ->where('type', 'assignment_request')
+                ->whereJsonContains('data->assignment_id', $assignment->id)
+                ->update(['is_read' => true, 'read_at' => now()]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Assignment declined. The supervisor has been notified.'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error rejecting assignment', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error rejecting assignment: ' . $e->getMessage()
             ], 500);
         }
     }
