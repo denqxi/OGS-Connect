@@ -44,33 +44,183 @@ document.addEventListener('change', function (e) {
             setTimeout(() => toast.remove(), 220);
         }, ttl);
     }
-    function approveWorkDetail(id) {
-    if (!confirm("Approve this work detail?")) return;
-
-    fetch(`/payroll/work-detail/${id}/approve`, {
-        method: "POST",
-        headers: {
-            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content,
-            "Accept": "application/json"
+    // Open Payroll Detail Modal
+    window.openPayrollDetailModal = function(detail, status) {
+        const modal = document.getElementById('payrollWorkDetailModal');
+        if (!modal) return;
+        
+        const tutor = detail.tutor;
+        const schedule = detail.schedule;
+        
+        // Populate schedule information - use schedule.date and schedule.day from the relationship
+        let dateObj = null;
+        let dayText = 'N/A';
+        
+        if (schedule?.date) {
+            dateObj = new Date(schedule.date);
+            dayText = schedule.day || dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+        } else if (detail.day) {
+            dateObj = new Date(detail.day);
+            dayText = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+        } else if (detail.created_at) {
+            dateObj = new Date(detail.created_at);
+            dayText = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
         }
-    })
-    .then(res => res.json())
-    .then(data => {
-        showToast(data.message || 'Updated', 'success');
-        const container = document.getElementById('payrollWorkDetailsContainer');
-        if (container) {
-            // notify payroll partial to reload via AJAX
-            document.dispatchEvent(new CustomEvent('workDetails:reload'));
+        
+        document.getElementById('payroll-modal-date').textContent = dateObj ? dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
+        document.getElementById('payroll-modal-day').textContent = dayText;
+        document.getElementById('payroll-modal-school').textContent = schedule?.school || 'N/A';
+        document.getElementById('payroll-modal-class').textContent = schedule?.class || 'N/A';
+        
+        // Populate tutor information
+        document.getElementById('payroll-modal-name').textContent = tutor?.full_name || tutor?.username || 'N/A';
+        
+        // Populate time and rate
+        const startTime = detail.start_time ? new Date('1970-01-01 ' + detail.start_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '—';
+        const endTime = detail.end_time ? new Date('1970-01-01 ' + detail.end_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '—';
+        
+        document.getElementById('payroll-modal-start-time').textContent = startTime;
+        document.getElementById('payroll-modal-end-time').textContent = endTime;
+        
+        // Calculate and display hours
+        let hoursText = '—';
+        if (detail.start_time && detail.end_time) {
+            const start = new Date('1970-01-01 ' + detail.start_time);
+            const end = new Date('1970-01-01 ' + detail.end_time);
+            const diffMs = end - start;
+            const diffHours = diffMs / (1000 * 60 * 60);
+            hoursText = diffHours.toFixed(2) + ' hours';
+        } else if (detail.duration) {
+            const hours = detail.duration / 60;
+            hoursText = hours.toFixed(2) + ' hours';
+        }
+        document.getElementById('payroll-modal-hours').textContent = hoursText;
+        
+        const rate = detail.rate_per_class || detail.rate_per_hour || 'N/A';
+        document.getElementById('payroll-modal-rate').textContent = isNaN(rate) ? rate : '₱' + parseFloat(rate).toFixed(2);
+        
+        const amount = detail.computed_amount || '0';
+        document.getElementById('payroll-modal-amount').textContent = '₱' + parseFloat(amount).toFixed(2);
+        
+        // Populate proof
+        const proofContainer = document.getElementById('payroll-modal-proof-container');
+        const proofPath = detail.proof_image || detail.screenshot;
+        if (proofPath) {
+            proofContainer.innerHTML = `<img src="/storage/${proofPath}" alt="Proof" class="w-full max-w-md h-64 object-cover rounded-lg border-2 border-gray-300 shadow-md cursor-pointer hover:opacity-90 transition-opacity" onclick="window.open('/storage/${proofPath}', '_blank')">`;
         } else {
-            // fallback: full page reload
-            setTimeout(() => location.reload(), 300);
+            proofContainer.innerHTML = '<p class="text-gray-500 text-center py-8">No proof image uploaded</p>';
         }
-    })
-    .catch(err => {
-        console.error(err);
-        showToast("Something went wrong", 'error');
-    });
-}
+        
+        // Handle action buttons based on status
+        const actionButtons = document.getElementById('payroll-modal-action-buttons');
+        const detailId = detail.id || detail.work_detail_id;
+        
+        if (status?.toLowerCase() !== 'approved') {
+            actionButtons.innerHTML = `
+                <button type="button" onclick="approveWorkDetailFromModal('${detailId}');" 
+                    class="px-6 py-2 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 transition-colors flex items-center gap-2">
+                    <i class="fas fa-check"></i> Approve
+                </button>
+                <button type="button" onclick="rejectWorkDetailFromModal('${detailId}');" 
+                    class="px-6 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors flex items-center gap-2">
+                    <i class="fas fa-times"></i> Reject
+                </button>
+            `;
+        } else {
+            actionButtons.innerHTML = '<span class="text-sm text-green-600 font-medium flex items-center gap-2"><i class="fas fa-check-circle"></i> Approved</span>';
+        }
+        
+        modal.classList.remove('hidden');
+    };
+    
+    window.closePayrollDetailModal = function() {
+        const modal = document.getElementById('payrollWorkDetailModal');
+        if (modal) modal.classList.add('hidden');
+    };
+    
+    // Approve from modal
+    window.approveWorkDetailFromModal = function(id) {
+        closePayrollDetailModal();
+        approveWorkDetail(id);
+    };
+    
+    // Reject from modal
+    window.rejectWorkDetailFromModal = function(id) {
+        closePayrollDetailModal();
+        rejectWorkDetail(id);
+    };
+
+    function approveWorkDetail(id) {
+        // Create confirmation modal
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center';
+        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        
+        const modalContent = document.createElement('div');
+        modalContent.className = 'bg-white rounded-lg shadow-xl max-w-md w-full mx-4';
+        
+        modalContent.innerHTML = `
+            <div class="p-6">
+                <div class="flex items-start mb-4">
+                    <div class="flex-shrink-0 bg-green-100 rounded-full p-3 mr-4">
+                        <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Approve Work Detail</h3>
+                        <p class="text-sm text-gray-600">Are you sure you want to approve this work detail?</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-lg">
+                <button id="cancelApproveBtn" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-400 transition-colors">
+                    Cancel
+                </button>
+                <button id="confirmApproveBtn" class="px-4 py-2 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 transition-colors">
+                    Approve
+                </button>
+            </div>
+        `;
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // Handle cancel
+        const cancelBtn = modal.querySelector('#cancelApproveBtn');
+        cancelBtn.onclick = () => modal.remove();
+        
+        // Handle backdrop click
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.remove();
+        };
+        
+        // Handle confirm
+        const confirmBtn = modal.querySelector('#confirmApproveBtn');
+        confirmBtn.onclick = () => {
+            modal.remove();
+            
+            fetch(`/payroll/work-detail/${id}/approve`, {
+                method: "POST",
+                headers: {
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content,
+                    "Accept": "application/json"
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                showToast(data.message || 'Approved successfully', 'success');
+                const container = document.getElementById('payrollWorkDetailsContainer');
+                if (container) {
+                    document.dispatchEvent(new CustomEvent('workDetails:reload'));
+                } else {
+                    setTimeout(() => location.reload(), 500);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showToast("Something went wrong", 'error');
+            });
+        };
+    }
 
 
     function ensureModal() {
@@ -80,41 +230,73 @@ document.addEventListener('change', function (e) {
         modal.id = 'tutorWorkModal';
         modal.className = 'fixed inset-0 z-50 flex items-center justify-center';
         modal.style.display = 'none';
+        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
 
         modal.innerHTML = `
-            <div class="modal-backdrop absolute inset-0 bg-black opacity-30"></div>
-            <div class="modal-content bg-white rounded-lg shadow-lg w-full max-w-lg z-10 overflow-hidden">
-                <div class="p-4 border-b flex items-center justify-between">
-                    <h3 class="font-medium">Edit Work Detail</h3>
-                    <button type="button" id="tutorWorkModalClose" class="text-gray-600">&times;</button>
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+                <!-- Header -->
+                <div class="bg-[#0E335D] text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
+                    <h2 class="text-xl font-bold">Work Details</h2>
+                    <button type="button" id="tutorWorkModalClose" class="text-white hover:text-gray-200 transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
                 </div>
-                <div class="p-4">
+                
+                <!-- Body -->
+                <div class="overflow-y-auto flex-grow p-6">
                     <form id="tutorWorkForm">
                         <input type="hidden" name="id" id="twd_id">
                         <input type="hidden" name="assignment_id" id="twd_assignment_id">
                         <input type="hidden" name="schedule_daily_data_id" id="twd_schedule_id">
-                        <div class="mb-3">
-                            <label class="block text-xs text-gray-600">Start Time</label>
-                            <input type="time" id="twd_start_time" name="start_time" class="mt-1 block w-full border rounded px-2 py-1">
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="block text-xs text-gray-600">End Time</label>
-                            <input type="time" id="twd_end_time" name="end_time" class="mt-1 block w-full border rounded px-2 py-1">
-                        </div>
-                        <div class="mb-3">
-                                    <label class="block text-xs text-gray-600">Image</label>
-                                    <input type="file" id="twd_image" name="image" accept="image/*" class="mt-1 block w-full">
-                        <img id="twd_image_preview" src="" alt="Image Preview" class="mt-2 w-32 h-32 object-cover rounded border hidden" style="display:none;" >
-
+                        
+                        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 mb-6 border border-blue-200 shadow-sm">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                                <i class="fas fa-clock text-blue-600 mr-2"></i>
+                                Time Details
+                            </h3>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Start Time <span class="text-red-500">*</span></label>
+                                    <input type="time" id="twd_start_time" name="start_time" required
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 </div>
-
-
-                        <div class="flex justify-end space-x-2">
-                            <button type="button" id="twd_cancel" class="px-3 py-1 border rounded text-sm">Cancel</button>
-                            <button type="submit" id="twd_save" class="px-3 py-1 bg-indigo-600 text-white rounded text-sm">Save</button>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">End Time <span class="text-red-500">*</span></label>
+                                    <input type="time" id="twd_end_time" name="end_time" required
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-5 border border-green-200 shadow-sm">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                                <i class="fas fa-image text-green-600 mr-2"></i>
+                                Proof of Work
+                            </h3>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Screenshot/Image <span class="text-red-500">*</span></label>
+                                <input type="file" id="twd_image" name="image" accept="image/*" 
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                                <img id="twd_image_preview" src="" alt="Image Preview" 
+                                    class="mt-3 w-full max-w-xs h-48 object-cover rounded-lg border-2 border-gray-300 shadow-sm hidden cursor-pointer hover:opacity-90 transition-opacity">
+                            </div>
                         </div>
                     </form>
+                </div>
+                
+                <!-- Footer -->
+                <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3 border-t flex-shrink-0">
+                    <button type="button" id="twd_cancel" 
+                        class="px-6 py-2 bg-gray-500 text-white rounded-md font-medium hover:bg-gray-600 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" id="twd_save" form="tutorWorkForm"
+                        class="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors">
+                        Save
+                    </button>
                 </div>
             </div>
         `;
@@ -124,6 +306,11 @@ document.addEventListener('change', function (e) {
         document.getElementById('tutorWorkModalClose').addEventListener('click', hideModal);
         document.getElementById('twd_cancel').addEventListener('click', hideModal);
         document.getElementById('tutorWorkForm').addEventListener('submit', handleSave);
+        
+        // Close on backdrop click
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) hideModal();
+        });
     }
 
     // Expose approveWorkDetail to global scope for inline onclick handlers
@@ -399,6 +586,75 @@ document.addEventListener('change', function (e) {
         }
     }
 
+    // Open Tutor Work Detail Modal
+    window.openTutorWorkDetailModal = function(assignment, schedule, workDetail) {
+        const modal = document.getElementById('tutorWorkDetailModal');
+        if (!modal) return;
+        
+        // Populate schedule information
+        document.getElementById('modal-date').textContent = schedule?.date ? new Date(schedule.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
+        document.getElementById('modal-day').textContent = schedule?.date ? new Date(schedule.date).toLocaleDateString('en-US', { weekday: 'long' }) : 'N/A';
+        document.getElementById('modal-school').textContent = schedule?.school || 'N/A';
+        document.getElementById('modal-class').textContent = schedule?.class || 'N/A';
+        
+        // Populate time and rate
+        const startTime = workDetail?.start_time || (schedule?.time ? new Date('1970-01-01 ' + schedule.time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '—');
+        const endTime = workDetail?.end_time ? new Date('1970-01-01 ' + workDetail.end_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 
+                        (schedule?.time && schedule?.duration ? new Date(new Date('1970-01-01 ' + schedule.time).getTime() + schedule.duration * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '—');
+        
+        document.getElementById('modal-start-time').textContent = startTime;
+        document.getElementById('modal-end-time').textContent = endTime;
+        document.getElementById('modal-duration').textContent = schedule?.duration ? schedule.duration + ' min' : 'N/A';
+        document.getElementById('modal-rate').textContent = schedule?.rate ? '₱' + parseFloat(schedule.rate).toFixed(2) : 'N/A';
+        
+        // Populate proof
+        const proofContainer = document.getElementById('modal-proof-container');
+        if (workDetail?.proof_image) {
+            proofContainer.innerHTML = `<img src="/storage/${workDetail.proof_image}" alt="Proof" class="w-full max-w-md h-64 object-cover rounded-lg border-2 border-gray-300 shadow-md cursor-pointer hover:opacity-90 transition-opacity" onclick="window.open('/storage/${workDetail.proof_image}', '_blank')">`;
+        } else {
+            proofContainer.innerHTML = '<p class="text-gray-500 text-center py-8">No proof image uploaded yet</p>';
+        }
+        
+        // Handle action buttons based on status
+        const actionButtons = document.getElementById('modal-action-buttons');
+        const isApproved = workDetail && workDetail.status?.toLowerCase() === 'approved';
+        const isPendingAcceptance = assignment.class_status === 'pending_acceptance';
+        
+        if (isPendingAcceptance) {
+            actionButtons.innerHTML = `
+                <button type="button" onclick="acceptAssignment(${assignment.id}); closeTutorWorkDetailModal();" 
+                    class="px-6 py-2 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 transition-colors flex items-center gap-2">
+                    <i class="fas fa-check"></i> Accept Assignment
+                </button>
+                <button type="button" onclick="rejectAssignment(${assignment.id}); closeTutorWorkDetailModal();" 
+                    class="px-6 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors flex items-center gap-2">
+                    <i class="fas fa-times"></i> Reject Assignment
+                </button>
+            `;
+        } else if (!isApproved) {
+            const hasSubmitted = workDetail !== null;
+            actionButtons.innerHTML = `
+                <button type="button" onclick="closeTutorWorkDetailModal(); openWorkDetailForm(${assignment.id}, ${workDetail ? workDetail.id : 'null'}, ${assignment.schedule_daily_data_id});" 
+                    class="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
+                    <i class="fas ${hasSubmitted ? 'fa-edit' : 'fa-plus'}"></i> ${hasSubmitted ? 'Edit Work Details' : 'Add Work Details'}
+                </button>
+                ${hasSubmitted ? `<button type="button" onclick="confirmDeleteWorkDetail(${workDetail.id}); closeTutorWorkDetailModal();" 
+                    class="px-6 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors flex items-center gap-2">
+                    <i class="fas fa-trash"></i> Delete
+                </button>` : ''}
+            `;
+        } else {
+            actionButtons.innerHTML = '<span class="text-sm text-green-600 font-medium flex items-center gap-2"><i class="fas fa-check-circle"></i> Approved</span>';
+        }
+        
+        modal.classList.remove('hidden');
+    };
+    
+    window.closeTutorWorkDetailModal = function() {
+        const modal = document.getElementById('tutorWorkDetailModal');
+        if (modal) modal.classList.add('hidden');
+    };
+
     // Delete confirmation & request
     window.confirmDeleteWorkDetail = async function (id) {
         if (!id) return showToast('Missing id', 'error');
@@ -412,14 +668,21 @@ document.addEventListener('change', function (e) {
         modalContent.className = 'bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4';
         
         modalContent.innerHTML = `
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Confirm Delete</h3>
-            <p class="text-gray-600 mb-6">Delete this work detail? This action cannot be undone.</p>
-            <div class="flex justify-end gap-3">
-                <button id="cancelDeleteBtn" class="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 transition-colors">
+            <div class="flex items-start mb-4">
+                <div class="flex-shrink-0 bg-red-100 rounded-full p-3 mr-4">
+                    <i class="fas fa-trash text-red-600 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Confirm Delete</h3>
+                    <p class="text-sm text-gray-600">Delete this work detail? This action cannot be undone.</p>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button id="cancelDeleteBtn" class="px-4 py-2 text-gray-700 bg-gray-300 rounded-md hover:bg-gray-400 transition-colors">
                     Cancel
                 </button>
-                <button id="confirmDeleteBtn" class="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors">
-                    OK
+                <button id="confirmDeleteBtn" class="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors">
+                    Delete
                 </button>
             </div>
         `;
@@ -660,17 +923,26 @@ document.addEventListener('change', function (e) {
         modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
         
         const modalContent = document.createElement('div');
-        modalContent.className = 'bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4';
+        modalContent.className = 'bg-white rounded-lg shadow-xl max-w-md w-full mx-4';
         
         modalContent.innerHTML = `
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Confirm Accept</h3>
-            <p class="text-gray-600 mb-6">Accept this assignment?</p>
-            <div class="flex justify-end gap-3">
-                <button id="cancelAcceptBtn" class="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 transition-colors">
+            <div class="p-6">
+                <div class="flex items-start mb-4">
+                    <div class="flex-shrink-0 bg-green-100 rounded-full p-3 mr-4">
+                        <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Accept Assignment</h3>
+                        <p class="text-sm text-gray-600">Are you sure you want to accept this assignment?</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-lg">
+                <button id="cancelAcceptBtn" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-400 transition-colors">
                     Cancel
                 </button>
-                <button id="confirmAcceptBtn" class="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors">
-                    OK
+                <button id="confirmAcceptBtn" class="px-4 py-2 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 transition-colors">
+                    Accept
                 </button>
             </div>
         `;
@@ -725,18 +997,27 @@ document.addEventListener('change', function (e) {
         modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
         
         const modalContent = document.createElement('div');
-        modalContent.className = 'bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4';
+        modalContent.className = 'bg-white rounded-lg shadow-xl max-w-md w-full mx-4';
         
         modalContent.innerHTML = `
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Confirm Reject</h3>
-            <p class="text-gray-600 mb-4">Please provide a reason for rejecting this assignment (optional):</p>
-            <textarea id="rejectReasonInput" class="w-full px-3 py-2 border border-gray-300 rounded mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3" placeholder="Enter reason..."></textarea>
-            <div class="flex justify-end gap-3">
-                <button id="cancelRejectBtn" class="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 transition-colors">
+            <div class="p-6">
+                <div class="flex items-start mb-4">
+                    <div class="flex-shrink-0 bg-red-100 rounded-full p-3 mr-4">
+                        <i class="fas fa-times-circle text-red-600 text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Reject Assignment</h3>
+                        <p class="text-sm text-gray-600 mb-4">Please provide a reason for rejecting this assignment:</p>
+                        <textarea id="rejectReasonInput" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" rows="3" placeholder="Enter reason (optional)..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-lg">
+                <button id="cancelRejectBtn" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-400 transition-colors">
                     Cancel
                 </button>
-                <button id="confirmRejectBtn" class="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors">
-                    OK
+                <button id="confirmRejectBtn" class="px-4 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors">
+                    Reject
                 </button>
             </div>
         `;

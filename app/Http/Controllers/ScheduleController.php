@@ -113,17 +113,12 @@ class ScheduleController extends Controller
                 });
             }
         } else {
-            // If no status filter, show all schedules but exclude fully_assigned with past dates
-            // Fully_assigned schedules with past dates go to schedule history
+            // If no status filter, exclude ALL fully_assigned schedules
+            // ALL fully_assigned schedules go to schedule history
             $query->where(function($q) {
                 $q->whereDoesntHave('assignedData')
                   ->orWhereHas('assignedData', function($sub) {
                       $sub->where('class_status', '!=', 'fully_assigned');
-                  })
-                  ->orWhere(function($fullyAssigned) {
-                      $fullyAssigned->whereHas('assignedData', function($sub) {
-                          $sub->where('class_status', 'fully_assigned');
-                      })->where('date', '>=', now()->toDateString());
                   });
             });
         }
@@ -551,10 +546,19 @@ class ScheduleController extends Controller
      */
     private function showScheduleHistoryData(Request $request)
     {
-        // Query fully_assigned schedules from the new table structure - only past dates
-        $query = ScheduleDailyData::leftJoin('assigned_daily_data', 'schedules_daily_data.id', '=', 'assigned_daily_data.schedule_daily_data_id')
-            ->where('assigned_daily_data.class_status', 'fully_assigned')
-            ->whereDate('schedules_daily_data.date', '<', now()->toDateString());
+        // Debug: Check all assigned data first
+        $allAssignedCount = DB::table('assigned_daily_data')->count();
+        $fullyAssignedCount = DB::table('assigned_daily_data')->where('class_status', 'fully_assigned')->count();
+        
+        Log::info('Schedule History Debug:', [
+            'total_assigned' => $allAssignedCount,
+            'fully_assigned_count' => $fullyAssignedCount,
+        ]);
+        
+        // Query ALL fully_assigned schedules from the new table structure
+        // Use INNER JOIN since we only want schedules that have assignments
+        $query = ScheduleDailyData::join('assigned_daily_data', 'schedules_daily_data.id', '=', 'assigned_daily_data.schedule_daily_data_id')
+            ->where('assigned_daily_data.class_status', 'fully_assigned');
 
         // Apply filters
         if ($request->filled('date')) {
@@ -577,9 +581,12 @@ class ScheduleController extends Controller
             $query->where('schedules_daily_data.day', $dayName);
         }
 
-        // Get fully assigned schedules with tutor names
-        $scheduleHistory = $query->leftJoin('tutor as main_tutor_info', 'assigned_daily_data.main_tutor', '=', 'main_tutor_info.tutor_id')
-            ->leftJoin('tutor as backup_tutor_info', 'assigned_daily_data.backup_tutor', '=', 'backup_tutor_info.tutor_id')
+        // Get fully assigned schedules with tutor names from applicants table
+        $scheduleHistory = $query
+            ->leftJoin('tutors as main_tutor_info', 'assigned_daily_data.main_tutor', '=', 'main_tutor_info.tutor_id')
+            ->leftJoin('applicants as main_applicant', 'main_tutor_info.applicant_id', '=', 'main_applicant.applicant_id')
+            ->leftJoin('tutors as backup_tutor_info', 'assigned_daily_data.backup_tutor', '=', 'backup_tutor_info.tutor_id')
+            ->leftJoin('applicants as backup_applicant', 'backup_tutor_info.applicant_id', '=', 'backup_applicant.applicant_id')
             ->select(
                 'schedules_daily_data.id',
                 'schedules_daily_data.date',
@@ -592,16 +599,21 @@ class ScheduleController extends Controller
                 'assigned_daily_data.finalized_at',
                 'assigned_daily_data.main_tutor',
                 'assigned_daily_data.backup_tutor',
-                DB::raw('CONCAT(main_tutor_info.first_name, " ", main_tutor_info.last_name) as main_tutor_name'),
-                DB::raw('CONCAT(backup_tutor_info.first_name, " ", backup_tutor_info.last_name) as backup_tutor_name')
+                DB::raw('CONCAT(main_applicant.first_name, " ", main_applicant.last_name) as main_tutor_name'),
+                DB::raw('CONCAT(backup_applicant.first_name, " ", backup_applicant.last_name) as backup_tutor_name')
             )
             ->orderBy('schedules_daily_data.date', 'desc')
             ->orderBy('schedules_daily_data.time', 'asc')
             ->paginate(15)
             ->withQueryString();
 
+        Log::info('Schedule History Results:', [
+            'count' => $scheduleHistory->count(),
+            'total' => $scheduleHistory->total(),
+        ]);
+
         // Get available dates for filtering (only from fully_assigned schedules)
-        $availableDates = ScheduleDailyData::leftJoin('assigned_daily_data', 'schedules_daily_data.id', '=', 'assigned_daily_data.schedule_daily_data_id')
+        $availableDates = ScheduleDailyData::join('assigned_daily_data', 'schedules_daily_data.id', '=', 'assigned_daily_data.schedule_daily_data_id')
             ->where('assigned_daily_data.class_status', 'fully_assigned')
             ->select('schedules_daily_data.date')
             ->distinct()
@@ -609,7 +621,7 @@ class ScheduleController extends Controller
             ->pluck('schedules_daily_data.date');
 
         // Get available days for filtering (only from fully_assigned schedules)
-        $availableDays = ScheduleDailyData::leftJoin('assigned_daily_data', 'schedules_daily_data.id', '=', 'assigned_daily_data.schedule_daily_data_id')
+        $availableDays = ScheduleDailyData::join('assigned_daily_data', 'schedules_daily_data.id', '=', 'assigned_daily_data.schedule_daily_data_id')
             ->where('assigned_daily_data.class_status', 'fully_assigned')
             ->select('schedules_daily_data.day')
             ->distinct()

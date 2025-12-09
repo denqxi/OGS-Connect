@@ -515,6 +515,7 @@ Route::middleware(['auth:supervisor', 'prevent.back'])->group(function () {
         Route::get('/export-tentative', [ScheduleExportController::class, 'exportTentative'])->name('export-tentative');
         Route::get('/export-final', [ScheduleExportController::class, 'exportFinal'])->name('export-final');
         Route::post('/export-selected', [ScheduleExportController::class, 'exportSelected'])->name('export-selected');
+        Route::post('/export-all', [ScheduleExportController::class, 'exportAll'])->name('export-all');
     });
     
     // ------------------------------------------------------------------------

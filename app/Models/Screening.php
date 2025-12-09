@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Screening extends Model
 {
-    protected $table = 'screening';
+    protected $table = 'screenings';
     protected $primaryKey = 'screening_id';
 
     protected $fillable = [

@@ -13,6 +13,7 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Protection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
 
 class ScheduleExportService
 {
@@ -438,14 +439,16 @@ class ScheduleExportService
     public function exportSelectedSchedules($schedules)
     {
         try {
-            // Export as read-only PDF-style HTML document
-            $html = $this->generateSchedulePDF($schedules);
+            // Generate PDF using dompdf
+            $pdf = PDF::loadView('exports.schedule-history-pdf', [
+                'schedules' => $schedules,
+                'generatedAt' => now()->format('F j, Y g:i A'),
+                'totalSchedules' => $schedules->count()
+            ]);
             
-            $fileName = 'Schedule_History_' . now()->format('Ymd_His') . '.html';
+            $fileName = 'Schedule_History_' . now()->format('Ymd_His') . '.pdf';
             
-            return response($html, 200)
-                ->header('Content-Type', 'text/html')
-                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+            return $pdf->download($fileName);
         } catch (\Exception $e) {
             Log::error('Error exporting selected schedules: ' . $e->getMessage());
             throw $e;

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Archive extends Model
 {
-    protected $table = 'archive';
+    protected $table = 'archives';
 
     protected $primaryKey = 'archive_id';
 

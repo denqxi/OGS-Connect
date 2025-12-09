@@ -20,11 +20,11 @@ function updateExportButton() {
     if (selectedCount > 0) {
         exportButton.disabled = false;
         exportButton.classList.remove('opacity-50', 'cursor-not-allowed');
-        exportButtonText.textContent = `Export File (${selectedCount} selected)`;
+        exportButtonText.textContent = `Export Selected (${selectedCount})`;
     } else {
         exportButton.disabled = true;
         exportButton.classList.add('opacity-50', 'cursor-not-allowed');
-        exportButtonText.textContent = 'Export File (0 selected)';
+        exportButtonText.textContent = 'Export Selected (0)';
     }
     // Update select all checkbox state
     if (selectedCount === 0) {
@@ -42,31 +42,70 @@ function updateExportButton() {
 function exportSelectedSchedules() {
     const selectedCheckboxes = document.querySelectorAll('.schedule-checkbox:checked');
     if (selectedCheckboxes.length === 0) {
-        alert('Please select at least one schedule to export.');
+        showNotificationAlert('⚠️ Please check the boxes next to the schedules you want to export.\n\nTip: Use the checkbox at the top to select all schedules.');
         return;
     }
-    // Create form to submit selected dates
+    
+    // Show confirmation modal
+    document.getElementById('selectedCount').textContent = selectedCheckboxes.length;
+    document.getElementById('exportSelectedModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeExportSelectedModal() {
+    document.getElementById('exportSelectedModal').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function confirmExportSelected() {
+    const selectedCheckboxes = document.querySelectorAll('.schedule-checkbox:checked');
+    
+    // Close modal
+    closeExportSelectedModal();
+    
+    // Create form to submit selected schedule IDs
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = exportSelectedSchedulesRoute;
     form.style.display = 'none';
+    
     // Add CSRF token
     const csrfInput = document.createElement('input');
     csrfInput.type = 'hidden';
     csrfInput.name = '_token';
     csrfInput.value = csrfToken;
     form.appendChild(csrfInput);
-    // Add selected dates
+    
+    // Add selected schedule IDs
     selectedCheckboxes.forEach(checkbox => {
-        const dateInput = document.createElement('input');
-        dateInput.type = 'hidden';
-        dateInput.name = 'dates[]';
-        dateInput.value = checkbox.value;
-        form.appendChild(dateInput);
+        const scheduleIdInput = document.createElement('input');
+        scheduleIdInput.type = 'hidden';
+        scheduleIdInput.name = 'schedule_ids[]';
+        scheduleIdInput.value = checkbox.value;
+        form.appendChild(scheduleIdInput);
     });
+    
     document.body.appendChild(form);
     form.submit();
     document.body.removeChild(form);
+}
+
+function showNotificationAlert(message) {
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 z-50 bg-yellow-500 text-white px-6 py-4 rounded-lg shadow-lg max-w-md';
+    notification.innerHTML = `
+        <div class="flex items-start">
+            <i class="fas fa-exclamation-triangle text-xl mr-3"></i>
+            <p class="text-sm whitespace-pre-line">${message}</p>
+        </div>
+    `;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transition = 'opacity 0.3s';
+        setTimeout(() => document.body.removeChild(notification), 300);
+    }, 4000);
 }
 
 document.addEventListener('DOMContentLoaded', function() {

@@ -80,44 +80,78 @@ class ScheduleExportController extends Controller
     public function exportSelected(Request $request)
     {
         try {
-            $dates = $request->input('dates', []);
+            $scheduleIds = $request->input('schedule_ids', []);
             
-            if (empty($dates)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No schedules selected for export'
-                ], 400);
+            if (empty($scheduleIds)) {
+                return back()->with('error', 'No schedules selected for export');
             }
 
-            // Use new table structure
+            // Use new table structure with schedule IDs to avoid duplicates
             $schedules = \App\Models\ScheduleDailyData::leftJoin('assigned_daily_data', 'schedules_daily_data.id', '=', 'assigned_daily_data.schedule_daily_data_id')
-                ->whereIn('schedules_daily_data.date', $dates)
+                ->leftJoin('tutors as main_tutor_info', 'assigned_daily_data.main_tutor', '=', 'main_tutor_info.tutor_id')
+                ->leftJoin('applicants as main_applicant', 'main_tutor_info.applicant_id', '=', 'main_applicant.applicant_id')
+                ->leftJoin('tutors as backup_tutor_info', 'assigned_daily_data.backup_tutor', '=', 'backup_tutor_info.tutor_id')
+                ->leftJoin('applicants as backup_applicant', 'backup_tutor_info.applicant_id', '=', 'backup_applicant.applicant_id')
+                ->whereIn('schedules_daily_data.id', $scheduleIds)
                 ->where('assigned_daily_data.class_status', 'fully_assigned')
                 ->select(
                     'schedules_daily_data.*',
                     'assigned_daily_data.main_tutor',
                     'assigned_daily_data.backup_tutor',
-                    'assigned_daily_data.finalized_at'
+                    'assigned_daily_data.finalized_at',
+                    \DB::raw("CONCAT(COALESCE(main_applicant.first_name, ''), ' ', COALESCE(main_applicant.last_name, '')) as main_tutor_name"),
+                    \DB::raw("CONCAT(COALESCE(backup_applicant.first_name, ''), ' ', COALESCE(backup_applicant.last_name, '')) as backup_tutor_name")
                 )
                 ->orderBy('schedules_daily_data.date')
                 ->orderBy('schedules_daily_data.time')
                 ->get();
 
             if ($schedules->isEmpty()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No schedules found for export'
-                ], 404);
+                return back()->with('error', 'No schedules found for export');
             }
 
             return $this->exportService->exportSelectedSchedules($schedules);
             
         } catch (\Exception $e) {
             Log::error('Error exporting selected schedules: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to export selected schedules: ' . $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Failed to export selected schedules. Please try again.');
+        }
+    }
+
+    /**
+     * Export all fully assigned schedules
+     */
+    public function exportAll(Request $request)
+    {
+        try {
+            // Get all fully assigned schedules
+            $schedules = \App\Models\ScheduleDailyData::join('assigned_daily_data', 'schedules_daily_data.id', '=', 'assigned_daily_data.schedule_daily_data_id')
+                ->leftJoin('tutors as main_tutor_info', 'assigned_daily_data.main_tutor', '=', 'main_tutor_info.tutor_id')
+                ->leftJoin('applicants as main_applicant', 'main_tutor_info.applicant_id', '=', 'main_applicant.applicant_id')
+                ->leftJoin('tutors as backup_tutor_info', 'assigned_daily_data.backup_tutor', '=', 'backup_tutor_info.tutor_id')
+                ->leftJoin('applicants as backup_applicant', 'backup_tutor_info.applicant_id', '=', 'backup_applicant.applicant_id')
+                ->where('assigned_daily_data.class_status', 'fully_assigned')
+                ->select(
+                    'schedules_daily_data.*',
+                    'assigned_daily_data.main_tutor',
+                    'assigned_daily_data.backup_tutor',
+                    'assigned_daily_data.finalized_at',
+                    \DB::raw("CONCAT(COALESCE(main_applicant.first_name, ''), ' ', COALESCE(main_applicant.last_name, '')) as main_tutor_name"),
+                    \DB::raw("CONCAT(COALESCE(backup_applicant.first_name, ''), ' ', COALESCE(backup_applicant.last_name, '')) as backup_tutor_name")
+                )
+                ->orderBy('schedules_daily_data.date')
+                ->orderBy('schedules_daily_data.time')
+                ->get();
+
+            if ($schedules->isEmpty()) {
+                return back()->with('error', 'No schedules found for export');
+            }
+
+            return $this->exportService->exportSelectedSchedules($schedules);
+            
+        } catch (\Exception $e) {
+            Log::error('Error exporting all schedules: ' . $e->getMessage());
+            return back()->with('error', 'Failed to export schedules. Please try again.');
         }
     }
 
@@ -158,106 +192,6 @@ class ScheduleExportController extends Controller
                 'message' => 'Failed to export history: ' . $e->getMessage()
             ], 500);
         }
-    }
-
-    /**
-     * Export selected schedules to Excel
-     */
-    private function exportSelectedSchedules($schedules)
-    {
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        
-        // Title
-        $sheet->setCellValue('A1', 'SELECTED SCHEDULES EXPORT');
-        $sheet->setCellValue('A2', 'Generated: ' . now()->format('Y-m-d H:i:s'));
-        
-        // Headers
-        $headers = [
-            'A4' => 'Date',
-            'B4' => 'Time',
-            'C4' => 'Class',
-            'D4' => 'School',
-            'E4' => 'Main Tutor(s)',
-            'F4' => 'Backup Tutor(s)',
-            'G4' => 'Supervisor',
-            'H4' => 'Status'
-        ];
-        
-        foreach ($headers as $cell => $value) {
-            $sheet->setCellValue($cell, $value);
-        }
-        
-        // Data
-        $row = 5;
-        foreach ($schedules as $schedule) {
-            $mainTutors = [];
-            $backupTutors = [];
-            
-            foreach ($schedule->tutorAssignments as $assignment) {
-                $tutor = $assignment->tutor;
-                if (!$tutor) continue;
-                
-                $tutorName = $tutor->full_name ?? 'Unknown Tutor';
-                if ($assignment->is_backup) {
-                    $backupTutors[] = $tutorName;
-                } else {
-                    $mainTutors[] = $tutorName;
-                }
-            }
-            
-            try {
-                \Log::info('Export: Setting cell values for row ' . $row);
-                $sheet->setCellValue('A' . $row, $schedule->date ?? 'N/A');
-                $timeValue = 'N/A';
-                if ($schedule->time_jst) {
-                    try {
-                        $startTime = \Carbon\Carbon::parse($schedule->time_jst);
-                        $duration = $schedule->duration ?? 0;
-                        $endTime = $startTime->copy()->addMinutes($duration);
-                        $timeValue = $startTime->format('H:i') . ' - ' . $endTime->format('H:i');
-                    } catch (\Exception $e) {
-                        $timeValue = 'N/A';
-                    }
-                }
-                $sheet->setCellValue('B' . $row, $timeValue);
-                $sheet->setCellValue('C' . $row, $schedule->class ?? 'N/A');
-                $sheet->setCellValue('D' . $row, $schedule->school ?? 'N/A');
-                $sheet->setCellValue('E' . $row, !empty($mainTutors) ? implode(', ', $mainTutors) : 'N/A');
-                $sheet->setCellValue('F' . $row, !empty($backupTutors) ? implode(', ', $backupTutors) : 'N/A');
-                $sheet->setCellValue('G' . $row, $schedule->assigned_supervisor ?? 'Unassigned');
-                $statusText = ucfirst($schedule->class_status ?? 'unknown');
-                if ($schedule->class_status === 'cancelled' && $schedule->cancellation_reason) {
-                    $statusText .= ' - ' . $schedule->cancellation_reason;
-                }
-                $sheet->setCellValue('H' . $row, $statusText);
-            } catch (\Exception $e) {
-                \Log::error('Export: Error setting cell values for row ' . $row . ': ' . $e->getMessage());
-                \Log::error('Export: Schedule data - Date: ' . $schedule->date . ', Class: ' . $schedule->class . ', School: ' . $schedule->school);
-                throw $e;
-            }
-            
-            $row++;
-        }
-        
-        // Apply styling
-        $lastRow = $row - 1;
-        if ($lastRow > 0) {
-            \Log::info('Export: Applying styling for range A1:H' . $lastRow);
-            $this->applyExcelStyling($sheet, 'A1:H' . $lastRow);
-        }
-        
-        // Generate filename and download
-        $filename = 'Selected_Schedules_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
-        
-        $writer = new Xlsx($spreadsheet);
-        
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        header('Cache-Control: max-age=0');
-        
-        $writer->save('php://output');
-        exit;
     }
 
     /**

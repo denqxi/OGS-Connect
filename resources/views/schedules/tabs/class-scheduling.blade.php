@@ -11,7 +11,7 @@
     ])
 @else
 
-<div class="bg-white px-0 pb-4 border-b border-gray-200">
+<div class="bg-white px-6 pt-6 pb-4 border-b border-gray-200">
     <div class="flex items-center justify-between">
 
         <!-- LEFT SIDE: LABEL + FILTERS IN ONE ROW -->
@@ -93,8 +93,8 @@
                    class="hidden"
                    onchange="uploadExcelFile()">
 
-            <button onclick="document.getElementById('excelFileInput').click()"
-                class="flex items-center space-x-2 bg-[#0E335D] text-white px-4 py-2 rounded-full text-sm font-medium 
+            <button type="button" onclick="document.getElementById('excelFileInput').click()"
+                class="flex items-center space-x-2 bg-[#0E335D] text-white px-4 py-2 rounded-md text-sm font-medium 
                 hover:bg-[#184679] transition duration-200 hover:scale-105">
                 <i class="fas fa-file-excel"></i>
                 <span>Upload Excel</span>
@@ -114,7 +114,7 @@ function removePageParam() {
 
 
     <!-- Class Scheduling Table -->
-    <div class="bg-white overflow-x-auto" id="tableContainer">
+    <div class="overflow-x-auto" id="tableContainer">
         <table class="w-full">
             <thead class="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -264,14 +264,14 @@ function removePageParam() {
                         
                         <div class="flex items-center justify-center space-x-2">
                             <!-- View Details Button -->
-                            <button onclick="openScheduleDetailsModal('{{ $viewDate }}', '{{ $data->school }}', {{ json_encode($data) }})" 
+                            <button type="button" onclick="openScheduleDetailsModal('{{ $viewDate }}', '{{ $data->school }}', {{ json_encode($data) }})" 
                                     class="w-8 h-8 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 inline-flex items-center justify-center transition-colors"
                                     title="View Details">
                                 <i class="fas fa-eye text-xs"></i>
                             </button>
                             
                             <!-- Assign Supervisor Button -->
-                            <button onclick="openAssignSupervisorModal('{{ $viewDate }}', '{{ $data->school }}', '{{ $data->time }}', {{ json_encode([
+                            <button type="button" onclick="openAssignSupervisorModal('{{ $viewDate }}', '{{ $data->school }}', '{{ $data->time }}', {{ json_encode([
                                 'status' => $data->raw_class_status,
                                 'schedule_id' => $data->id,
                                 'main_tutor_id' => $data->assignedData->main_tutor ?? null,
@@ -337,100 +337,193 @@ function removePageParam() {
 
     <!-- Schedule Details Modal -->
     <div id="scheduleDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
             <!-- Header -->
-            <div class="bg-[#0E335D] text-white px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-                <h2 class="text-xl font-bold">Schedule Details</h2>
-                <button onclick="closeScheduleDetailsModal()" class="text-white hover:text-gray-200">
+            <div class="bg-[#0E335D] text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
+                <h2 class="text-xl font-bold">Schedule Information</h2>
+                <button type="button" onclick="closeScheduleDetailsModal()" class="text-white hover:text-gray-200 transition-colors">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
             
             <!-- Body -->
-            <div class="p-6 space-y-4">
-                <!-- Date & Day -->
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-                        <label class="block text-sm font-bold text-blue-900 uppercase mb-2">Date</label>
-                        <input type="text" id="detail-date" readonly class="w-full bg-transparent border-0 font-semibold text-blue-900 focus:outline-none">
+            <div class="overflow-y-auto flex-grow">
+                <div class="p-6">
+                    <!-- Schedule Overview Card -->
+                    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 mb-6 border border-blue-200 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-calendar-alt text-blue-600 mr-2"></i>
+                            Schedule Overview
+                        </h3>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- Date -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                                <p class="text-sm font-semibold text-gray-800" id="detail-date">-</p>
+                            </div>
+                            
+                            <!-- Day -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Day</label>
+                                <p class="text-sm font-semibold text-gray-800" id="detail-day">-</p>
+                            </div>
+                            
+                            <!-- Time -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Time</label>
+                                <p class="text-sm font-semibold text-gray-800" id="detail-times">-</p>
+                            </div>
+                            
+                            <!-- Duration -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Duration</label>
+                                <p class="text-sm font-semibold text-gray-800" id="detail-duration">-</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-                        <label class="block text-sm font-bold text-purple-900 uppercase mb-2">Day</label>
-                        <input type="text" id="detail-day" readonly class="w-full bg-transparent border-0 font-semibold text-purple-900 focus:outline-none">
+
+                    <!-- School & Class Information -->
+                    <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-5 mb-6 border border-green-200 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-school text-green-600 mr-2"></i>
+                            School & Class Details
+                        </h3>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- School -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">School</label>
+                                <p class="text-sm font-semibold text-gray-800" id="detail-school">-</p>
+                            </div>
+                            
+                            <!-- Account -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Account</label>
+                                <p class="text-sm font-semibold text-gray-800" id="detail-account">-</p>
+                            </div>
+                            
+                            <!-- Class -->
+                            <div class="col-span-2">
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Class</label>
+                                <p class="text-sm font-semibold text-gray-800" id="detail-classes">-</p>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                
-                <!-- School -->
-                <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200">
-                    <label class="block text-sm font-bold text-indigo-900 uppercase mb-2">School</label>
-                    <input type="text" id="detail-school" readonly class="w-full bg-transparent border-0 font-semibold text-indigo-900 focus:outline-none">
-                </div>
-                
-                <!-- Classes -->
-                <div class="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-                    <label class="block text-sm font-bold text-green-900 uppercase mb-2">Classes</label>
-                    <textarea id="detail-classes" readonly rows="2" class="w-full bg-transparent border-0 font-semibold text-green-900 focus:outline-none resize-none"></textarea>
-                </div>
-                
-                <!-- Time Slots -->
-                <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
-                    <label class="block text-sm font-bold text-yellow-900 uppercase mb-2">Time Slots</label>
-                    <textarea id="detail-times" readonly rows="3" class="w-full bg-transparent border-0 font-semibold text-yellow-900 focus:outline-none resize-none"></textarea>
-                </div>
-                
-                <!-- Duration -->
-                <div class="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
-                    <label class="block text-sm font-bold text-orange-900 uppercase mb-2">Duration</label>
-                    <input type="text" id="detail-duration" readonly class="w-full bg-transparent border-0 font-semibold text-orange-900 focus:outline-none">
-                </div>
-                
-                <!-- Status & Account -->
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
-                        <label class="block text-sm font-bold text-red-900 uppercase mb-2">Status</label>
-                        <div id="detail-status"></div>
+
+                    <!-- Assignment Information -->
+                    <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-5 mb-6 border border-purple-200 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-users text-purple-600 mr-2"></i>
+                            Assignment Details
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <!-- Status -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-2">Status</label>
+                                <div id="detail-status"></div>
+                            </div>
+                            
+                            <!-- Supervisor -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Assigned Supervisor</label>
+                                <p class="text-sm font-semibold text-gray-800" id="detail-supervisor">-</p>
+                            </div>
+                            
+                            <!-- Main Tutor -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Main Tutor</label>
+                                <div class="bg-white rounded-md px-3 py-2 border border-gray-200">
+                                    <p class="text-sm font-semibold text-gray-800" id="detail-main-tutor">-</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Backup Tutor -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Backup Tutor</label>
+                                <div class="bg-white rounded-md px-3 py-2 border border-gray-200">
+                                    <p class="text-sm font-semibold text-gray-800" id="detail-backup-tutor">-</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="bg-gradient-to-br from-pink-50 to-pink-100 p-4 rounded-lg border border-pink-200">
-                        <label class="block text-sm font-bold text-pink-900 uppercase mb-2">Account</label>
-                        <input type="text" id="detail-account" readonly class="w-full bg-transparent border-0 font-semibold text-pink-900 focus:outline-none">
-                    </div>
-                </div>
-                
-                <!-- Assigned Supervisor -->
-                <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-lg border border-emerald-200">
-                    <label class="block text-sm font-bold text-emerald-900 uppercase mb-2">Assigned Supervisor</label>
-                    <input type="text" id="detail-supervisor" readonly class="w-full bg-transparent border-0 font-semibold text-emerald-900 focus:outline-none">
-                </div>
-                
-                <!-- Main Tutor -->
-                <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-                    <label class="block text-sm font-bold text-blue-900 uppercase mb-2">Main Tutor</label>
-                    <input type="text" id="detail-main-tutor" readonly class="w-full bg-transparent border-0 font-semibold text-blue-900 focus:outline-none">
-                </div>
-                
-                <!-- Backup Tutor -->
-                <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-                    <label class="block text-sm font-bold text-purple-900 uppercase mb-2">Backup Tutor</label>
-                    <input type="text" id="detail-backup-tutor" readonly class="w-full bg-transparent border-0 font-semibold text-purple-900 focus:outline-none">
                 </div>
             </div>
             
             <!-- Footer -->
-            <div class="px-6 py-4 bg-gray-50 flex justify-between items-center border-t">
+            <div class="px-6 py-4 bg-gray-50 flex justify-between items-center border-t flex-shrink-0">
                 <input type="hidden" id="detail-schedule-id" value="">
                 <input type="hidden" id="detail-assignment-id" value="">
                 <input type="hidden" id="detail-raw-status" value="">
                 
                 <!-- Finalize Button (only for partially_assigned) -->
-                <button id="finalizeButton" onclick="confirmFinalizeSchedule()" class="hidden px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                <button type="button" id="finalizeButton" onclick="confirmFinalizeSchedule()" class="hidden px-6 py-2 bg-green-600 text-white rounded-md font-semibold hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm">
                     <i class="fas fa-check-circle"></i>
                     <span>Mark as Fully Assigned</span>
                 </button>
                 
                 <div class="flex-1"></div>
                 
-                <button onclick="closeScheduleDetailsModal()" class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+                <button type="button" onclick="closeScheduleDetailsModal()" class="px-6 py-2 bg-gray-500 text-white rounded-md font-semibold hover:bg-gray-600 transition-colors shadow-sm">
                     Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Finalize Confirmation Modal -->
+    <div id="finalizeConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <div class="flex items-start mb-4">
+                    <div class="flex-shrink-0 bg-green-100 rounded-full p-3 mr-4">
+                        <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Finalize Schedule Assignment</h3>
+                        <p class="text-sm text-gray-600">
+                            Are you sure you want to mark this schedule as <strong>Fully Assigned</strong>?
+                        </p>
+                        <p class="text-sm text-gray-500 mt-2">
+                            This action will finalize the assignment and notify the assigned tutors.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-3 rounded-b-lg">
+                <button type="button" onclick="closeFinalizeModal()" 
+                        class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-400 transition-colors">
+                    Cancel
+                </button>
+                <button type="button" onclick="proceedFinalize()" 
+                        class="px-4 py-2 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 transition-colors">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <div class="flex items-start mb-4">
+                    <div class="flex-shrink-0 bg-green-100 rounded-full p-3 mr-4">
+                        <i class="fas fa-check-circle text-green-600 text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Success!</h3>
+                        <p class="text-sm text-gray-600" id="successMessage">
+                            Schedule finalized successfully! 2 tutor(s) have been notified.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end rounded-b-lg">
+                <button type="button" onclick="closeSuccessModal()" 
+                        class="px-4 py-2 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 transition-colors">
+                    OK
                 </button>
             </div>
         </div>
@@ -442,7 +535,7 @@ function removePageParam() {
             <!-- Header -->
             <div class="bg-[#0E335D] text-white px-6 py-4 flex items-center justify-between">
                 <h2 class="text-xl font-bold">Assign Supervisor to Watch Tutor</h2>
-                <button onclick="closeAssignSupervisorModal()" class="text-white hover:text-gray-200">
+                <button type="button" onclick="closeAssignSupervisorModal()" class="text-white hover:text-gray-200">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
@@ -497,10 +590,10 @@ function removePageParam() {
             
             <!-- Footer -->
             <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3 border-t">
-                <button onclick="closeAssignSupervisorModal()" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                <button type="button" onclick="closeAssignSupervisorModal()" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
                     Cancel
                 </button>
-                <button onclick="submitAssignSupervisor()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                <button type="button" onclick="submitAssignSupervisor()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
                     <i class="fas fa-user-plus"></i>
                     Assign
                 </button>
@@ -518,66 +611,83 @@ function removePageParam() {
         // Modal Functions
         function openScheduleDetailsModal(date, school, data) {
             console.log('Opening modal with data:', data); // Debug
+            console.log('Day value:', data.day);
             
             // Store schedule ID and assignment ID
             document.getElementById('detail-schedule-id').value = data.id || '';
             document.getElementById('detail-assignment-id').value = data.assignment_id || '';
             
             // Format date
-            document.getElementById('detail-date').value = new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+            const dateObj = new Date(date);
+            document.getElementById('detail-date').textContent = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
             
-            // Day
-            document.getElementById('detail-day').value = data.day || '-';
+            // Day - if not provided in data, get from date
+            let dayName = data.day;
+            if (!dayName || dayName.trim() === '') {
+                const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                dayName = days[dateObj.getDay()];
+            }
+            document.getElementById('detail-day').textContent = dayName || '-';
             
             // School
-            document.getElementById('detail-school').value = data.school || school || '-';
+            document.getElementById('detail-school').textContent = data.school || school || '-';
             
             // Class
-            document.getElementById('detail-classes').value = data.class || '-';
+            document.getElementById('detail-classes').textContent = data.class || '-';
             
             // Time - format it nicely
             if (data.time) {
                 try {
                     const timeObj = new Date('2000-01-01 ' + data.time);
-                    document.getElementById('detail-times').value = timeObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                    document.getElementById('detail-times').textContent = timeObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
                 } catch (e) {
-                    document.getElementById('detail-times').value = data.time;
+                    document.getElementById('detail-times').textContent = data.time;
                 }
             } else {
-                document.getElementById('detail-times').value = '-';
+                document.getElementById('detail-times').textContent = '-';
             }
             
             // Duration
             if (data.duration) {
-                document.getElementById('detail-duration').value = data.duration + ' minutes';
+                document.getElementById('detail-duration').textContent = data.duration + ' minutes';
             } else {
-                document.getElementById('detail-duration').value = '25 minutes';
+                document.getElementById('detail-duration').textContent = '25 minutes';
             }
             
             // Account name - use the actual account_name from data
-            document.getElementById('detail-account').value = data.account_name || data.school || school || '-';
+            document.getElementById('detail-account').textContent = data.account_name || data.school || school || '-';
             
-            // Status - use raw database value
+            // Status - use raw database value with better styling
             const statusDiv = document.getElementById('detail-status');
             const rawStatus = data.raw_class_status || null;
             let statusText = 'Not Assigned';
-            let statusColor = 'bg-red-100 text-red-800';
+            let statusColor = 'bg-red-100 text-red-800 border-red-200';
+            let iconClass = 'fa-times-circle';
             
             if (rawStatus === 'fully_assigned') {
                 statusText = 'Fully Assigned';
-                statusColor = 'bg-green-100 text-green-800';
+                statusColor = 'bg-green-100 text-green-800 border-green-200';
+                iconClass = 'fa-check-circle';
             } else if (rawStatus === 'partially_assigned') {
                 statusText = 'Partially Assigned';
-                statusColor = 'bg-yellow-100 text-yellow-800';
+                statusColor = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                iconClass = 'fa-exclamation-circle';
             } else if (rawStatus === 'cancelled') {
                 statusText = 'Cancelled';
-                statusColor = 'bg-gray-200 text-gray-800';
+                statusColor = 'bg-gray-100 text-gray-800 border-gray-200';
+                iconClass = 'fa-ban';
             } else if (rawStatus === 'not_assigned') {
                 statusText = 'Not Assigned';
-                statusColor = 'bg-red-100 text-red-800';
+                statusColor = 'bg-red-100 text-red-800 border-red-200';
+                iconClass = 'fa-times-circle';
             }
             
-            statusDiv.innerHTML = `<span class="px-3 py-1 rounded-full text-sm font-medium ${statusColor}">${statusText}</span><br><span class="text-xs text-gray-500 mt-1">DB: ${rawStatus || 'null'}</span>`;
+            statusDiv.innerHTML = `
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${statusColor}">
+                    <i class="fas ${iconClass}"></i>
+                    <span class="font-semibold">${statusText}</span>
+                </div>
+            `;
             
             // Store raw status
             document.getElementById('detail-raw-status').value = rawStatus || '';
@@ -591,13 +701,13 @@ function removePageParam() {
             }
             
             // Assigned Supervisor
-            document.getElementById('detail-supervisor').value = data.assigned_supervisors || data.assigned_supervisor || 'None';
+            document.getElementById('detail-supervisor').textContent = data.assigned_supervisors || data.assigned_supervisor || 'None';
             
             // Main Tutor
-            document.getElementById('detail-main-tutor').value = data.main_tutor_name || 'Not Assigned';
+            document.getElementById('detail-main-tutor').textContent = data.main_tutor_name || 'Not Assigned';
             
             // Backup Tutor
-            document.getElementById('detail-backup-tutor').value = data.backup_tutor_name || 'Not Assigned';
+            document.getElementById('detail-backup-tutor').textContent = data.backup_tutor_name || 'Not Assigned';
             
             document.getElementById('scheduleDetailsModal').classList.remove('hidden');
         }
@@ -797,13 +907,25 @@ function removePageParam() {
             const scheduleId = document.getElementById('detail-schedule-id').value;
             
             if (!assignmentId) {
-                alert('Assignment ID not found');
+                showNotification('Assignment ID not found', 'error');
                 return;
             }
             
-            if (confirm('Are you sure you want to mark this schedule as Fully Assigned? This action will finalize the assignment and notify the assigned tutors.')) {
-                finalizeSchedule(assignmentId, scheduleId);
-            }
+            // Show confirmation modal
+            document.getElementById('finalizeConfirmModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeFinalizeModal() {
+            document.getElementById('finalizeConfirmModal').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+        
+        function proceedFinalize() {
+            const assignmentId = document.getElementById('detail-assignment-id').value;
+            const scheduleId = document.getElementById('detail-schedule-id').value;
+            closeFinalizeModal();
+            finalizeSchedule(assignmentId, scheduleId);
         }
         
         function finalizeSchedule(assignmentId, scheduleId) {
@@ -829,21 +951,50 @@ function removePageParam() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message || 'Schedule finalized successfully! Tutors have been notified.');
                     closeScheduleDetailsModal();
-                    location.reload(); // Refresh to show updated data
+                    showSuccessModal(data.message || 'Schedule finalized successfully! Tutors have been notified.');
                 } else {
-                    alert('Error: ' + (data.message || 'Failed to finalize schedule'));
+                    showErrorNotification('Error: ' + (data.message || 'Failed to finalize schedule'));
                     finalizeButton.disabled = false;
                     finalizeButton.innerHTML = originalText;
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('An error occurred while finalizing the schedule');
+                showErrorNotification('An error occurred while finalizing the schedule');
                 finalizeButton.disabled = false;
                 finalizeButton.innerHTML = originalText;
             });
+        }
+        
+        function showSuccessModal(message) {
+            document.getElementById('successMessage').textContent = message;
+            document.getElementById('successModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.add('hidden');
+            document.body.style.overflow = '';
+            location.reload(); // Refresh to show updated data
+        }
+        
+        function showErrorNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 z-50 bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg max-w-md';
+            notification.innerHTML = `
+                <div class="flex items-start">
+                    <i class="fas fa-exclamation-circle text-xl mr-3"></i>
+                    <p class="text-sm">${message}</p>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 0.3s';
+                setTimeout(() => document.body.removeChild(notification), 300);
+            }, 4000);
         }
     </script>
     <script src="{{ asset('js/class-scheduling-search.js') }}"></script>
