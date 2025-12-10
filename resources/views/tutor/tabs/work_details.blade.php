@@ -32,8 +32,6 @@
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scheduled Time</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">School</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actual Start</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actual End</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proof</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supervisor Note</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -91,12 +89,6 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $schedule->school ?? 'N/A' }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $schedule->duration ?? 'N/A' }} min</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {{ $workDetail && $workDetail->start_time ? \Carbon\Carbon::parse($workDetail->start_time)->format('g:i A') : '—' }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {{ $workDetail && $workDetail->end_time ? \Carbon\Carbon::parse($workDetail->end_time)->format('g:i A') : '—' }}
-                    </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                         @if($workDetail && $workDetail->proof_image)
                             <a href="{{ asset('storage/' . $workDetail->proof_image) }}" target="_blank" class="text-blue-600 hover:text-blue-800">
@@ -207,4 +199,103 @@
     </div>
 @endif
 
+<!-- View Work Detail Modal -->
+<div id="viewWorkDetailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display: none;">
+    <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <!-- Header -->
+        <div class="sticky top-0 bg-gray-50 border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-gray-900">Work Detail Summary</h2>
+            <button onclick="document.getElementById('viewWorkDetailModal').style.display = 'none'" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Content -->
+        <div class="p-6 space-y-6">
+            <!-- Work Summary Section -->
+            <div>
+                <h3 class="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">Work Summary</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wider font-medium">Date</p>
+                        <p class="text-sm text-gray-900 mt-1" id="vwd_schedule_date">—</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wider font-medium">Day</p>
+                        <p class="text-sm text-gray-900 mt-1" id="vwd_schedule_day">—</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wider font-medium">Scheduled Time</p>
+                        <p class="text-sm text-gray-900 mt-1" id="vwd_schedule_time">—</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wider font-medium">School</p>
+                        <p class="text-sm text-gray-900 mt-1" id="vwd_school">—</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wider font-medium">Scheduled Duration</p>
+                        <p class="text-sm text-gray-900 mt-1" id="vwd_duration_scheduled">—</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actual Times Section -->
+            <div>
+                <h3 class="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">Actual Times Submitted</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wider font-medium">Start Time</p>
+                        <p class="text-sm text-gray-900 mt-1" id="vwd_actual_start">—</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wider font-medium">End Time</p>
+                        <p class="text-sm text-gray-900 mt-1" id="vwd_actual_end">—</p>
+                    </div>
+                    <div class="col-span-2">
+                        <p class="text-xs text-gray-500 uppercase tracking-wider font-medium">Total Duration</p>
+                        <p class="text-sm text-gray-900 mt-1" id="vwd_duration_actual">—</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Proof Section -->
+            <div>
+                <h3 class="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">Proof of Work</h3>
+                <img id="vwd_proof_image" src="" alt="Proof of work" class="w-full rounded border border-gray-200 mb-2" style="max-height: 300px; object-fit: contain; display: none;">
+                <a id="vwd_proof_link" href="" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm" style="display: none;">
+                    <i class="fas fa-external-link-alt mr-1"></i> Open in new window
+                </a>
+                <p id="vwd_no_proof" class="text-sm text-gray-500">No proof image provided</p>
+            </div>
+
+            <!-- Supervisor Approval Section -->
+            <div id="vwd_approval_section" style="display: none;">
+                <h3 class="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b border-green-200 text-green-700">Approval Information</h3>
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
+                    <div>
+                        <p class="text-xs text-green-700 uppercase tracking-wider font-medium">Approved By</p>
+                        <p class="text-sm text-gray-900 mt-1" id="vwd_approved_by">—</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-green-700 uppercase tracking-wider font-medium">Approved Date & Time</p>
+                        <p class="text-sm text-gray-900 mt-1" id="vwd_approved_date">—</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-green-700 uppercase tracking-wider font-medium">Supervisor Note</p>
+                        <p class="text-sm text-gray-900 mt-1 italic" id="vwd_approval_note">—</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end">
+            <button onclick="document.getElementById('viewWorkDetailModal').style.display = 'none'" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
 <script src="{{ asset('js/tutor-work.js') }}"></script>
+

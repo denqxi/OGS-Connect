@@ -102,7 +102,7 @@
                                         </div>
 
                                         <!-- Content -->
-                                        <div class="flex-1 min-w-0 cursor-pointer" @click="markAsRead(notification.id)">
+                                        <div class="flex-1 min-w-0 cursor-pointer" @click="handleNotificationClick(notification)">
                                             <div class="flex items-center justify-between">
                                                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100" x-text="notification.title"></p>
                                                 <span class="text-xs text-gray-500 dark:text-gray-400"
@@ -205,10 +205,10 @@
                 <!-- Payment Details -->
                 <a href="{{ route('tutor.portal', ['tab' => 'payment']) }}"
                     class="flex-shrink-0 py-3 md:py-4 px-3 md:px-4 relative
-                    {{ $activeTab == 'payment' ? 'after:absolute after:-bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#D35400] dark:after:bg-[#F0B37A] after:rounded-full after:transition-all after:duration-300' : '' }}">
+                    {{ $activeTab == 'payment' ? 'after:absolute after:-bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#0E335D] dark:after:bg-[#F0B37A] after:rounded-full after:transition-all after:duration-300' : '' }}">
                     <div
                         class="flex flex-col md:flex-row items-center md:space-x-2 font-medium text-base md:text-sm
-                           text-[#D35400] dark:text-[#F0B37A] hover:text-[#D35400] dark:hover:text-[#F8C99E]
+                           text-[#0E335D] dark:text-[#F0B37A] hover:text-[#0E335D] dark:hover:text-[#F8C99E]
                            transform hover:scale-105 transition-transform duration-200">
                         <i class="fas fa-credit-card text-xl md:text-lg"></i>
                         <span class="hidden sm:inline">Payment Details</span>
@@ -229,11 +229,11 @@
                 </a>
 
                 <a href="{{ route('tutor.portal', ['tab'=> 'work_details'])}}"
-                    class="flex-shrink-0 py-3 md:py-4 px-3 md:px-4 relative"
-                    {{ $activeTab == 'work_details' ? 'after:absolute after:-bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#16A34A] dark:after:bg-[#86EFAC] after:rounded-full after:transition-all after:duration-300' : '' }}">
+                    class="flex-shrink-0 py-3 md:py-4 px-3 md:px-4 relative
+                    {{ $activeTab == 'work_details' ? 'after:absolute after:-bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#4B5563] dark:after:bg-[#D1D5DB] after:rounded-full after:transition-all after:duration-300' : '' }}">
                     <div
                         class="flex flex-col md:flex-row items-center md:space-x-2 font-medium text-base md:text-sm
-                        text-[#16A34A] dark:text-[#86EFAC] hover:text-[#16A34A] dark:hover:text-[#BBF7D0]
+                        text-[#4B5563] dark:text-[#D1D5DB] hover:text-[#4B5563] dark:hover:text-[#E5E7EB]
                         transform hover:scale-105 transition-transform duration-200">
                         <i class="fas fa-briefcase text-xl md:text-lg"></i>
                         <span class="hidden sm:inline">Work Details</span>
@@ -414,6 +414,16 @@
                     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
                     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
                     return date.toLocaleDateString();
+                },
+
+                async handleNotificationClick(notification) {
+                    // Mark as read
+                    await this.markAsRead(notification.id);
+                    
+                    // If it's an assignment request, redirect to work details tab
+                    if (notification.type === 'assignment_request') {
+                        window.location.href = '{{ route("tutor.portal") }}?tab=work_details';
+                    }
                 }
             }
         }

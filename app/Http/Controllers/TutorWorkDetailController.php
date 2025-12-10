@@ -26,13 +26,44 @@ class TutorWorkDetailController extends Controller
 
         $detail = TutorWorkDetail::where('id', $id)
             ->where('tutor_id', $tutor->tutorID)
+            ->with(['schedule', 'approvals' => function($q) {
+                $q->with('supervisor')->latest('approved_at');
+            }])
             ->first();
 
         if (! $detail) {
             return response()->json(['message' => 'Work detail not found'], 404);
         }
 
-        return response()->json(['data' => $detail]);
+        // Get the latest approval if it exists
+        $approval = $detail->approvals->first();
+        
+        // Format approval response with supervisor details
+        $approvalData = null;
+        if ($approval) {
+            $approvalData = [
+                'id' => $approval->id,
+                'work_detail_id' => $approval->work_detail_id,
+                'supervisor_id' => $approval->supervisor_id,
+                'old_status' => $approval->old_status,
+                'new_status' => $approval->new_status,
+                'approved_at' => $approval->approved_at,
+                'note' => $approval->note,
+                'supervisor' => $approval->supervisor ? [
+                    'supervisor_id' => $approval->supervisor->supervisor_id,
+                    'first_name' => $approval->supervisor->first_name,
+                    'middle_name' => $approval->supervisor->middle_name,
+                    'last_name' => $approval->supervisor->last_name,
+                    'full_name' => $approval->supervisor->full_name,
+                ] : null
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'work_detail' => $detail,
+            'approval' => $approvalData
+        ]);
     }
 
     /**

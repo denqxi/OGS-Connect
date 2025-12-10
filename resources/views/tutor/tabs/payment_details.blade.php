@@ -1,7 +1,7 @@
 <!-- Payment Information Content -->
 <div class="space-y-6">
     <!-- Row 1: Section Title -->
-    <h3 class="text-lg md:text-xl font-semibold text-[#F39C12] dark:text-[#F39C12]">
+    <h3 class="text-lg md:text-xl font-semibold text-[#4B5563] dark:text-[#F39C12]">
         Payment Information
     </h3>
     <hr>

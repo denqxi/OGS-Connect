@@ -24,19 +24,29 @@
                     </button>
                 </div>
             </div>
-            <div class="flex items-center space-x-4">
-                <div class="flex items-center space-x-2">
-                    <button type="button" id="addClassModal" class="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white rounded text-xs" onclick="createWorkDetail()">
-                        Add Class
-                    </button>
-                </div>
-            </div>
         </div>
     </form>
 </div>
 
 <div id="payrollWorkDetailsContainer">
     <div class="py-6 text-center text-gray-500">Loading work details...</div>
+</div>
+
+<div id="acceptConfirmationModal" class="fixed inset-0 z-50 items-center justify-center" style="display:none;">
+    <div class="absolute inset-0 bg-black opacity-40"></div>
+    <div class="relative bg-white rounded-lg shadow-lg w-full max-w-md mx-4 z-10">
+        <div class="p-4 border-b flex items-center justify-between">
+            <h3 class="font-medium">Confirm Approval</h3>
+            <button type="button" class="accept-close text-gray-600">&times;</button>
+        </div>
+        <div class="p-4">
+            <p class="mb-4">Are you sure you want to approve this work detail?</p>
+            <div class="flex justify-end space-x-2">
+                <button type="button" class="accept-cancel px-3 py-1 border rounded text-sm">Cancel</button>
+                <button type="button" class="accept-submit px-3 py-1 bg-green-600 text-white rounded text-sm">Approve</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Reject Reason Modal -->

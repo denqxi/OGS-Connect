@@ -44,33 +44,88 @@ document.addEventListener('change', function (e) {
             setTimeout(() => toast.remove(), 220);
         }, ttl);
     }
-    function approveWorkDetail(id) {
-    if (!confirm("Approve this work detail?")) return;
+    
+    // Use existing approval confirmation modal from tutor-payroll.blade.php
+    function setupApprovalModal() {
+        const modal = document.getElementById('acceptConfirmationModal');
+        if (!modal) return;
+        
+        const closeBtn = modal.querySelector('.accept-close');
+        const cancelBtn = modal.querySelector('.accept-cancel');
+        const submitBtn = modal.querySelector('.accept-submit');
+        
+        const closeModal = () => {
+            modal.style.display = 'none';
+        };
+        
+        closeBtn?.addEventListener('click', closeModal);
+        cancelBtn?.addEventListener('click', closeModal);
+        
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+        
+        submitBtn?.addEventListener('click', () => {
+            const pendingId = modal.dataset.pendingId;
+            if (!pendingId) return;
+            closeModal();
+            
+            fetch(`/payroll/work-detail/${pendingId}/approve`, {
+                method: "POST",
+                headers: {
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content,
+                    "Accept": "application/json"
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                showToast(data.message || 'Updated', 'success');
+                const container = document.getElementById('payrollWorkDetailsContainer');
+                if (container) {
+                    document.dispatchEvent(new CustomEvent('workDetails:reload'));
+                } else {
+                    setTimeout(() => location.reload(), 300);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showToast("Something went wrong", 'error');
+            });
+        });
+    }
+    
+    // Initialize approval modal on page load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupApprovalModal);
+    } else {
+        setupApprovalModal();
+    }
+    //     window.rejectWorkDetail = function (id) {
+    //     if (!id) return showToast('Missing work detail id', 'error');
 
-    fetch(`/payroll/work-detail/${id}/approve`, {
-        method: "POST",
-        headers: {
-            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content,
-            "Accept": "application/json"
+    //     const modal = document.getElementById('twdRejectModal');
+    //     if (!modal) return showToast('Reject modal not found', 'error');
+
+    //     const input = modal.querySelector('input[name="reject_id"]');
+    //     const ta = modal.querySelector('textarea[name="reject_note"]');
+    //     input.value = id;
+    //     ta.value = '';
+    //     modal.style.display = 'flex';
+    //     ta.focus();
+    // };
+
+    function approveWorkDetail(id) {
+        const modal = document.getElementById('acceptConfirmationModal');
+        if (!modal) {
+            showToast('Approval modal not found', 'error');
+            return;
         }
-    })
-    .then(res => res.json())
-    .then(data => {
-        showToast(data.message || 'Updated', 'success');
-        const container = document.getElementById('payrollWorkDetailsContainer');
-        if (container) {
-            // notify payroll partial to reload via AJAX
-            document.dispatchEvent(new CustomEvent('workDetails:reload'));
-        } else {
-            // fallback: full page reload
-            setTimeout(() => location.reload(), 300);
-        }
-    })
-    .catch(err => {
-        console.error(err);
-        showToast("Something went wrong", 'error');
-    });
-}
+        
+        // Store the ID for use when submit is clicked
+        modal.dataset.pendingId = id;
+        modal.style.display = 'flex';
+    }
 
 
     function ensureModal() {
@@ -791,5 +846,131 @@ document.addEventListener('change', function (e) {
         };
     };
     
+    // View approved work detail with approval information
+    window.viewWorkDetail = async function (id) {
+        if (!id) {
+            showToast('Missing work detail id', 'error');
+            return;
+        }
+
+        try {
+            const res = await fetch(`/tutor/work-details/${encodeURIComponent(id)}`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (!res.ok) {
+                const txt = await res.text();
+                showToast('Failed to load work detail', 'error');
+                console.error('Load work detail error', res.status, txt);
+                return;
+            }
+
+            const data = await res.json();
+            console.log('Work detail API response:', data);
+            
+            if (!data.success) {
+                showToast(data.message || 'Failed to load work detail', 'error');
+                return;
+            }
+
+            const detail = data.work_detail;
+            const approval = data.approval;
+            
+            console.log('Detail:', detail);
+            console.log('Approval:', approval);
+            console.log('Approval Supervisor:', approval?.supervisor);
+
+            // Format dates
+            const formatDate = (dateStr) => {
+                if (!dateStr) return 'N/A';
+                const d = new Date(dateStr);
+                return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+            };
+
+            // Format TIME fields (HH:MM:SS format)
+            const formatTimeField = (timeStr) => {
+                if (!timeStr) return 'N/A';
+                // timeStr is in format "HH:MM:SS" or "HH:MM"
+                const parts = timeStr.split(':');
+                if (parts.length < 2) return timeStr;
+                const hours = parseInt(parts[0], 10);
+                const minutes = parseInt(parts[1], 10);
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                const displayHours = hours % 12 || 12;
+                return `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+            };
+
+            const formatDatetime = (dateStr) => {
+                if (!dateStr) return 'N/A';
+                const d = new Date(dateStr);
+                const dateFormatted = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                const timeFormatted = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                return `${dateFormatted} at ${timeFormatted}`;
+            };
+
+            // Populate and show modal
+            const modal = document.getElementById('viewWorkDetailModal');
+            if (!modal) {
+                showToast('Modal not found', 'error');
+                return;
+            }
+
+            // Work Summary Section
+            const schedDate = new Date(detail.schedule?.date);
+            document.getElementById('vwd_schedule_date').textContent = formatDate(detail.schedule?.date);
+            document.getElementById('vwd_schedule_day').textContent = schedDate.toLocaleDateString('en-US', { weekday: 'long' });
+            document.getElementById('vwd_schedule_time').textContent = formatTimeField(detail.schedule?.time);
+            document.getElementById('vwd_school').textContent = detail.schedule?.school || 'N/A';
+            document.getElementById('vwd_duration_scheduled').textContent = (detail.schedule?.duration || 0) + ' min';
+
+            // Actual Times Section - use TIME field formatter
+            document.getElementById('vwd_actual_start').textContent = formatTimeField(detail.start_time);
+            document.getElementById('vwd_actual_end').textContent = formatTimeField(detail.end_time);
+            document.getElementById('vwd_duration_actual').textContent = (detail.duration_minutes || 0) + ' min (' + (detail.duration_hours || 0).toFixed(2) + ' hrs)';
+
+            // Proof Section
+            const proofImg = document.getElementById('vwd_proof_image');
+            if (detail.proof_image) {
+                proofImg.src = `/storage/${detail.proof_image}`;
+                proofImg.style.display = 'block';
+                document.getElementById('vwd_proof_link').href = `/storage/${detail.proof_image}`;
+                document.getElementById('vwd_proof_link').style.display = 'inline-block';
+            } else {
+                proofImg.style.display = 'none';
+                document.getElementById('vwd_proof_link').style.display = 'none';
+            }
+
+            // Supervisor Approval Section
+            if (approval && approval.supervisor) {
+                console.log('Setting approval section - supervisor found:', approval.supervisor);
+                document.getElementById('vwd_approval_section').style.display = 'block';
+                const supervisorName = approval.supervisor.full_name || 
+                                      (approval.supervisor.first_name ? 
+                                       (approval.supervisor.first_name + (approval.supervisor.last_name ? ' ' + approval.supervisor.last_name : '')) 
+                                       : 'Unknown Supervisor');
+                console.log('Supervisor name resolved as:', supervisorName);
+                document.getElementById('vwd_approved_by').textContent = supervisorName;
+                document.getElementById('vwd_approved_date').textContent = formatDatetime(approval.approved_at);
+                document.getElementById('vwd_approval_note').textContent = approval.note || '(No note provided)';
+            } else if (approval) {
+                console.log('Approval exists but no supervisor data');
+                // Approval exists but no supervisor (shouldn't happen normally)
+                document.getElementById('vwd_approval_section').style.display = 'block';
+                document.getElementById('vwd_approved_by').textContent = 'System Admin';
+                document.getElementById('vwd_approved_date').textContent = formatDatetime(approval.approved_at);
+                document.getElementById('vwd_approval_note').textContent = approval.note || '(No note provided)';
+            } else {
+                console.log('No approval found');
+                document.getElementById('vwd_approval_section').style.display = 'none';
+            }
+
+            // Show modal
+            modal.style.display = 'flex';
+        } catch (err) {
+            console.error('Error loading work detail:', err);
+            showToast('Something went wrong', 'error');
+        }
+    };
 
 })();
