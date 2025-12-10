@@ -9,10 +9,12 @@ use App\Models\Tutor;
 use App\Models\Supervisor;
 use App\Models\ScheduleHistory;
 use App\Models\Application;
+use App\Models\Applicant;
 use App\Models\Demo;
 use App\Models\Archive;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -323,5 +325,201 @@ class DashboardController extends Controller
             'unassigned' => $this->getUnassignedClasses($weekStart),
             'tutor_utilization' => $this->getTutorUtilization($weekStart)
         ];
+    }
+
+    /**
+     * Get detailed applicants for modal (API endpoint)
+     */
+    public function getApplicantsDetails(Request $request)
+    {
+        try {
+            $month = $request->get('month', Carbon::now()->format('Y-m'));
+            $type = $request->get('type', 'applicants');
+            
+            $data = collect();
+            
+            switch($type) {
+                case 'applicants':
+                    $applications = Application::whereYear('application_date_time', Carbon::parse($month . '-01')->year)
+                        ->whereMonth('application_date_time', Carbon::parse($month . '-01')->month)
+                        ->orderBy('application_date_time', 'desc')
+                        ->get();
+                    
+                    $data = $applications->map(function($app) {
+                        $applicant = Applicant::find($app->applicant_id);
+                        return [
+                            'id' => $app->applicant_id,
+                            'name' => $applicant ? ($applicant->first_name . ' ' . $applicant->last_name) : 'N/A',
+                            'email' => $applicant->email ?? 'N/A',
+                            'phone' => $applicant->phone_number ?? 'N/A',
+                            'date' => Carbon::parse($app->application_date_time)->format('M d, Y'),
+                            'status' => $app->status ?? 'Pending'
+                        ];
+                    });
+                    break;
+                    
+                case 'demo':
+                    $demos = Demo::whereNotIn('phase', ['onboarding', 'hired'])
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+                    
+                    $data = $demos->map(function($demo) {
+                        $applicant = Applicant::find($demo->applicant_id);
+                        return [
+                            'id' => $demo->applicant_id,
+                            'name' => $applicant ? ($applicant->first_name . ' ' . $applicant->last_name) : 'N/A',
+                            'email' => $applicant->email ?? 'N/A',
+                            'phone' => $applicant->phone_number ?? 'N/A',
+                            'phase' => ucfirst($demo->phase ?? 'demo'),
+                            'status' => $demo->status ?? 'Pending'
+                        ];
+                    });
+                    break;
+                    
+                case 'onboarding':
+                    $onboardings = Demo::where('phase', 'onboarding')
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+                    
+                    $data = $onboardings->map(function($demo) {
+                        $applicant = Applicant::find($demo->applicant_id);
+                        return [
+                            'id' => $demo->applicant_id,
+                            'name' => $applicant ? ($applicant->first_name . ' ' . $applicant->last_name) : 'N/A',
+                            'email' => $applicant->email ?? 'N/A',
+                            'phone' => $applicant->phone_number ?? 'N/A',
+                            'phase' => 'Onboarding',
+                            'status' => $demo->status ?? 'In Progress'
+                        ];
+                    });
+                    break;
+                    
+                case 'employees':
+                    $tutors = Tutor::where('status', 'active')
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+                    
+                    $data = $tutors->map(function($tutor) {
+                        $applicant = Applicant::find($tutor->applicant_id);
+                        $account = DB::table('accounts')->where('account_id', $tutor->account_id)->first();
+                        
+                        return [
+                            'id' => $tutor->tutor_id,
+                            'name' => $applicant ? ($applicant->first_name . ' ' . $applicant->last_name) : 'N/A',
+                            'email' => $tutor->email ?? ($applicant->email ?? 'N/A'),
+                            'username' => $tutor->username ?? 'N/A',
+                            'account' => $account->account_name ?? 'N/A',
+                            'status' => 'Active'
+                        ];
+                    });
+                    break;
+            }
+            
+            return response()->json([
+                'data' => $data->values(),
+                'count' => $data->count(),
+                'month' => Carbon::parse($month . '-01')->format('F Y')
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Dashboard getApplicantsDetails error: ' . $e->getMessage());
+            return response()->json([
+                'data' => [],
+                'count' => 0,
+                'month' => Carbon::now()->format('F Y'),
+                'error' => 'Failed to load data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get sparkline data for cards (last 4 weeks)
+     */
+    public function getSparklineData(Request $request)
+    {
+        try {
+            $type = $request->get('type', 'applicants');
+            $weeks = [];
+            
+            for ($i = 3; $i >= 0; $i--) {
+                $weekStart = Carbon::now()->subWeeks($i)->startOfWeek();
+                $weekEnd = $weekStart->copy()->endOfWeek();
+                
+                $count = 0;
+                
+                switch($type) {
+                    case 'applicants':
+                        $count = Application::whereBetween('application_date_time', [$weekStart, $weekEnd])->count();
+                        break;
+                    case 'demo':
+                        $count = Demo::whereNotIn('phase', ['onboarding', 'hired'])
+                            ->whereBetween('created_at', [$weekStart, $weekEnd])
+                            ->count();
+                        break;
+                    case 'onboarding':
+                        $count = Demo::where('phase', 'onboarding')
+                            ->whereBetween('created_at', [$weekStart, $weekEnd])
+                            ->count();
+                        break;
+                    case 'employees':
+                        $count = Tutor::where('status', 'active')
+                            ->whereBetween('created_at', [$weekStart, $weekEnd])
+                            ->count();
+                        break;
+                }
+                
+                $weeks[] = $count;
+            }
+            
+            return response()->json(['data' => $weeks]);
+        } catch (\Exception $e) {
+            Log::error('Dashboard getSparklineData error: ' . $e->getMessage());
+            return response()->json(['data' => [0, 0, 0, 0], 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get hiring status trends for the line chart
+     */
+    public function getHiringTrends(Request $request)
+    {
+        try {
+            $weeks = [];
+            
+            for ($i = 3; $i >= 0; $i--) {
+                $weekStart = Carbon::now()->subWeeks($i)->startOfWeek();
+                $weekEnd = $weekStart->copy()->endOfWeek();
+                
+                $notRecommended = Archive::where('status', 'not_recommended')
+                    ->whereBetween('created_at', [$weekStart, $weekEnd])
+                    ->count();
+                
+                $noAnswer = Archive::where('status', 'no_answer_3_attempts')
+                    ->whereBetween('created_at', [$weekStart, $weekEnd])
+                    ->count();
+                
+                $declined = Archive::where('status', 'declined')
+                    ->whereBetween('created_at', [$weekStart, $weekEnd])
+                    ->count();
+                
+                $weeks[] = [
+                    'not_recommended' => $notRecommended,
+                    'no_answer' => $noAnswer,
+                    'declined' => $declined
+                ];
+            }
+            
+            return response()->json(['data' => $weeks]);
+        } catch (\Exception $e) {
+            Log::error('Dashboard getHiringTrends error: ' . $e->getMessage());
+            return response()->json([
+                'data' => [
+                    ['not_recommended' => 0, 'no_answer' => 0, 'declined' => 0],
+                    ['not_recommended' => 0, 'no_answer' => 0, 'declined' => 0],
+                    ['not_recommended' => 0, 'no_answer' => 0, 'declined' => 0],
+                    ['not_recommended' => 0, 'no_answer' => 0, 'declined' => 0]
+                ],
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

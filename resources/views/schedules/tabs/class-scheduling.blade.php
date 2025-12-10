@@ -22,48 +22,21 @@
             <form method="GET" action="{{ route('schedules.index') }}" id="filterForm" class="flex items-center space-x-3">
                 <input type="hidden" name="tab" value="class">
 
-                <!-- Date -->
-                <select name="date" id="filterDate"
-                    class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
-                    <option value="">All Dates</option>
-                    @if(isset($availableDates) && $availableDates->count() > 0)
-                        @foreach($availableDates as $date)
-                            <option value="{{ $date }}" {{ request('date') == $date ? 'selected' : '' }}>
-                                {{ \Carbon\Carbon::parse($date)->format('M d, Y') }}
-                            </option>
-                        @endforeach
-                    @else
-                        <option value="" disabled>No dates available</option>
-                    @endif
-                </select>
+                <!-- From Date -->
+                <div class="flex items-center space-x-2">
+                    <label for="from_date" class="text-sm font-medium text-gray-700">From:</label>
+                    <input type="date" name="from_date" id="from_date" 
+                           value="{{ request('from_date') }}"
+                           class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+                </div>
 
-                <!-- Day -->
-                <select name="day" id="filterDay"
-                    class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
-                    <option value="">All Days</option>
-
-                    @if(isset($availableDays) && $availableDays->count() > 0)
-                        @foreach($availableDays as $day)
-                            @php
-                                $dayMap = [
-                                    'Mon'=>'mon','Tue'=>'tue','Wed'=>'wed','Thu'=>'thur','Fri'=>'fri',
-                                    'Monday'=>'mon','Tuesday'=>'tue','Wednesday'=>'wed','Thursday'=>'thur','Friday'=>'fri',
-                                    'mon'=>'mon','tue'=>'tue','wed'=>'wed','thur'=>'thur','fri'=>'fri'
-                                ];
-                                $displayMap = [
-                                    'Mon'=>'Monday','Tue'=>'Tuesday','Wed'=>'Wednesday','Thu'=>'Thursday','Fri'=>'Friday',
-                                    'Monday'=>'Monday','Tuesday'=>'Tuesday','Wednesday'=>'Wednesday','Thursday'=>'Thursday','Friday'=>'Friday',
-                                    'mon'=>'Monday','tue'=>'Tuesday','wed'=>'Wednesday','thur'=>'Thursday','fri'=>'Friday'
-                                ];
-                                $dayValue = $dayMap[$day] ?? strtolower($day);
-                                $dayDisplay = $displayMap[$day] ?? ucfirst($day);
-                            @endphp
-                            <option value="{{ $dayValue }}" {{ request('day') == $dayValue ? 'selected' : '' }}>
-                                {{ $dayDisplay }}
-                            </option>
-                        @endforeach
-                    @endif
-                </select>
+                <!-- To Date -->
+                <div class="flex items-center space-x-2">
+                    <label for="to_date" class="text-sm font-medium text-gray-700">To:</label>
+                    <input type="date" name="to_date" id="to_date" 
+                           value="{{ request('to_date') }}"
+                           class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+                </div>
 
                 <!-- Status -->
                 <select name="status" id="filterStatus"
@@ -71,13 +44,19 @@
                     <option value="">All Status</option>
                     <option value="fully_assigned" {{ request('status') == 'fully_assigned' ? 'selected' : '' }}>Fully Assigned</option>
                     <option value="partially_assigned" {{ request('status') == 'partially_assigned' ? 'selected' : '' }}>Partially Assigned</option>
+                    <option value="pending_acceptance" {{ request('status') == 'pending_acceptance' ? 'selected' : '' }}>Pending Acceptance</option>
                     <option value="not_assigned" {{ request('status') == 'not_assigned' ? 'selected' : '' }}>Not Assigned</option>
+                    <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                 </select>
 
+                <!-- Apply Button -->
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
+                    Apply
+                </button>
+
                 <!-- Clear -->
-                @if(request()->hasAny(['date', 'day', 'status']))
+                @if(request()->hasAny(['from_date', 'to_date', 'status']))
                     <a href="{{ route('schedules.index', ['tab' => 'class']) }}"
-                        onclick="event.preventDefault(); document.getElementById('filterForm').reset(); removePageParam(); window.location='{{ route('schedules.index', ['tab' => 'class']) }}';"
                         class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600">
                         Clear
                     </a>
@@ -110,6 +89,40 @@ function removePageParam() {
     url.searchParams.delete('page');
     window.history.replaceState({}, '', url);
 }
+
+// Date range validation for class scheduling
+document.addEventListener('DOMContentLoaded', function() {
+    const fromDate = document.getElementById('from_date');
+    const toDate = document.getElementById('to_date');
+    
+    if (fromDate && toDate) {
+        fromDate.addEventListener('change', function() {
+            if (this.value) {
+                toDate.min = this.value;
+                if (toDate.value && toDate.value < this.value) {
+                    toDate.value = '';
+                }
+            }
+        });
+        
+        toDate.addEventListener('change', function() {
+            if (this.value) {
+                fromDate.max = this.value;
+                if (fromDate.value && fromDate.value > this.value) {
+                    fromDate.value = '';
+                }
+            }
+        });
+        
+        // Initialize min/max on page load
+        if (fromDate.value) {
+            toDate.min = fromDate.value;
+        }
+        if (toDate.value) {
+            fromDate.max = toDate.value;
+        }
+    }
+});
 </script>
 
 
@@ -274,18 +287,26 @@ function removePageParam() {
                             </button>
                             
                             <!-- Assign Supervisor Button -->
-                            <button type="button" onclick="openAssignSupervisorModal('{{ $viewDate }}', '{{ $data->school }}', '{{ $data->time }}', {{ json_encode([
-                                'status' => $data->raw_class_status,
-                                'schedule_id' => $data->id,
-                                'main_tutor_id' => $data->assignedData->main_tutor ?? null,
-                                'backup_tutor_id' => $data->assignedData->backup_tutor ?? null,
-                                'main_tutor_name' => $data->main_tutor_name ?? null,
-                                'backup_tutor_name' => $data->backup_tutor_name ?? null
-                            ]) }})" 
-                                    class="w-8 h-8 bg-green-100 text-green-600 rounded hover:bg-green-200 inline-flex items-center justify-center transition-colors"
-                                    title="Assign Tutor">
-                                <i class="fas fa-user-plus text-xs"></i>
-                            </button>
+                            @if($data->raw_class_status === 'pending_acceptance')
+                                <button type="button" disabled
+                                        class="w-8 h-8 bg-gray-100 text-gray-400 rounded cursor-not-allowed inline-flex items-center justify-center"
+                                        title="Cannot assign - Waiting for tutor acceptance">
+                                    <i class="fas fa-user-plus text-xs"></i>
+                                </button>
+                            @else
+                                <button type="button" onclick="openAssignSupervisorModal('{{ $viewDate }}', '{{ $data->school }}', '{{ $data->time }}', {{ json_encode([
+                                    'status' => $data->raw_class_status,
+                                    'schedule_id' => $data->id,
+                                    'main_tutor_id' => $data->assignedData->main_tutor ?? null,
+                                    'backup_tutor_id' => $data->assignedData->backup_tutor ?? null,
+                                    'main_tutor_name' => $data->main_tutor_name ?? null,
+                                    'backup_tutor_name' => $data->backup_tutor_name ?? null
+                                ]) }})" 
+                                        class="w-8 h-8 bg-green-100 text-green-600 rounded hover:bg-green-200 inline-flex items-center justify-center transition-colors"
+                                        title="Assign Tutor">
+                                    <i class="fas fa-user-plus text-xs"></i>
+                                </button>
+                            @endif
                             
                             <!-- Ownership Indicator -->
                             @if(!empty($data->assigned_supervisor_ids) && !$canModify)
@@ -634,18 +655,18 @@ function removePageParam() {
     </div>
 
     <!-- Assign Supervisor Modal -->
-    <div id="assignSupervisorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg w-full max-w-xl mx-4">
+    <div id="assignSupervisorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
+        <div class="bg-white rounded-lg w-full max-w-xl max-h-[90vh] flex flex-col">
             <!-- Header -->
-            <div class="bg-[#0E335D] text-white px-6 py-4 flex items-center justify-between">
+            <div class="bg-[#0E335D] text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
                 <h2 class="text-xl font-bold">Assign Supervisor to Watch Tutor</h2>
                 <button type="button" onclick="closeAssignSupervisorModal()" class="text-white hover:text-gray-200">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
             
-            <!-- Body -->
-            <div class="p-6 space-y-4">
+            <!-- Body - Scrollable -->
+            <div class="p-6 space-y-4 overflow-y-auto flex-1">
                 <!-- Schedule Info -->
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <p class="text-sm text-gray-600 mb-1">Schedule</p>
@@ -693,7 +714,7 @@ function removePageParam() {
             </div>
             
             <!-- Footer -->
-            <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3 border-t">
+            <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3 border-t flex-shrink-0">
                 <button type="button" onclick="closeAssignSupervisorModal()" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
                     Cancel
                 </button>
@@ -1003,18 +1024,18 @@ function removePageParam() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message || 'Tutor assigned successfully!');
+                    showNotificationModal(data.message || 'Tutor assigned successfully!', 'success');
                     closeAssignSupervisorModal();
                     location.reload(); // Refresh to show updated data
                 } else {
-                    alert('Error: ' + (data.message || 'Failed to assign tutor'));
+                    showNotificationModal(data.message || 'Failed to assign tutor', 'error');
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = originalText;
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('An error occurred while assigning the tutor');
+                showNotificationModal('An error occurred while assigning the tutor', 'error');
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
             });

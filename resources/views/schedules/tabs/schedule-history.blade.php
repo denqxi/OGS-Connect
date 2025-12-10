@@ -13,36 +13,30 @@
             <form method="GET" action="{{ route('schedules.index') }}" id="filterForm" class="flex items-center space-x-3">
                 <input type="hidden" name="tab" value="history">
 
-                <!-- Date -->
-                <select name="date" id="filterDate"
-                    class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
-                    <option value="">All Dates</option>
-                    @if(isset($availableDates) && $availableDates->count() > 0)
-                        @foreach($availableDates as $availableDate)
-                            <option value="{{ $availableDate }}" {{ request('date') == $availableDate ? 'selected' : '' }}>
-                                {{ \Carbon\Carbon::parse($availableDate)->format('M d, Y') }}
-                            </option>
-                        @endforeach
-                    @else
-                        <option value="" disabled>No dates available</option>
-                    @endif
-                </select>
+                <!-- From Date -->
+                <div class="flex items-center space-x-2">
+                    <label for="from_date" class="text-sm font-medium text-gray-700">From:</label>
+                    <input type="date" name="from_date" id="from_date" 
+                           value="{{ request('from_date') }}"
+                           class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+                </div>
 
-                <!-- Day -->
-                <select name="day" id="filterDay"
-                    class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
-                    <option value="">All Days</option>
-                    @if(isset($availableDays) && $availableDays->count() > 0)
-                        @foreach($availableDays as $availableDay)
-                            <option value="{{ strtolower($availableDay) }}" {{ request('day') == strtolower($availableDay) ? 'selected' : '' }}>
-                                {{ ucfirst($availableDay) }}
-                            </option>
-                        @endforeach
-                    @endif
-                </select>
+                <!-- To Date -->
+                <div class="flex items-center space-x-2">
+                    <label for="to_date" class="text-sm font-medium text-gray-700">To:</label>
+                    <input type="date" name="to_date" id="to_date" 
+                           value="{{ request('to_date') }}"
+                           min="{{ request('from_date') }}"
+                           class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+                </div>
+
+                <!-- Apply Button -->
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
+                    Apply
+                </button>
 
                 <!-- Clear -->
-                @if(request()->hasAny(['date', 'day']))
+                @if(request()->hasAny(['from_date', 'to_date']))
                     <a href="{{ route('schedules.index', ['tab' => 'history']) }}"
                         class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600">
                         Clear
@@ -84,10 +78,46 @@
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">
                     <input type="checkbox" id="selectAll" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" onchange="toggleAllSchedules()">
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">School</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('schedules.index', array_merge(request()->query(), ['tab' => 'history', 'sort' => request('sort') === 'date' && request('direction') === 'desc' ? '' : 'date', 'direction' => request('sort') === 'date' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                    <div class="flex items-center gap-1">
+                        Date
+                        @if(request('sort') === 'date')
+                            <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                        @else
+                            <i class="fas fa-sort text-xs opacity-30"></i>
+                        @endif
+                    </div>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('schedules.index', array_merge(request()->query(), ['tab' => 'history', 'sort' => request('sort') === 'day' && request('direction') === 'desc' ? '' : 'day', 'direction' => request('sort') === 'day' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                    <div class="flex items-center gap-1">
+                        Day
+                        @if(request('sort') === 'day')
+                            <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                        @else
+                            <i class="fas fa-sort text-xs opacity-30"></i>
+                        @endif
+                    </div>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('schedules.index', array_merge(request()->query(), ['tab' => 'history', 'sort' => request('sort') === 'school' && request('direction') === 'desc' ? '' : 'school', 'direction' => request('sort') === 'school' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                    <div class="flex items-center gap-1">
+                        School
+                        @if(request('sort') === 'school')
+                            <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                        @else
+                            <i class="fas fa-sort text-xs opacity-30"></i>
+                        @endif
+                    </div>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('schedules.index', array_merge(request()->query(), ['tab' => 'history', 'sort' => request('sort') === 'class' && request('direction') === 'desc' ? '' : 'class', 'direction' => request('sort') === 'class' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                    <div class="flex items-center gap-1">
+                        Class
+                        @if(request('sort') === 'class')
+                            <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                        @else
+                            <i class="fas fa-sort text-xs opacity-30"></i>
+                        @endif
+                    </div>
+                </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
@@ -153,11 +183,12 @@
 </div>
 
 <!-- Pagination -->
-@if(isset($scheduleHistory) && method_exists($scheduleHistory, 'hasPages') && $scheduleHistory->hasPages())
+@if(isset($scheduleHistory) && method_exists($scheduleHistory, 'total'))
 <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
     <div class="text-sm text-gray-500">
         Showing {{ $scheduleHistory->firstItem() ?? 0 }} to {{ $scheduleHistory->lastItem() ?? 0 }} of {{ $scheduleHistory->total() }} entries
     </div>
+    @if($scheduleHistory->hasPages())
     <div class="flex items-center space-x-2">
         @if ($scheduleHistory->onFirstPage())
             <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
@@ -189,6 +220,7 @@
             </button>
         @endif
     </div>
+    @endif
 </div>
 @endif
 
@@ -454,8 +486,45 @@
     }
     
     function confirmExportAll() {
+        closeExportAllModal();
         document.getElementById('exportAllForm').submit();
     }
+    
+    // Date range validation
+    document.addEventListener('DOMContentLoaded', function() {
+        const fromDate = document.getElementById('from_date');
+        const toDate = document.getElementById('to_date');
+        
+        if (fromDate && toDate) {
+            fromDate.addEventListener('change', function() {
+                if (this.value) {
+                    toDate.min = this.value;
+                    // If to_date is before from_date, clear it
+                    if (toDate.value && toDate.value < this.value) {
+                        toDate.value = '';
+                    }
+                }
+            });
+            
+            toDate.addEventListener('change', function() {
+                if (this.value) {
+                    fromDate.max = this.value;
+                    // If from_date is after to_date, clear it
+                    if (fromDate.value && fromDate.value > this.value) {
+                        fromDate.value = '';
+                    }
+                }
+            });
+            
+            // Initialize min/max on page load if values exist
+            if (fromDate.value) {
+                toDate.min = fromDate.value;
+            }
+            if (toDate.value) {
+                fromDate.max = toDate.value;
+            }
+        }
+    });
 </script>
 <script src="{{ asset('js/schedule-history.js') }}"></script>
 @endif

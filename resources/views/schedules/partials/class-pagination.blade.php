@@ -1,8 +1,9 @@
-@if(isset($dailyData) && method_exists($dailyData, 'hasPages') && $dailyData->hasPages())
+@if(isset($dailyData) && method_exists($dailyData, 'total'))
 <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
     <div class="text-sm text-gray-500">
-        Showing {{ $dailyData->firstItem() }} to {{ $dailyData->lastItem() }} of {{ $dailyData->total() }} entries
+        Showing {{ $dailyData->firstItem() ?? 0 }} to {{ $dailyData->lastItem() ?? 0 }} of {{ $dailyData->total() }} entries
     </div>
+    @if($dailyData->hasPages())
     <div class="flex items-center space-x-2">
         @if ($dailyData->onFirstPage())
             <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
@@ -34,5 +35,6 @@
             </button>
         @endif
     </div>
+    @endif
 </div>
 @endif

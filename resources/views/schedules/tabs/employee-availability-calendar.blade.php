@@ -1,67 +1,67 @@
 <!-- Calendar View for Scheduled Classes -->
-<div class="min-h-screen bg-gray-50 p-6">
+<div class="bg-gray-50 p-4">
     <!-- Page Title -->
-    <div class="mb-8">
-        <h2 class="text-3xl font-bold text-gray-900">Class Schedule Calendar</h2>
-        <p class="text-gray-600 mt-2">View and manage scheduled classes</p>
+    <div class="mb-4">
+        <h2 class="text-2xl font-bold text-gray-900">Class Schedule Calendar</h2>
+        <p class="text-gray-600 text-sm mt-1">View and manage scheduled classes</p>
     </div>
 
     <!-- Calendar Container -->
-    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+    <div class="bg-white rounded-lg shadow overflow-hidden max-w-7xl mx-auto">
         <!-- Calendar Header -->
-        <div class="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white">
-            <div class="flex items-center justify-between mb-6">
-                <div class="flex items-center space-x-6">
-                    <button id="prevMonth" class="flex items-center justify-center w-10 h-10 bg-white/20 hover:bg-white/30 rounded-lg transition">
+        <div class="bg-gradient-to-r from-[#0E335D] to-[#184679] p-4 text-white">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-4">
+                    <button id="prevMonth" class="flex items-center justify-center w-9 h-9 bg-white/20 hover:bg-white/30 rounded-lg transition">
                         <i class="fas fa-chevron-left"></i>
                     </button>
                     
-                    <div class="min-w-64">
-                        <h3 class="text-2xl font-bold text-center" id="currentMonth">December 2025</h3>
+                    <div class="min-w-48">
+                        <h3 class="text-xl font-bold text-center" id="currentMonth">December 2025</h3>
                     </div>
                     
-                    <button id="nextMonth" class="flex items-center justify-center w-10 h-10 bg-white/20 hover:bg-white/30 rounded-lg transition">
+                    <button id="nextMonth" class="flex items-center justify-center w-9 h-9 bg-white/20 hover:bg-white/30 rounded-lg transition">
                         <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
                 
-                <button id="todayBtn" class="px-6 py-2 bg-white text-blue-600 rounded-lg font-semibold hover:bg-gray-100 transition">
+                <button id="todayBtn" class="px-4 py-2 bg-white text-[#0E335D] rounded-lg text-sm font-semibold hover:bg-gray-100 transition">
                     Today
                 </button>
             </div>
 
             <!-- Legend -->
-            <div class="flex items-center space-x-6 text-sm">
-                <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-4 text-xs">
+                <div class="flex items-center space-x-1.5">
                     <div class="w-3 h-3 bg-green-400 rounded-full"></div>
-                    <span>Finalized</span>
+                    <span>Fully Assigned</span>
                 </div>
-                <div class="flex items-center space-x-2">
-                    <div class="w-3 h-3 bg-yellow-400 rounded-full"></div>
-                    <span>Draft/Tentative</span>
+                <div class="flex items-center space-x-1.5">
+                    <div class="w-3 h-3 bg-blue-400 rounded-full"></div>
+                    <span>Pending Acceptance</span>
                 </div>
-                <div class="flex items-center space-x-2">
+                <div class="flex items-center space-x-1.5">
                     <div class="w-3 h-3 bg-red-400 rounded-full"></div>
-                    <span>Cancelled</span>
+                    <span>Not Assigned</span>
                 </div>
             </div>
         </div>
 
         <!-- Calendar Grid -->
-        <div class="p-6">
+        <div class="p-4">
             <!-- Day Headers -->
-            <div class="grid grid-cols-7 gap-2 mb-4">
-                <div class="text-center font-bold text-gray-700 py-3 text-sm">SUN</div>
-                <div class="text-center font-bold text-gray-700 py-3 text-sm">MON</div>
-                <div class="text-center font-bold text-gray-700 py-3 text-sm">TUE</div>
-                <div class="text-center font-bold text-gray-700 py-3 text-sm">WED</div>
-                <div class="text-center font-bold text-gray-700 py-3 text-sm">THU</div>
-                <div class="text-center font-bold text-gray-700 py-3 text-sm">FRI</div>
-                <div class="text-center font-bold text-gray-700 py-3 text-sm">SAT</div>
+            <div class="grid grid-cols-7 gap-1 mb-2">
+                <div class="text-center font-semibold text-gray-700 py-2 text-xs">SUN</div>
+                <div class="text-center font-semibold text-gray-700 py-2 text-xs">MON</div>
+                <div class="text-center font-semibold text-gray-700 py-2 text-xs">TUE</div>
+                <div class="text-center font-semibold text-gray-700 py-2 text-xs">WED</div>
+                <div class="text-center font-semibold text-gray-700 py-2 text-xs">THU</div>
+                <div class="text-center font-semibold text-gray-700 py-2 text-xs">FRI</div>
+                <div class="text-center font-semibold text-gray-700 py-2 text-xs">SAT</div>
             </div>
 
             <!-- Calendar Days Grid -->
-            <div class="grid grid-cols-7 gap-2" id="calendarGrid">
+            <div class="grid grid-cols-7 gap-1" id="calendarGrid">
                 <!-- Calendar days will be generated here -->
             </div>
         </div>
@@ -69,18 +69,21 @@
 
     <!-- Class Details Modal -->
     <div id="classModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden flex flex-col">
             <!-- Modal Header -->
-            <div class="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white flex items-center justify-between">
-                <h3 class="text-2xl font-bold" id="modalDate">December 4, 2025</h3>
+            <div class="bg-gradient-to-r from-[#0E335D] to-[#184679] p-5 text-white flex items-center justify-between flex-shrink-0">
+                <div>
+                    <h3 class="text-xl font-bold" id="modalDate">December 4, 2025</h3>
+                    <p class="text-sm text-white/80 mt-1" id="modalClassCount">0 classes scheduled</p>
+                </div>
                 <button onclick="closeClassModal()" class="text-white hover:bg-white/20 rounded-lg p-2 transition">
-                    <i class="fas fa-times text-xl"></i>
+                    <i class="fas fa-times text-lg"></i>
                 </button>
             </div>
 
             <!-- Modal Content -->
-            <div class="p-6">
-                <div id="dayClasses" class="space-y-4">
+            <div class="p-5 overflow-y-auto flex-grow">
+                <div id="dayClasses" class="space-y-3">
                     <!-- Classes will be populated here -->
                 </div>
             </div>
@@ -179,39 +182,37 @@ function createDayCell(day, month, year, isOtherMonth, classes, isToday = false)
     const cell = document.createElement('div');
     
     if (isOtherMonth) {
-        cell.className = 'bg-gray-50 border border-gray-200 rounded-lg p-3 min-h-32 text-gray-400';
-        cell.innerHTML = `<div class="text-lg font-bold">${day}</div>`;
+        cell.className = 'bg-gray-50 border border-gray-200 rounded p-2 min-h-24 text-gray-400';
+        cell.innerHTML = `<div class="text-sm font-semibold">${day}</div>`;
     } else {
-        cell.className = 'border-2 border-gray-200 rounded-lg p-3 min-h-32 hover:shadow-lg transition cursor-pointer bg-white';
+        cell.className = 'border border-gray-200 rounded p-2 min-h-24 hover:shadow-md transition cursor-pointer bg-white';
         
         if (isToday) {
             cell.classList.remove('border-gray-200');
-            cell.classList.add('border-blue-500', 'bg-blue-50');
+            cell.classList.add('border-[#0E335D]', 'border-2', 'bg-blue-50');
         }
         
         if (classes.length > 0) {
-            cell.classList.remove('bg-white');
-            cell.classList.add('bg-blue-50');
+            cell.classList.add('hover:bg-gray-50');
         }
         
-        let html = `<div class="text-lg font-bold text-gray-900 mb-2">${day}</div>`;
+        let html = `<div class="text-sm font-bold text-gray-900 mb-1.5">${day}</div>`;
         
         // Show class indicators
         classes.forEach((classItem, index) => {
-            if (index < 3) { // Show max 3 classes
-                const statusColor = getStatusColor(classItem.class_status || classItem.schedule_status);
-                const school = classItem.school || 'Unknown School';
-                const tutor = classItem.tutor_name || 'TBD';
+            if (index < 2) { // Show max 2 classes for compact view
+                const statusColor = getStatusColor(classItem.class_status);
+                const time = classItem.time ? formatTime(classItem.time) : 'N/A';
                 
-                html += `<div class="text-xs font-medium mb-1 p-1 rounded ${statusColor}">
-                    <div class="truncate">${school}</div>
-                    <div class="text-xs opacity-90 truncate">${tutor}</div>
+                html += `<div class="text-xs mb-1 p-1 rounded ${statusColor}">
+                    <div class="font-medium truncate">${time}</div>
+                    <div class="text-xs opacity-90 truncate">${classItem.school || 'N/A'}</div>
                 </div>`;
             }
         });
         
-        if (classes.length > 3) {
-            html += `<div class="text-xs text-gray-600 px-1 font-semibold">+${classes.length - 3} more</div>`;
+        if (classes.length > 2) {
+            html += `<div class="text-xs text-gray-600 font-semibold mt-1">+${classes.length - 2} more</div>`;
         }
         
         cell.innerHTML = html;
@@ -226,31 +227,58 @@ function createDayCell(day, month, year, isOtherMonth, classes, isToday = false)
     return cell;
 }
 
+function formatTime(timeString) {
+    if (!timeString) return 'N/A';
+    try {
+        const [hours, minutes] = timeString.split(':');
+        const hour = parseInt(hours);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${minutes} ${ampm}`;
+    } catch (e) {
+        return timeString;
+    }
+}
+
 function getStatusColor(status) {
-    switch(status) {
-        case 'finalized':
+    if (!status) {
+        return 'bg-red-100 text-red-800';
+    }
+    
+    switch(status.toLowerCase()) {
+        case 'fully_assigned':
             return 'bg-green-100 text-green-800';
-        case 'cancelled':
-            return 'bg-red-100 text-red-800';
-        case 'draft':
-        case 'tentative':
-            return 'bg-yellow-100 text-yellow-800';
-        default:
+        case 'pending_acceptance':
             return 'bg-blue-100 text-blue-800';
+        case 'partially_assigned':
+            return 'bg-yellow-100 text-yellow-800';
+        case 'not_assigned':
+            return 'bg-red-100 text-red-800';
+        case 'cancelled':
+            return 'bg-gray-100 text-gray-800';
+        default:
+            return 'bg-red-100 text-red-800';
     }
 }
 
 function getClassesForDate(date) {
-    const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    // Format the date as YYYY-MM-DD in local timezone
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     
     return allClasses.filter(classItem => {
-        // Handle ISO format (2025-06-13T00:00:00.000000Z) or regular format
+        if (!classItem.date) return false;
+        
+        // Handle different date formats
         let classDate = classItem.date;
         if (classDate.includes('T')) {
             classDate = classDate.split('T')[0];
         } else if (classDate.includes(' ')) {
             classDate = classDate.split(' ')[0];
         }
+        
         return classDate === dateStr;
     });
 }
@@ -264,6 +292,7 @@ function openClassModal(date, classes) {
     });
     
     document.getElementById('modalDate').textContent = dateStr;
+    document.getElementById('modalClassCount').textContent = `${classes.length} ${classes.length === 1 ? 'class' : 'classes'} scheduled`;
     
     const dayClassesDiv = document.getElementById('dayClasses');
     dayClassesDiv.innerHTML = '';
@@ -272,40 +301,43 @@ function openClassModal(date, classes) {
         dayClassesDiv.innerHTML = '<p class="text-gray-500 text-center py-12">No classes scheduled for this day</p>';
     } else {
         classes.forEach(classItem => {
-            const statusColor = getStatusBadgeColor(classItem.class_status || classItem.schedule_status);
+            const statusColor = getStatusBadgeColor(classItem.class_status);
+            const statusText = getStatusText(classItem.class_status);
             const school = classItem.school || 'Unknown School';
-            const tutor = classItem.tutor_name || 'TBD';
-            const supervisor = classItem.assigned_supervisor ? 'Assigned' : 'Unassigned';
-            const time = classItem.time_jst || 'Time TBD';
+            const className = classItem.class || 'N/A';
+            const tutor = classItem.tutor_name || 'Not Assigned';
+            const time = classItem.time ? formatTime(classItem.time) : 'N/A';
+            const duration = classItem.duration || '25';
+            const day = classItem.day || 'N/A';
             
             const classHTML = `
-                <div class="border border-gray-200 rounded-lg p-5 hover:shadow-md transition">
-                    <div class="flex items-start justify-between mb-4">
-                        <div>
+                <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition bg-white">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex-1">
                             <h4 class="font-bold text-lg text-gray-900">${school}</h4>
-                            <p class="text-sm text-gray-600 mt-1">Class: ${classItem.class || 'N/A'}</p>
+                            <p class="text-sm text-gray-600 mt-0.5">Class: ${className}</p>
                         </div>
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusColor}">
-                            ${(classItem.class_status || classItem.schedule_status || 'pending').toUpperCase()}
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusColor} whitespace-nowrap ml-3">
+                            ${statusText}
                         </span>
                     </div>
                     
-                    <div class="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+                    <div class="grid grid-cols-2 gap-3 pt-3 border-t border-gray-200">
                         <div>
-                            <p class="text-xs text-gray-600 font-semibold mb-1">Tutor</p>
+                            <p class="text-xs text-gray-600 font-semibold mb-0.5">Tutor</p>
                             <p class="text-sm font-medium text-gray-900">${tutor}</p>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-600 font-semibold mb-1">Time</p>
+                            <p class="text-xs text-gray-600 font-semibold mb-0.5">Day</p>
+                            <p class="text-sm font-medium text-gray-900">${day}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-600 font-semibold mb-0.5">Time</p>
                             <p class="text-sm font-medium text-gray-900">${time}</p>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-600 font-semibold mb-1">Supervisor</p>
-                            <p class="text-sm font-medium text-gray-900">${supervisor}</p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-600 font-semibold mb-1">Students</p>
-                            <p class="text-sm font-medium text-gray-900">${classItem.number_required || '0'} required</p>
+                            <p class="text-xs text-gray-600 font-semibold mb-0.5">Duration</p>
+                            <p class="text-sm font-medium text-gray-900">${duration} minutes</p>
                         </div>
                     </div>
                 </div>
@@ -315,30 +347,79 @@ function openClassModal(date, classes) {
     }
     
     document.getElementById('classModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
 }
 
 function getStatusBadgeColor(status) {
-    switch(status) {
-        case 'finalized':
+    if (!status) {
+        return 'bg-red-100 text-red-800';
+    }
+    
+    switch(status.toLowerCase()) {
+        case 'fully_assigned':
             return 'bg-green-100 text-green-800';
-        case 'cancelled':
-            return 'bg-red-100 text-red-800';
-        case 'draft':
+        case 'pending_acceptance':
+            return 'bg-blue-100 text-blue-800';
+        case 'partially_assigned':
             return 'bg-yellow-100 text-yellow-800';
-        case 'tentative':
-            return 'bg-orange-100 text-orange-800';
-        default:
+        case 'not_assigned':
+            return 'bg-red-100 text-red-800';
+        case 'cancelled':
             return 'bg-gray-100 text-gray-800';
+        default:
+            return 'bg-red-100 text-red-800';
+    }
+}
+
+function getStatusText(status) {
+    if (!status) {
+        return 'Not Assigned';
+    }
+    
+    switch(status.toLowerCase()) {
+        case 'fully_assigned':
+            return 'Fully Assigned';
+        case 'pending_acceptance':
+            return 'Pending Acceptance';
+        case 'partially_assigned':
+            return 'Partially Assigned';
+        case 'not_assigned':
+            return 'Not Assigned';
+        case 'cancelled':
+            return 'Cancelled';
+        default:
+            return 'Not Assigned';
     }
 }
 
 function closeClassModal() {
     document.getElementById('classModal').classList.add('hidden');
+    document.body.style.overflow = '';
 }
 </script>
 
 <style>
-    #calendarGrid > div:nth-child(n+29):nth-child(-n+35) {
-        min-height: 8rem;
+    /* Compact calendar styling */
+    #calendarGrid > div {
+        min-height: 6rem;
+    }
+    
+    /* Ensure scrollbar doesn't cause layout shift */
+    #classModal .overflow-y-auto {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+    }
+    
+    #classModal .overflow-y-auto::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    #classModal .overflow-y-auto::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    #classModal .overflow-y-auto::-webkit-scrollbar-thumb {
+        background-color: rgba(156, 163, 175, 0.5);
+        border-radius: 3px;
     }
 </style>

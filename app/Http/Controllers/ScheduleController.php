@@ -80,7 +80,15 @@ class ScheduleController extends Controller
             $query->where('school', 'like', '%' . $request->search . '%');
         }
 
-        // Date filter
+        // Date range filter
+        if ($request->filled('from_date') && trim($request->input('from_date')) !== '') {
+            $query->whereDate('date', '>=', $request->input('from_date'));
+        }
+        if ($request->filled('to_date') && trim($request->input('to_date')) !== '') {
+            $query->whereDate('date', '<=', $request->input('to_date'));
+        }
+        
+        // Single date filter (for backward compatibility)
         if ($request->filled('date') && trim($request->input('date')) !== '') {
             $query->whereDate('date', $request->input('date'));
         }
@@ -163,7 +171,7 @@ class ScheduleController extends Controller
                 DB::raw('ad.class_status as raw_class_status'),
                 DB::raw('ad.id as assignment_id')
             )
-            ->paginate(10)
+            ->paginate(5)
             ->withQueryString();
 
         // Add computed fields to each row
@@ -358,16 +366,25 @@ class ScheduleController extends Controller
         $availableDays = $this->getAvailableDaysFromTutorAccounts();
         
         // Get all daily data for the calendar view
-        $dailyData = DailyData::orderBy('date')
+        $dailyData = ScheduleDailyData::leftJoin('assigned_daily_data', 'schedules_daily_data.id', '=', 'assigned_daily_data.schedule_daily_data_id')
+            ->leftJoin('tutors as main_tutor_info', 'assigned_daily_data.main_tutor', '=', 'main_tutor_info.tutor_id')
+            ->leftJoin('applicants as main_applicant', 'main_tutor_info.applicant_id', '=', 'main_applicant.applicant_id')
+            ->select(
+                'schedules_daily_data.id',
+                'schedules_daily_data.date',
+                'schedules_daily_data.day',
+                'schedules_daily_data.time',
+                'schedules_daily_data.duration',
+                'schedules_daily_data.school',
+                'schedules_daily_data.class',
+                'assigned_daily_data.class_status',
+                DB::raw('CONCAT(main_applicant.first_name, " ", main_applicant.last_name) as tutor_name')
+            )
+            ->orderBy('schedules_daily_data.date')
             ->get()
             ->map(function($data) {
-                $data->tutor_name = 'TBD';
-                // Try to get tutor name from tutor assignments
-                if ($data->tutorAssignments && $data->tutorAssignments->count() > 0) {
-                    $tutor = $data->tutorAssignments->first()->tutor;
-                    if ($tutor && $tutor->applicant) {
-                        $data->tutor_name = $tutor->applicant->first_name . ' ' . $tutor->applicant->last_name;
-                    }
+                if (!$data->tutor_name) {
+                    $data->tutor_name = 'Not Assigned';
                 }
                 return $data;
             });
@@ -560,25 +577,13 @@ class ScheduleController extends Controller
         $query = ScheduleDailyData::join('assigned_daily_data', 'schedules_daily_data.id', '=', 'assigned_daily_data.schedule_daily_data_id')
             ->where('assigned_daily_data.class_status', 'fully_assigned');
 
-        // Apply filters
-        if ($request->filled('date')) {
-            $query->whereDate('schedules_daily_data.date', $request->date);
+        // Apply date range filters
+        if ($request->filled('from_date')) {
+            $query->whereDate('schedules_daily_data.date', '>=', $request->from_date);
         }
 
-        if ($request->filled('day')) {
-            $day = strtolower($request->day);
-            // Map short day names to full names for comparison
-            $dayMap = [
-                'mon' => 'Monday',
-                'tue' => 'Tuesday', 
-                'wed' => 'Wednesday',
-                'thur' => 'Thursday',
-                'thu' => 'Thursday',
-                'fri' => 'Friday'
-            ];
-            
-            $dayName = $dayMap[$day] ?? ucfirst($day);
-            $query->where('schedules_daily_data.day', $dayName);
+        if ($request->filled('to_date')) {
+            $query->whereDate('schedules_daily_data.date', '<=', $request->to_date);
         }
 
         // Get fully assigned schedules with tutor names from applicants table
@@ -601,11 +606,33 @@ class ScheduleController extends Controller
                 'assigned_daily_data.backup_tutor',
                 DB::raw('CONCAT(main_applicant.first_name, " ", main_applicant.last_name) as main_tutor_name'),
                 DB::raw('CONCAT(backup_applicant.first_name, " ", backup_applicant.last_name) as backup_tutor_name')
-            )
-            ->orderBy('schedules_daily_data.date', 'desc')
-            ->orderBy('schedules_daily_data.time', 'asc')
-            ->paginate(15)
-            ->withQueryString();
+            );
+
+        // Apply sorting
+        $sortField = $request->input('sort');
+        $sortDirection = $request->input('direction', 'desc');
+        
+        // Validate sort field and direction
+        $allowedSorts = ['date', 'day', 'school', 'class'];
+        
+        if ($sortField && in_array($sortField, $allowedSorts)) {
+            $sortDirection = in_array($sortDirection, ['asc', 'desc']) ? $sortDirection : 'desc';
+            $scheduleHistory->orderBy('schedules_daily_data.' . $sortField, $sortDirection);
+            
+            // Add secondary sort
+            if ($sortField !== 'date') {
+                $scheduleHistory->orderBy('schedules_daily_data.date', 'desc');
+            }
+            if ($sortField !== 'time') {
+                $scheduleHistory->orderBy('schedules_daily_data.time', 'asc');
+            }
+        } else {
+            // Default sorting
+            $scheduleHistory->orderBy('schedules_daily_data.date', 'desc')
+                ->orderBy('schedules_daily_data.time', 'asc');
+        }
+
+        $scheduleHistory = $scheduleHistory->paginate(15)->withQueryString();
 
         Log::info('Schedule History Results:', [
             'count' => $scheduleHistory->count(),

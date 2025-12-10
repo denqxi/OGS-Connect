@@ -6,10 +6,58 @@
 @include('layouts.header', ['pageTitle' => 'Dashboard'])
 
 <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Filters Section -->
+    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+            <h3 class="text-lg font-semibold text-[#0E335D]">Dashboard Filters</h3>
+            <div class="flex items-center gap-3 flex-wrap">
+                <!-- Date Range Filter -->
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-medium text-gray-700">From:</label>
+                    <input type="date" id="filterFromDate" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-medium text-gray-700">To:</label>
+                    <input type="date" id="filterToDate" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
+                </div>
+                
+                <!-- Month Filter -->
+                <select id="filterMonth" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
+                    <option value="">All Months</option>
+                    @for($i = 0; $i < 12; $i++)
+                        @php
+                            $date = \Carbon\Carbon::now()->subMonths($i);
+                            $value = $date->format('Y-m');
+                            $label = $date->format('F Y');
+                        @endphp
+                        <option value="{{ $value }}" {{ $i === 0 ? 'selected' : '' }}>{{ $label }}</option>
+                    @endfor
+                </select>
+                
+                <!-- Account Filter -->
+                <select id="filterAccount" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
+                    <option value="">All Accounts</option>
+                    <option value="GLS">GLS</option>
+                    <option value="talk915">Talk915</option>
+                    <option value="babilala">Babilala</option>
+                    <option value="tutlo">Tutlo</option>
+                </select>
+                
+                <!-- Apply & Reset Buttons -->
+                <button onclick="applyFilters()" class="bg-[#0E335D] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-[#184679]">
+                    Apply Filters
+                </button>
+                <button onclick="resetFilters()" class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Row 1: 4 Stat Boxes -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <!-- Applicants This Month -->
-        <div class="bg-white rounded-lg shadow-md p-4 relative">
+        <div class="bg-white rounded-lg shadow-md p-4 relative cursor-pointer hover:shadow-lg transition-shadow" onclick="openDetailsModal('applicants')">
             <div class="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-[#0E335D20]">
                 <svg class="w-5 h-5 text-[#0E335D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -17,14 +65,15 @@
                 </svg>
             </div>
             <p class="text-sm font-medium text-[#0E335D]">Applicants This Month</p>
-            <div class="mt-1 text-2xl font-semibold text-gray-900">{{ $stats['applicants_this_month'] }}</div>
+            <div class="mt-1 text-2xl font-semibold text-gray-900" id="stat-applicants">{{ $stats['applicants_this_month'] }}</div>
             <div class="mt-2">
                 <canvas id="sparklineNewApplicants" height="40"></canvas>
             </div>
+            <p class="text-xs text-gray-500 mt-2">Click to view details</p>
         </div>
 
         <!-- For Demo Applicants -->
-        <div class="bg-white rounded-lg shadow-md p-4 relative">
+        <div class="bg-white rounded-lg shadow-md p-4 relative cursor-pointer hover:shadow-lg transition-shadow" onclick="openDetailsModal('demo')">
             <div class="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-[#E6B80022]">
                 <svg class="w-5 h-5 text-[#E6B800]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -32,14 +81,15 @@
                 </svg>
             </div>
             <p class="text-sm font-medium text-[#0E335D]">For Demo Applicants</p>
-            <div class="mt-1 text-2xl font-semibold text-gray-900">{{ $stats['demo_applicants'] }}</div>
+            <div class="mt-1 text-2xl font-semibold text-gray-900" id="stat-demo">{{ $stats['demo_applicants'] }}</div>
             <div class="mt-2">
                 <canvas id="sparklineDemoApplicants" height="40"></canvas>
             </div>
+            <p class="text-xs text-gray-500 mt-2">Click to view details</p>
         </div>
 
         <!-- Onboarding Applicants -->
-        <div class="bg-white rounded-lg shadow-md p-4 relative">
+        <div class="bg-white rounded-lg shadow-md p-4 relative cursor-pointer hover:shadow-lg transition-shadow" onclick="openDetailsModal('onboarding')">
             <div class="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-[#A78BFA22]">
                 <svg class="w-5 h-5 text-[#A78BFA]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -49,14 +99,15 @@
                 </svg>
             </div>
             <p class="text-sm font-medium text-[#0E335D]">Onboarding Applicants</p>
-            <div class="mt-1 text-2xl font-semibold text-gray-900">{{ $stats['onboarding_applicants'] }}</div>
+            <div class="mt-1 text-2xl font-semibold text-gray-900" id="stat-onboarding">{{ $stats['onboarding_applicants'] }}</div>
             <div class="mt-2">
                 <canvas id="sparklineOnboardApplicants" height="40"></canvas>
             </div>
+            <p class="text-xs text-gray-500 mt-2">Click to view details</p>
         </div>
 
         <!-- Existing Employees -->
-        <div class="bg-white rounded-lg shadow-md p-4 relative">
+        <div class="bg-white rounded-lg shadow-md p-4 relative cursor-pointer hover:shadow-lg transition-shadow" onclick="openDetailsModal('employees')">
             <div class="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-[#9DC9FD22]">
                 <svg class="w-5 h-5 text-[#9DC9FD]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -66,9 +117,30 @@
                 </svg>
             </div>
             <p class="text-sm font-medium text-[#0E335D]">Existing Employees</p>
-            <div class="mt-1 text-2xl font-semibold text-gray-900">{{ $stats['existing_employees'] }}</div>
+            <div class="mt-1 text-2xl font-semibold text-gray-900" id="stat-employees">{{ $stats['existing_employees'] }}</div>
             <div class="mt-2">
                 <canvas id="sparklineEmployees" height="40"></canvas>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Click to view details</p>
+        </div>
+    </div>
+
+    <!-- Details Modal -->
+    <div id="detailsModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+            <div class="bg-gradient-to-r from-[#0E335D] to-[#184679] p-5 text-white flex items-center justify-between flex-shrink-0">
+                <div>
+                    <h3 class="text-xl font-bold" id="modalTitle">Details</h3>
+                    <p class="text-sm text-white/80 mt-1" id="modalSubtitle">0 records found</p>
+                </div>
+                <button onclick="closeDetailsModal()" class="text-white hover:bg-white/20 rounded-lg p-2 transition">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            <div class="p-5 overflow-y-auto flex-grow">
+                <div id="modalContent" class="overflow-x-auto">
+                    <!-- Content will be loaded here -->
+                </div>
             </div>
         </div>
     </div>
@@ -200,6 +272,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ asset('js/modal-utils.js') }}"></script>
 <script>
     // ------------------------------
     // Labels & Weekly Date Ranges (from real data)
@@ -207,12 +280,10 @@
     const weeklyTrends = @json($stats['weekly_trends']);
     const labels = weeklyTrends.map(week => week.week);
     const weekRanges = weeklyTrends.map(week => week.date_range);
-
-    // Utility: Generate random data
-    const randomData = (len, max) =>
-        Array.from({
-            length: len
-        }, () => Math.floor(Math.random() * max));
+    
+    let sparklineCharts = {};
+    let statusLineChartInstance = null;
+    let schedulingChartInstance = null;
 
     // Tooltip Formatter (Shared)
     const tooltipFormat = (labelName) => ({
@@ -228,52 +299,62 @@
     });
 
     // ------------------------------
-    // Sparklines (Top 4 Cards)
+    // Sparklines (Top 4 Cards) - Load real data
     // ------------------------------
-    function createSparkline(id, color, labelName) {
-        new Chart(document.getElementById(id), {
-            type: 'line',
-            data: {
-                labels,
-                datasets: [{
-                    label: labelName,
-                    data: randomData(4, 20),
-                    borderColor: color,
-                    backgroundColor: color + "33",
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                plugins: {
-                    legend: {
-                        display: false
+    function createSparkline(id, color, labelName, type) {
+        fetch(`/api/dashboard-sparkline?type=${type}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(result => {
+                sparklineCharts[id] = new Chart(document.getElementById(id), {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: labelName,
+                            data: result.data,
+                            borderColor: color,
+                            backgroundColor: color + "33",
+                            fill: true,
+                            tension: 0.4
+                        }]
                     },
-                    tooltip: tooltipFormat(labelName)
-                },
-                elements: {
-                    point: {
-                        radius: 0
+                    options: {
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: tooltipFormat(labelName)
+                        },
+                        elements: {
+                            point: {
+                                radius: 0
+                            }
+                        },
+                        scales: {
+                            x: {
+                                display: false
+                            },
+                            y: {
+                                display: false
+                            }
+                        },
+                        responsive: true,
+                        maintainAspectRatio: false
                     }
-                },
-                scales: {
-                    x: {
-                        display: false
-                    },
-                    y: {
-                        display: false
-                    }
-                },
-                responsive: true,
-                maintainAspectRatio: false
-            }
-        });
+                });
+            })
+            .catch(error => {
+                console.error('Error loading sparkline:', error);
+            });
     }
 
-    createSparkline('sparklineNewApplicants', '#0E335D', 'New Applicants');
-    createSparkline('sparklineDemoApplicants', '#E6B800', 'Demo Applicants');
-    createSparkline('sparklineOnboardApplicants', '#A78BFA', 'Onboarding Applicants');
-    createSparkline('sparklineEmployees', '#9DC9FD', 'Employees');
+    createSparkline('sparklineNewApplicants', '#0E335D', 'New Applicants', 'applicants');
+    createSparkline('sparklineDemoApplicants', '#E6B800', 'Demo Applicants', 'demo');
+    createSparkline('sparklineOnboardApplicants', '#A78BFA', 'Onboarding Applicants', 'onboarding');
+    createSparkline('sparklineEmployees', '#9DC9FD', 'Employees', 'employees');
 
     // ------------------------------
     // Hiring & Onboarding Doughnut (using real data)
@@ -308,67 +389,93 @@
     });
 
     // ------------------------------
-    // Status Line Chart
+    // Status Line Chart - Load real data
     // ------------------------------
-    new Chart(document.getElementById('statusLineChart'), {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [{
-                    label: 'Not Recommended',
-                    data: randomData(4, 15),
-                    borderColor: '#AA1B1B',
-                    backgroundColor: '#AA1B1B33',
-                    fill: true,
-                    tension: 0.4
+    fetch('/api/dashboard-hiring-trends')
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(result => {
+            const trendsData = result.data;
+            statusLineChartInstance = new Chart(document.getElementById('statusLineChart'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                            label: 'Not Recommended',
+                            data: trendsData.map(week => week.not_recommended),
+                            borderColor: '#AA1B1B',
+                            backgroundColor: '#AA1B1B33',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'No Answer',
+                            data: trendsData.map(week => week.no_answer),
+                            borderColor: '#FF7515',
+                            backgroundColor: '#FF751533',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Declined',
+                            data: trendsData.map(week => week.declined),
+                            borderColor: '#E02F2F',
+                            backgroundColor: '#E02F2F33',
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
                 },
-                {
-                    label: 'No Answer',
-                    data: randomData(4, 10),
-                    borderColor: '#FF7515',
-                    backgroundColor: '#FF751533',
-                    fill: true,
-                    tension: 0.4
-                },
-                {
-                    label: 'Declined',
-                    data: randomData(4, 7),
-                    borderColor: '#E02F2F',
-                    backgroundColor: '#E02F2F33',
-                    fill: true,
-                    tension: 0.4
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 8,
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        },
+                        tooltip: tooltipFormat("Applicants")
+                    },
+                    elements: {
+                        point: {
+                            radius: 3
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            ticks: {
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        },
+                        y: {
+                            display: false
+                        }
+                    }
                 }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                },
-                tooltip: tooltipFormat("Applicants")
-            },
-            elements: {
-                point: {
-                    radius: 3
-                }
-            },
-            scales: {
-                x: {
-                    display: true
-                },
-                y: {
-                    display: false
-                }
-            }
-        }
-    });
+            });
+        })
+        .catch(error => {
+            console.error('Error loading hiring trends:', error);
+            // Show user-friendly error
+            document.getElementById('statusLineChart').parentElement.innerHTML = 
+                '<div class="text-center text-red-500 py-4">Failed to load chart data</div>';
+        });
 
     // ------------------------------
     // GLS Scheduling Bar Chart (using real data)
     // ------------------------------
-    new Chart(document.getElementById('glsSchedulingChart'), {
+    schedulingChartInstance = new Chart(document.getElementById('glsSchedulingChart'), {
         type: 'bar',
         data: {
             labels,
@@ -388,16 +495,173 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                tooltip: tooltipFormat("Classes")
+                tooltip: tooltipFormat("Classes"),
+                legend: {
+                    position: 'top',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 8,
+                        font: {
+                            size: 11
+                        }
+                    }
+                }
             },
             scales: {
                 x: {
-                    stacked: true
+                    stacked: true,
+                    ticks: {
+                        font: {
+                            size: 10
+                        }
+                    }
                 },
                 y: {
-                    stacked: true
+                    stacked: true,
+                    ticks: {
+                        font: {
+                            size: 10
+                        }
+                    }
                 }
             }
+        }
+    });
+
+    // ------------------------------
+    // Modal Functions
+    // ------------------------------
+    function openDetailsModal(type) {
+        const month = document.getElementById('filterMonth').value || '{{ \Carbon\Carbon::now()->format("Y-m") }}';
+        const modalTitles = {
+            'applicants': 'Applicants This Month',
+            'demo': 'For Demo Applicants',
+            'onboarding': 'Onboarding Applicants',
+            'employees': 'Existing Employees'
+        };
+        
+        document.getElementById('modalTitle').textContent = modalTitles[type];
+        document.getElementById('modalContent').innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-3xl text-[#0E335D]"></i><p class="mt-2 text-gray-600">Loading...</p></div>';
+        document.getElementById('detailsModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        
+        fetch(`/api/dashboard-applicants-details?type=${type}&month=${month}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                
+                document.getElementById('modalSubtitle').textContent = `${result.count} records found for ${result.month}`;
+                
+                if (result.data.length === 0) {
+                    document.getElementById('modalContent').innerHTML = '<p class="text-gray-500 text-center py-12">No data available</p>';
+                    return;
+                }
+                
+                let tableHTML = '<table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>';
+                
+                // Different headers based on type
+                if (type === 'applicants') {
+                    tableHTML += '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>';
+                    tableHTML += '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>';
+                    tableHTML += '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>';
+                    tableHTML += '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>';
+                    tableHTML += '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>';
+                } else if (type === 'employees') {
+                    tableHTML += '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>';
+                    tableHTML += '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>';
+                    tableHTML += '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>';
+                    tableHTML += '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Account</th>';
+                    tableHTML += '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>';
+                } else {
+                    tableHTML += '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>';
+                    tableHTML += '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>';
+                    tableHTML += '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>';
+                    tableHTML += '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phase</th>';
+                    tableHTML += '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>';
+                }
+                
+                tableHTML += '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+                
+                result.data.forEach(item => {
+                    tableHTML += '<tr class="hover:bg-gray-50">';
+                    tableHTML += `<td class="px-4 py-3 text-sm font-medium text-gray-900">${item.name}</td>`;
+                    tableHTML += `<td class="px-4 py-3 text-sm text-gray-600">${item.email}</td>`;
+                    
+                    if (type === 'employees') {
+                        tableHTML += `<td class="px-4 py-3 text-sm text-gray-600">${item.username}</td>`;
+                        tableHTML += `<td class="px-4 py-3 text-sm text-gray-600">${item.account}</td>`;
+                    } else if (type === 'applicants') {
+                        tableHTML += `<td class="px-4 py-3 text-sm text-gray-600">${item.phone}</td>`;
+                        tableHTML += `<td class="px-4 py-3 text-sm text-gray-600">${item.date}</td>`;
+                    } else {
+                        tableHTML += `<td class="px-4 py-3 text-sm text-gray-600">${item.phone}</td>`;
+                        tableHTML += `<td class="px-4 py-3 text-sm text-gray-600">${item.phase}</td>`;
+                    }
+                    
+                    tableHTML += `<td class="px-4 py-3 text-sm"><span class="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">${item.status}</span></td>`;
+                    tableHTML += '</tr>';
+                });
+                
+                tableHTML += '</tbody></table>';
+                document.getElementById('modalContent').innerHTML = tableHTML;
+            })
+            .catch(error => {
+                console.error('Error loading details:', error);
+                document.getElementById('modalContent').innerHTML = 
+                    '<div class="text-center py-12"><i class="fas fa-exclamation-circle text-4xl text-red-500 mb-3"></i><p class="text-red-600 font-medium">Failed to load data</p><p class="text-gray-500 text-sm mt-2">' + error.message + '</p></div>';
+            });
+    }
+    
+    function closeDetailsModal() {
+        document.getElementById('detailsModal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+    
+    // ------------------------------
+    // Filter Functions
+    // ------------------------------
+    function applyFilters() {
+        const month = document.getElementById('filterMonth').value;
+        const fromDate = document.getElementById('filterFromDate').value;
+        const toDate = document.getElementById('filterToDate').value;
+        const account = document.getElementById('filterAccount').value;
+        
+        // Reload page with filters
+        const params = new URLSearchParams();
+        if (month) params.append('month', month);
+        if (fromDate) params.append('from_date', fromDate);
+        if (toDate) params.append('to_date', toDate);
+        if (account) params.append('account', account);
+        
+        window.location.href = '/supervisor/dashboard?' + params.toString();
+    }
+    
+    function resetFilters() {
+        document.getElementById('filterMonth').value = '{{ \Carbon\Carbon::now()->format("Y-m") }}';
+        document.getElementById('filterFromDate').value = '';
+        document.getElementById('filterToDate').value = '';
+        document.getElementById('filterAccount').value = '';
+        window.location.href = '/supervisor/dashboard';
+    }
+    
+    // Close modal on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeDetailsModal();
+        }
+    });
+    
+    // Close modal on background click
+    document.getElementById('detailsModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeDetailsModal();
         }
     });
 </script>

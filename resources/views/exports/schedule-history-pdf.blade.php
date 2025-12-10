@@ -285,6 +285,13 @@
             <!-- Schedule Details -->
             <div class="details-grid">
                 <div class="details-row">
+                    <div class="label-col">📅 Date</div>
+                    <div class="value-col">
+                        <strong>{{ $formattedDate }}</strong> ({{ $dayName }})
+                    </div>
+                </div>
+                
+                <div class="details-row">
                     <div class="label-col">⏰ Time</div>
                     <div class="value-col">
                         @if($schedule->time)

@@ -481,6 +481,9 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->prefix('api')->name(
     // ------------------------------------------------------------------------
     Route::get('/dashboard-data', [DashboardController::class, 'getDashboardData'])->name('dashboard-data');
     Route::get('/dashboard-weekly-trends', [DashboardController::class, 'getWeeklyTrendsData'])->name('dashboard-weekly-trends');
+    Route::get('/dashboard-applicants-details', [DashboardController::class, 'getApplicantsDetails'])->name('dashboard-applicants-details');
+    Route::get('/dashboard-sparkline', [DashboardController::class, 'getSparklineData'])->name('dashboard-sparkline');
+    Route::get('/dashboard-hiring-trends', [DashboardController::class, 'getHiringTrends'])->name('dashboard-hiring-trends');
     
     // ------------------------------------------------------------------------
     // DEBUG/UTILITY API
