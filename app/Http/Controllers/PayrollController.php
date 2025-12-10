@@ -334,6 +334,28 @@ public function workDetails(Request $request)
                     'approved_at' => now(),
                     'note' => $request->input('note'),
                 ]);
+                
+                // Notify tutor of approval
+                $tutor = $detail->tutor;
+                $schedule = $detail->schedule;
+                if ($tutor && $schedule) {
+                    Notification::create([
+                        'user_id' => $tutor->tutor_id,
+                        'user_type' => 'tutor',
+                        'type' => 'work_detail_approved',
+                        'title' => 'Work Detail Approved',
+                        'message' => "Your work details for {$schedule->school} - {$schedule->class} on {$schedule->date} have been approved. Payment will be processed.",
+                        'icon' => 'fas fa-check-circle',
+                        'color' => 'green',
+                        'is_read' => false,
+                        'data' => [
+                            'work_detail_id' => $detail->id,
+                            'schedule_id' => $detail->schedule_daily_data_id,
+                            'amount' => $detail->rate_per_class ?? $detail->rate_per_hour,
+                            'supervisor_id' => $supervisorId
+                        ]
+                    ]);
+                }
             } catch (\Exception $e) {
                 Log::warning('Failed to record approval: ' . $e->getMessage());
             }
@@ -378,6 +400,33 @@ public function workDetails(Request $request)
             $oldStatus = $detail->status;
             $detail->status = 'reject';
             $detail->save();
+            
+            // Notify tutor of rejection
+            try {
+                $tutor = $detail->tutor;
+                $schedule = $detail->schedule;
+                $note = $request->input('note', 'No reason provided');
+                
+                if ($tutor && $schedule) {
+                    Notification::create([
+                        'user_id' => $tutor->tutor_id,
+                        'user_type' => 'tutor',
+                        'type' => 'work_detail_rejected',
+                        'title' => 'Work Detail Rejected',
+                        'message' => "Your work details for {$schedule->school} - {$schedule->class} on {$schedule->date} have been rejected. Reason: {$note}",
+                        'icon' => 'fas fa-times-circle',
+                        'color' => 'red',
+                        'is_read' => false,
+                        'data' => [
+                            'work_detail_id' => $detail->id,
+                            'schedule_id' => $detail->schedule_daily_data_id,
+                            'rejection_reason' => $note
+                        ]
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to create rejection notification: ' . $e->getMessage());
+            }
 
             // record approval/rejection
             try {

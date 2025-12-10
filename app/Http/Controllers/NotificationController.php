@@ -8,36 +8,36 @@ use App\Models\Notification;
 class NotificationController extends Controller
 {
     /**
-     * Get all notifications for the authenticated supervisor
+     * Get all notifications for the authenticated user (supervisor or tutor)
      */
     public function index()
     {
-        $supervisor = auth()->guard('supervisor')->user() ?? auth()->user();
+        // Check both guards
+        $supervisor = auth()->guard('supervisor')->user();
+        $tutor = auth()->guard('tutor')->user();
         
-        if (!$supervisor) {
+        // Determine which user is authenticated
+        if ($supervisor) {
+            $userId = $supervisor->supervisor_id ?? $supervisor->id;
+            $userType = 'supervisor';
+        } elseif ($tutor) {
+            $userId = $tutor->tutor_id ?? $tutor->id;
+            $userType = 'tutor';
+        } else {
             return response()->json([
                 'notifications' => [],
                 'unread_count' => 0
             ]);
         }
         
-        // Get supervisor ID
-        $supervisorId = $supervisor->supervisor_id ?? $supervisor->id ?? null;
-        
-        // Fetch notifications for supervisors only
-        $notifications = Notification::where(function($query) use ($supervisorId) {
-                $query->where('user_type', 'supervisor')
-                      ->where('user_id', $supervisorId);
-            })
-            ->orWhereNull('user_type')
+        // Fetch notifications for the specific user and user type
+        $notifications = Notification::where('user_id', $userId)
+            ->where('user_type', $userType)
             ->orderBy('created_at', 'desc')
             ->get();
             
-        $unreadCount = Notification::where(function($query) use ($supervisorId) {
-                $query->where('user_type', 'supervisor')
-                      ->where('user_id', $supervisorId);
-            })
-            ->orWhereNull('user_type')
+        $unreadCount = Notification::where('user_id', $userId)
+            ->where('user_type', $userType)
             ->where('is_read', false)
             ->count();
         
@@ -48,33 +48,33 @@ class NotificationController extends Controller
     }
 
     /**
-     * Display all notifications page for the authenticated supervisor
+     * Display all notifications page for the authenticated user
      */
     public function viewAll()
     {
-        $supervisor = auth()->guard('supervisor')->user() ?? auth()->user();
+        // Check both guards
+        $supervisor = auth()->guard('supervisor')->user();
+        $tutor = auth()->guard('tutor')->user();
         
-        if (!$supervisor) {
+        // Determine which user is authenticated
+        if ($supervisor) {
+            $userId = $supervisor->supervisor_id ?? $supervisor->id;
+            $userType = 'supervisor';
+        } elseif ($tutor) {
+            $userId = $tutor->tutor_id ?? $tutor->id;
+            $userType = 'tutor';
+        } else {
             return redirect()->route('login');
         }
         
-        // Get supervisor ID
-        $supervisorId = $supervisor->supervisor_id ?? $supervisor->id ?? null;
-        
-        // Fetch notifications for supervisors only
-        $notifications = Notification::where(function($query) use ($supervisorId) {
-                $query->where('user_type', 'supervisor')
-                      ->where('user_id', $supervisorId);
-            })
-            ->orWhereNull('user_type')
+        // Fetch notifications for the specific user and user type
+        $notifications = Notification::where('user_id', $userId)
+            ->where('user_type', $userType)
             ->orderBy('created_at', 'desc')
             ->paginate(10);
             
-        $unreadCount = Notification::where(function($query) use ($supervisorId) {
-                $query->where('user_type', 'supervisor')
-                      ->where('user_id', $supervisorId);
-            })
-            ->orWhereNull('user_type')
+        $unreadCount = Notification::where('user_id', $userId)
+            ->where('user_type', $userType)
             ->where('is_read', false)
             ->count();
         
@@ -97,10 +97,37 @@ class NotificationController extends Controller
      */
     public function markAllAsRead()
     {
-        Notification::where('is_read', false)->update([
-            'is_read' => true,
-            'read_at' => now()
-        ]);
+        // Get the authenticated user (supervisor or tutor)
+        $user = auth()->guard('supervisor')->user() ?? auth()->guard('tutor')->user() ?? auth()->user();
+        
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not authenticated'
+            ], 401);
+        }
+        
+        // Determine user type and ID
+        if (auth()->guard('supervisor')->check()) {
+            $userId = $user->supervisor_id ?? $user->id;
+            $userType = 'supervisor';
+        } else if (auth()->guard('tutor')->check()) {
+            $userId = $user->tutor_id ?? $user->id;
+            $userType = 'tutor';
+        } else {
+            // Fallback for default auth
+            $userId = $user->id;
+            $userType = 'supervisor'; // or determine based on user model
+        }
+        
+        // Mark only the current user's notifications as read
+        Notification::where('user_id', $userId)
+            ->where('user_type', $userType)
+            ->where('is_read', false)
+            ->update([
+                'is_read' => true,
+                'read_at' => now()
+            ]);
         
         return response()->json(['success' => true]);
     }

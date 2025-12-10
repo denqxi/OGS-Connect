@@ -340,3 +340,13 @@ function performAutoAssignForThisDay(date) {
         button.disabled = false;
     });
 }
+
+// Modal Functions - Uses shared modal-utils.js
+function showNotification(message, type = 'info') {
+    if (typeof window.showNotificationModal === 'function') {
+        window.showNotificationModal(message, type);
+    } else {
+        // Fallback to alert if modal-utils.js is not loaded
+        alert(message);
+    }
+}

@@ -20,6 +20,9 @@
 
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Modal Utilities -->
+    <script src="{{ asset('js/modal-utils.js') }}"></script>
 
     <!-- AlpineJS -->
     <script src="//unpkg.com/alpinejs" defer></script>
@@ -184,62 +187,49 @@
 
     <!-- Tabs -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4 md:mb-6">
-        <div
-            class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-2 md:px-4 rounded-xl shadow-sm overflow-x-auto transition-colors duration-300">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden transition-colors duration-300">
             @php $activeTab = request('tab', 'profile'); @endphp
-            <nav class="flex md:space-x-8 no-scrollbar relative">
+            <nav class="flex border-b border-gray-200 dark:border-gray-700">
 
                 <!-- Profile Info -->
                 <a href="{{ route('tutor.portal', ['tab' => 'profile']) }}"
-                    class="flex-shrink-0 py-3 md:py-4 px-3 md:px-4 relative
-                    {{ $activeTab == 'profile' ? 'after:absolute after:-bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#0E335D] dark:after:bg-[#AFC3E0] after:rounded-full after:transition-all after:duration-300' : '' }}">
-                    <div
-                        class="flex flex-col md:flex-row items-center md:space-x-2 font-medium text-base md:text-sm
-                        text-[#0E335D] dark:text-[#AFC3E0] hover:text-[#0E335D] dark:hover:text-[#D1E2F0]
-                        transform hover:scale-105 transition-transform duration-200">
-                        <i class="fas fa-id-card text-xl md:text-lg"></i>
-                        <span class="hidden sm:inline">Profile Info</span>
-                    </div>
+                    class="flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors
+                    {{ $activeTab == 'profile' ? 'border-[#0E335D] text-[#0E335D] dark:border-[#AFC3E0] dark:text-[#AFC3E0]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300' }}">
+                    <i class="fas fa-id-card"></i>
+                    <span>Profile</span>
                 </a>
 
                 <!-- Payment Details -->
                 <a href="{{ route('tutor.portal', ['tab' => 'payment']) }}"
-                    class="flex-shrink-0 py-3 md:py-4 px-3 md:px-4 relative
-                    {{ $activeTab == 'payment' ? 'after:absolute after:-bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#D35400] dark:after:bg-[#F0B37A] after:rounded-full after:transition-all after:duration-300' : '' }}">
-                    <div
-                        class="flex flex-col md:flex-row items-center md:space-x-2 font-medium text-base md:text-sm
-                           text-[#D35400] dark:text-[#F0B37A] hover:text-[#D35400] dark:hover:text-[#F8C99E]
-                           transform hover:scale-105 transition-transform duration-200">
-                        <i class="fas fa-credit-card text-xl md:text-lg"></i>
-                        <span class="hidden sm:inline">Payment Details</span>
-                    </div>
+                    class="flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors
+                    {{ $activeTab == 'payment' ? 'border-[#D35400] text-[#D35400] dark:border-[#F0B37A] dark:text-[#F0B37A]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300' }}">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Payment</span>
                 </a>
 
                 <!-- Account Management -->
                 <a href="{{ route('tutor.portal', ['tab' => 'account']) }}"
-                    class="flex-shrink-0 py-3 md:py-4 px-3 md:px-4 relative
-                    {{ $activeTab == 'account' ? 'after:absolute after:-bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#4B5563] dark:after:bg-[#D1D5DB] after:rounded-full after:transition-all after:duration-300' : '' }}">
-                    <div
-                        class="flex flex-col md:flex-row items-center md:space-x-2 font-medium text-base md:text-sm
-                        text-[#4B5563] dark:text-[#D1D5DB] hover:text-[#4B5563] dark:hover:text-[#E5E7EB]
-                        transform hover:scale-105 transition-transform duration-200">
-                        <i class="fas fa-user-cog text-xl md:text-lg"></i>
-                        <span class="hidden sm:inline">Account Management</span>
-                    </div>
+                    class="flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors
+                    {{ $activeTab == 'account' ? 'border-[#4B5563] text-[#4B5563] dark:border-[#D1D5DB] dark:text-[#D1D5DB]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300' }}">
+                    <i class="fas fa-user-cog"></i>
+                    <span>Account</span>
                 </a>
 
+                <!-- Work Details -->
                 <a href="{{ route('tutor.portal', ['tab'=> 'work_details'])}}"
-                    class="flex-shrink-0 py-3 md:py-4 px-3 md:px-4 relative"
-                    {{ $activeTab == 'work_details' ? 'after:absolute after:-bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#16A34A] dark:after:bg-[#86EFAC] after:rounded-full after:transition-all after:duration-300' : '' }}">
-                    <div
-                        class="flex flex-col md:flex-row items-center md:space-x-2 font-medium text-base md:text-sm
-                        text-[#16A34A] dark:text-[#86EFAC] hover:text-[#16A34A] dark:hover:text-[#BBF7D0]
-                        transform hover:scale-105 transition-transform duration-200">
-                        <i class="fas fa-briefcase text-xl md:text-lg"></i>
-                        <span class="hidden sm:inline">Work Details</span>
-                    </div>
+                    class="flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors
+                    {{ $activeTab == 'work_details' ? 'border-[#16A34A] text-[#16A34A] dark:border-[#86EFAC] dark:text-[#86EFAC]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300' }}">
+                    <i class="fas fa-briefcase"></i>
+                    <span>Work Details</span>
                 </a>
 
+                <!-- My Salary -->
+                <a href="{{ route('tutor.portal', ['tab'=> 'salary'])}}"
+                    class="flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors
+                    {{ $activeTab == 'salary' ? 'border-[#10B981] text-[#10B981] dark:border-[#6EE7B7] dark:text-[#6EE7B7]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300' }}">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <span>Salary</span>
+                </a>
 
             </nav>
         </div>
@@ -256,6 +246,8 @@
                 @include('tutor.tabs.account_management')
             @elseif ($activeTab == 'work_details')
                 @include('tutor.tabs.work_details')
+            @elseif ($activeTab == 'salary')
+                @include('tutor.tabs.salary')
             @endif
         </div>
     </div>

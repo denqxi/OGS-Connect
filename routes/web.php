@@ -14,6 +14,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentInformationController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ScheduleExportController;
+use App\Http\Controllers\ScheduleCancellationController;
 use App\Http\Controllers\SupervisorProfileController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\TutorAssignmentController;
@@ -89,7 +90,11 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
         Route::post('/role', [SupervisorProfileController::class, 'updateRole'])->name('role.update');
         Route::post('/personal-info', [SupervisorProfileController::class, 'updatePersonalInfo'])->name('personal-info.update');
         Route::post('/password', [SupervisorProfileController::class, 'updatePassword'])->name('password.update');
+        Route::post('/profile-photo', [SupervisorProfileController::class, 'updateProfilePhoto'])->name('profile-photo.update');
     });
+    
+    // Payment information route (shared for compatibility)
+    Route::post('/payment-information/store', [SupervisorProfileController::class, 'updatePaymentInfo'])->name('payment-information.store');
     
     // ------------------------------------------------------------------------
     // IMPORT
@@ -207,13 +212,32 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
     Route::get('/tutor_portal', function (Illuminate\Http\Request $request) {
         $tutor = Auth::guard('tutor')->user();
         
+        // Get view type (current or history)
+        $view = $request->query('view', 'current');
+        $today = \Carbon\Carbon::today();
+        
         // Get assigned schedules where this tutor is main tutor OR backup tutor
         $workDetailsQuery = \App\Models\AssignedDailyData::query()
             ->where(function($query) use ($tutor) {
                 $query->where('main_tutor', $tutor->tutor_id)
                       ->orWhere('backup_tutor', $tutor->tutor_id);
             })
-            ->with(['schedule', 'mainTutor.applicant', 'backupTutor.applicant', 'supervisor', 'workDetail.approvals']);
+            ->with(['schedule', 'mainTutor.applicant', 'backupTutor.applicant', 'supervisor', 'workDetail.approvals'])
+            ->join('schedules_daily_data', 'assigned_daily_data.schedule_daily_data_id', '=', 'schedules_daily_data.id');
+        
+        // Filter by view type
+        if ($view === 'current') {
+            // Current: classes on or after today, OR pending acceptance regardless of date
+            $workDetailsQuery->where(function($query) use ($today) {
+                $query->where('schedules_daily_data.date', '>=', $today)
+                      ->orWhere('assigned_daily_data.class_status', 'pending_acceptance');
+            });
+        } else {
+            // History: only approved work details (completed classes with approved status)
+            $workDetailsQuery->whereHas('workDetail', function($wd) {
+                $wd->where('status', 'approved');
+            });
+        }
         
         $statusFilter = $request->query('status');
         if ($statusFilter) {
@@ -224,23 +248,74 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
                 'reject' => 'not_assigned'
             ];
             if (isset($statusMap[$statusFilter])) {
-                $workDetailsQuery->where('class_status', $statusMap[$statusFilter]);
+                $workDetailsQuery->where('assigned_daily_data.class_status', $statusMap[$statusFilter]);
             }
         }
         
-        $workDetails = $workDetailsQuery->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
+        // Order by date ascending (nearest date first)
+        $workDetails = $workDetailsQuery
+            ->select('assigned_daily_data.*')
+            ->orderBy('schedules_daily_data.date', 'asc')
+            ->orderBy('schedules_daily_data.time', 'asc')
+            ->paginate(10)
+            ->withQueryString();
+        
+        // Calculate salary data
+        $totalEarnings = \App\Models\TutorWorkDetail::where('tutor_id', $tutor->tutor_id)
+            ->where('status', 'approved')
+            ->where('payment_blocked', false)
+            ->sum('rate_per_class');
+        
+        $thisMonthEarnings = \App\Models\TutorWorkDetail::where('tutor_id', $tutor->tutor_id)
+            ->where('status', 'approved')
+            ->where('payment_blocked', false)
+            ->whereMonth('created_at', \Carbon\Carbon::now()->month)
+            ->whereYear('created_at', \Carbon\Carbon::now()->year)
+            ->sum('rate_per_class');
+        
+        $pendingPayment = \App\Models\TutorWorkDetail::where('tutor_id', $tutor->tutor_id)
+            ->where('status', 'pending')
+            ->where('payment_blocked', false)
+            ->sum('rate_per_class');
+        
+        // Get salary history
+        $salaryHistory = \App\Models\TutorWorkDetail::where('tutor_id', $tutor->tutor_id)
+            ->where('payment_blocked', false)
+            ->with(['schedule', 'assignment'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(10)
+            ->map(function($detail) {
+                // Calculate hours
+                $hours = 0;
+                if ($detail->start_time && $detail->end_time) {
+                    $start = \Carbon\Carbon::parse($detail->start_time);
+                    $end = \Carbon\Carbon::parse($detail->end_time);
+                    $hours = $end->diffInMinutes($start) / 60;
+                }
+                
+                return (object)[
+                    'id' => $detail->id,
+                    'date' => $detail->schedule->date ?? $detail->created_at,
+                    'total_classes' => 1,
+                    'total_hours' => $hours,
+                    'amount' => $detail->rate_per_class ?? 0,
+                    'status' => $detail->status
+                ];
+            });
         
         $tutor->load([
             'applicant.qualification', 
             'applicant.requirement', 
             'applicant.workPreference',
-            // TODO: Uncomment when employee_payment_information table exists
-            // 'paymentInformation', 
-            // TODO: Uncomment when security_questions relationship is fixed
-            // 'securityQuestions'
+            'securityQuestions'
         ]);
         
-        return view('tutor.tutor_portal', compact('tutor', 'workDetails'));
+        // Extract security questions for the view
+        $securityQuestions = $tutor->securityQuestions;
+        $securityQuestion1 = $securityQuestions->get(0)?->question ?? null;
+        $securityQuestion2 = $securityQuestions->get(1)?->question ?? null;
+        
+        return view('tutor.tutor_portal', compact('tutor', 'workDetails', 'totalEarnings', 'thisMonthEarnings', 'pendingPayment', 'salaryHistory', 'securityQuestion1', 'securityQuestion2'));
     })->name('tutor.portal');
     
     // ------------------------------------------------------------------------
@@ -358,6 +433,10 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
         Route::post('/update-personal-info', [TutorAvailabilityController::class, 'updatePersonalInfo'])->name('update-personal-info');
         Route::post('/change-password', [TutorAvailabilityController::class, 'changePassword'])->name('change-password');
         Route::post('/update-security-questions', [TutorAvailabilityController::class, 'updateSecurityQuestions'])->name('update-security-questions');
+    });
+    
+    Route::prefix('tutor/profile')->name('tutor.profile.')->group(function () {
+        Route::post('/profile-photo', [TutorAvailabilityController::class, 'updateProfilePhoto'])->name('profile-photo.update');
     });
 
     // ------------------------------------------------------------------------
@@ -480,6 +559,19 @@ Route::middleware(['auth:supervisor,web', 'prevent.back'])->group(function () {
             ]
         ]);
     })->name('check-assignments');
+});
+
+// ============================================================================
+// SHARED ROUTES (SUPERVISOR & TUTOR)
+// ============================================================================
+Route::middleware(['auth:supervisor,tutor', 'prevent.back'])->group(function () {
+    // ------------------------------------------------------------------------
+    // SCHEDULE CANCELLATION (Both supervisors and tutors can cancel)
+    // ------------------------------------------------------------------------
+    Route::prefix('schedules')->name('schedules.')->group(function () {
+        Route::post('/cancel/{assignment}', [ScheduleCancellationController::class, 'cancel'])->name('cancel');
+        Route::post('/assign-backup/{assignment}', [ScheduleCancellationController::class, 'assignNewBackup'])->name('assign-backup');
+    });
 });
 
 // ============================================================================

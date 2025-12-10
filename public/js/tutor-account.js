@@ -399,8 +399,7 @@ async function handleSecurityQuestionsUpdate() {
             const answer = answerInput.value.trim();
 
             if (!question || !answer) {
-                showSecurityMessage(`Please fill in both question and answer for Security Question ${i}.`, 'error');
-                showNotification(`Please fill in both question and answer for Security Question ${i}.`, 'error');
+                showErrorModal('Missing Information', `Please fill in both question and answer for Security Question ${i}.`);
                 return;
             }
 
@@ -410,8 +409,7 @@ async function handleSecurityQuestionsUpdate() {
     }
 
     if (questions.length === 0) {
-        showSecurityMessage('Please set up at least one security question.', 'error');
-        showNotification('Please set up at least one security question.', 'error');
+        showErrorModal('Missing Information', 'Please set up at least one security question.');
         return;
     }
 
@@ -454,13 +452,11 @@ async function proceedWithSecurityQuestionsUpdate(questions, answers) {
             // Reload security questions
             loadSecurityQuestions();
         } else {
-            showSecurityMessage(result.message || 'Failed to update security questions. Please try again.', 'error');
-            showNotification(result.message || 'Failed to update security questions. Please try again.', 'error');
+            showErrorModal('Update Failed', result.message || 'Failed to update security questions. Please try again.');
         }
     } catch (error) {
         console.error('Error updating security questions:', error);
-        showSecurityMessage('An error occurred while updating your security questions. Please try again.', 'error');
-        showNotification('An error occurred while updating your security questions. Please try again.', 'error');
+        showErrorModal('Error', 'An error occurred while updating your security questions. Please try again.');
     } finally {
         // Re-enable button
         updateBtn.disabled = false;
@@ -609,6 +605,48 @@ function showConfirmationModal(title, message, confirmText, cancelText, onConfir
 
 function closeConfirmationModal() {
     const modal = document.getElementById('confirmationModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function showErrorModal(title, message) {
+    // Remove existing modal if any
+    const existingModal = document.getElementById('errorModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.id = 'errorModal';
+    modal.className = 'fixed inset-0 z-50 overflow-y-auto';
+    modal.innerHTML = `
+        <div class="flex items-center justify-center min-h-screen px-4 py-4">
+            <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onclick="closeErrorModal()"></div>
+            <div class="relative w-full max-w-md p-6 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-gray-800 shadow-xl rounded-lg">
+                <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 dark:bg-red-900 rounded-full">
+                    <i class="fas fa-exclamation-circle text-red-600 dark:text-red-400 text-xl"></i>
+                </div>
+                <div class="text-center">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">${title}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">${message}</p>
+                    <div class="flex justify-center">
+                        <button onclick="closeErrorModal()" class="px-6 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors">
+                            OK
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Add to page
+    document.body.appendChild(modal);
+}
+
+function closeErrorModal() {
+    const modal = document.getElementById('errorModal');
     if (modal) {
         modal.remove();
     }

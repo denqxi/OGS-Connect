@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Tutor;
 use App\Models\TutorAccount;
+use App\Models\SecurityQuestion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -29,7 +30,7 @@ class TutorAvailabilityController extends Controller
             }
 
             // Load applicant relationships for tutor details
-            $tutor->load(['applicant.qualification', 'applicant.requirement', 'applicant.workPreference', 'account']);
+            $tutor->load(['applicant.qualification', 'applicant.requirement', 'applicant.workPreference', 'account', 'securityQuestions']);
 
             // Get work preferences for this tutor's applicant
             $workPreference = $tutor->applicant?->workPreference;
@@ -108,14 +109,12 @@ class TutorAvailabilityController extends Controller
                     //     ];
                     // })->toArray(),
                     'payment_info' => [], // Temporary empty array
-                    // TODO: Uncomment when security_questions relationship is fixed
-                    // 'security_questions' => $securityQuestions->map(function($question) {
-                    //     return [
-                    //         'question' => $question->question ?? null,
-                    //         'answer' => '***' // Don't expose the actual answer for security
-                    //     ];
-                    // })->toArray()
-                    'security_questions' => [] // Temporary empty array
+                    'security_questions' => $tutor->securityQuestions->map(function($question) {
+                        return [
+                            'question' => $question->question ?? null,
+                            'answer' => '***' // Don't expose the actual answer for security
+                        ];
+                    })->toArray()
                 ]
             ]);
 
@@ -756,6 +755,63 @@ public function updatePersonalInfo(Request $request)
 }
 
 /**
+ * Update tutor's profile photo
+ */
+public function updateProfilePhoto(Request $request)
+{
+    try {
+        $tutor = Auth::guard('tutor')->user();
+        
+        if (!$tutor) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tutor not authenticated'
+            ], 401);
+        }
+
+        // Validate the request
+        $validator = Validator::make($request->all(), [
+            'profile_photo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Delete old profile photo if exists
+        if ($tutor->profile_photo && \Storage::disk('public')->exists($tutor->profile_photo)) {
+            \Storage::disk('public')->delete($tutor->profile_photo);
+        }
+
+        // Store new profile photo
+        $path = $request->file('profile_photo')->store('profile_photos', 'public');
+
+        // Update tutor's profile photo
+        $tutor->update([
+            'profile_photo' => $path
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile photo updated successfully',
+            'photo_url' => asset('storage/' . $path)
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error updating profile photo: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'An error occurred while updating your profile photo. Please try again.'
+        ], 500);
+    }
+}
+
+/**
  * Change tutor's password
  */
 public function changePassword(Request $request)
@@ -845,14 +901,16 @@ public function updateSecurityQuestions(Request $request)
         }
 
         // Delete existing security questions
-        $tutor->securityQuestions()->delete();
+        SecurityQuestion::where('user_type', 'tutor')
+                       ->where('user_id', $tutor->tutor_id)
+                       ->delete();
 
         // Create new security questions
         foreach ($request->questions as $index => $question) {
             if (isset($request->answers[$index])) {
-                $tutor->securityQuestions()->create([
+                SecurityQuestion::create([
                     'user_type' => 'tutor',
-                    'user_id' => $tutor->tutorID,
+                    'user_id' => $tutor->tutor_id,
                     'question' => $question,
                     'answer_hash' => Hash::make(strtolower(trim($request->answers[$index]))),
                 ]);

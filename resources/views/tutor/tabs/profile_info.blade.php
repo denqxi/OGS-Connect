@@ -5,11 +5,25 @@
            bg-gradient-to-r from-blue-100 via-green-100 to-green-200
            dark:from-gray-800 dark:via-gray-800 dark:to-gray-700">
         <div class="flex items-center space-x-4">
-            <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=96&h=96&fit=crop&crop=face"
-                alt="Profile" class="w-20 h-20 rounded-full object-cover border-2 border-[#0E335D]">
+            @php
+                $defaultPhoto = 'https://ui-avatars.com/api/?name=' . urlencode($tutor->full_name ?? 'Tutor') . '&color=0E335D&background=BCE6D4&size=128';
+                $profilePhoto = $tutor->profile_photo ?? null;
+                $photoUrl = $profilePhoto ? asset('storage/' . $profilePhoto) : $defaultPhoto;
+            @endphp
+            <div class="relative">
+                <img id="tutorProfilePhoto" src="{{ $photoUrl }}"
+                    alt="Profile" class="w-20 h-20 rounded-full object-cover border-2 border-[#0E335D]">
+                <label class="absolute -bottom-1 -right-1 cursor-pointer" title="Change Profile Photo">
+                    <input type="file" id="tutorProfilePhotoInput" class="hidden" accept="image/*">
+                    <div class="flex items-center justify-center bg-[#0E335D] hover:bg-[#184679] text-white rounded-full shadow-md transform transition duration-200 hover:scale-105 w-7 h-7">
+                        <i class="fas fa-camera text-white text-xs"></i>
+                    </div>
+                </label>
+            </div>
             <div>
-                <h2 class="text-lg font-semibold text-[#0E335D] dark:text-[#CFE2F3]">{{ $tutor->full_name ?? 'N/A' }}</h2>
+                <h2 class="text-lg font-semibold text-[#0E335D] dark:text-[#CFE2F3]">{{ $tutor->first_name ?? '' }} {{ $tutor->middle_name ?? '' }} {{ $tutor->last_name ?? 'N/A' }}</h2>
                 <p class="text-gray-700 dark:text-gray-300 text-sm">{{ $tutor->email ?? 'N/A' }}</p>
+                <p class="text-gray-600 dark:text-gray-400 text-xs">{{ $tutor->applicant->email ?? 'N/A' }}</p>
                 <p class="text-gray-600 dark:text-gray-400 text-xs">{{ $tutor->tutorID ?? 'N/A' }}</p>
             </div>
         </div>
@@ -54,6 +68,12 @@
                 <label class="block text-sm text-gray-600 dark:text-gray-300 mb-1">First Name <span
                         class="text-red-500">*</span></label>
                 <input type="text" id="firstName" value="{{ $tutor->first_name ?? '' }}" required readonly
+                    class="border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 w-full bg-gray-50 dark:bg-gray-700 dark:text-gray-200 
+                  focus:outline-none focus:border-[0.5px] focus:border-[#0E335D] focus:ring-1 focus:ring-[#0E335D]">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-300 mb-1">Middle Name</label>
+                <input type="text" id="middleName" value="{{ $tutor->middle_name ?? '' }}" readonly
                     class="border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 w-full bg-gray-50 dark:bg-gray-700 dark:text-gray-200 
                   focus:outline-none focus:border-[0.5px] focus:border-[#0E335D] focus:ring-1 focus:ring-[#0E335D]">
             </div>

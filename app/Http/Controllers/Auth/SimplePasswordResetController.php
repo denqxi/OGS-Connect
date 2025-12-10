@@ -9,6 +9,7 @@ use App\Models\SecurityQuestion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
 
 class SimplePasswordResetController extends Controller
@@ -59,7 +60,7 @@ class SimplePasswordResetController extends Controller
         // First, try to find as tutor
         $tutor = Tutor::where('email', $username)
                      ->orWhere('tutorID', $username)
-                     ->orWhere('tusername', $username)
+                     ->orWhere('username', $username)
                      ->first();
         
         if ($tutor) {
@@ -67,7 +68,7 @@ class SimplePasswordResetController extends Controller
             $detectedUserType = 'tutor';
         } else {
             // If not found as tutor, try supervisor
-            $supervisor = Supervisor::where('semail', $username)
+            $supervisor = Supervisor::where('email', $username)
                                    ->orWhere('supID', $username)
                                    ->first();
             
@@ -110,17 +111,37 @@ class SimplePasswordResetController extends Controller
         }
 
         // Verify both answers
+        \Log::info('Verifying security questions', [
+            'user_type' => $userType,
+            'user_id' => $user->getKey(),
+            'question1' => $securityQuestion,
+            'question2' => $securityQuestion2
+        ]);
+        
         if (!$question1Record->verifyAnswer($securityAnswer1)) {
+            \Log::warning('First security question verification failed', [
+                'user_type' => $userType,
+                'user_id' => $user->getKey()
+            ]);
             return back()->withErrors([
                 'security_answer1' => 'Incorrect answer to the first security question. Please try again.',
             ])->withInput();
         }
 
         if (!$question2Record->verifyAnswer($securityAnswer2)) {
+            \Log::warning('Second security question verification failed', [
+                'user_type' => $userType,
+                'user_id' => $user->getKey()
+            ]);
             return back()->withErrors([
                 'security_answer2' => 'Incorrect answer to the second security question. Please try again.',
             ])->withInput();
         }
+        
+        \Log::info('Security questions verified successfully', [
+            'user_type' => $userType,
+            'user_id' => $user->getKey()
+        ]);
 
         // Store user info in session for password reset
         Session::put('password_reset_user', [
@@ -177,10 +198,10 @@ class SimplePasswordResetController extends Controller
         if ($userType === 'tutor') {
             $user = Tutor::where('email', $username)
                         ->orWhere('tutorID', $username)
-                        ->orWhere('tusername', $username)
+                        ->orWhere('username', $username)
                         ->first();
         } elseif ($userType === 'supervisor') {
-            $user = Supervisor::where('semail', $username)
+            $user = Supervisor::where('email', $username)
                              ->orWhere('supID', $username)
                              ->first();
         }
@@ -192,7 +213,7 @@ class SimplePasswordResetController extends Controller
 
         // Update the password
         if ($userType === 'tutor') {
-            $user->update(['tpassword' => Hash::make($request->password)]);
+            $user->update(['password' => Hash::make($request->password)]);
         } else {
             $user->update(['password' => Hash::make($request->password)]);
         }
@@ -224,7 +245,7 @@ class SimplePasswordResetController extends Controller
             // First, try to find as tutor
             $tutor = Tutor::where('email', $username)
                          ->orWhere('tutorID', $username)
-                         ->orWhere('tusername', $username)
+                         ->orWhere('username', $username)
                          ->first();
             
             if ($tutor) {
@@ -232,7 +253,7 @@ class SimplePasswordResetController extends Controller
                 $userType = 'tutor';
             } else {
                 // If not found as tutor, try supervisor
-                $supervisor = Supervisor::where('semail', $username)
+                $supervisor = Supervisor::where('email', $username)
                                        ->orWhere('supID', $username)
                                        ->first();
                 

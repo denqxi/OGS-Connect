@@ -42,6 +42,7 @@ class Tutor extends Authenticatable
         'email',
         'password',
         'status',
+        'profile_photo',
     ];
 
     protected $hidden = [
@@ -323,7 +324,7 @@ class Tutor extends Authenticatable
      */
     public function securityQuestions()
     {
-        return $this->hasMany(SecurityQuestion::class, 'user_id', 'tutorID')
+        return $this->hasMany(SecurityQuestion::class, 'user_id', 'tutor_id')
                     ->where('user_type', 'tutor');
     }
 

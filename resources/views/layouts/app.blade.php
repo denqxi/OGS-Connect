@@ -15,6 +15,7 @@
     <title>@yield('title', 'OGS Connect')</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="{{ asset('js/modal-utils.js') }}"></script>
     <style>
         [x-cloak] {
             display: none !important;

@@ -1944,17 +1944,31 @@ class ScheduleController extends Controller
                 ], 403);
             }
             
-            // Check if assignment is pending acceptance
-            if ($assignment->class_status !== 'pending_acceptance') {
+            // Check if assignment is pending acceptance or partially assigned
+            if (!in_array($assignment->class_status, ['pending_acceptance', 'partially_assigned'])) {
                 return response()->json([
                     'success' => false,
                     'message' => 'This assignment is not pending acceptance'
                 ], 422);
             }
             
-            // Mark as fully assigned
+            // Determine new status based on how many tutors are assigned
+            $hasMain = !is_null($assignment->main_tutor);
+            $hasBackup = !is_null($assignment->backup_tutor);
+            
+            if ($hasMain && $hasBackup) {
+                // Both tutors assigned - fully assigned
+                $newStatus = 'fully_assigned';
+            } else if ($hasMain || $hasBackup) {
+                // Only one tutor assigned - partially assigned
+                $newStatus = 'partially_assigned';
+            } else {
+                // This shouldn't happen, but fallback
+                $newStatus = 'not_assigned';
+            }
+            
             $assignment->update([
-                'class_status' => 'fully_assigned',
+                'class_status' => $newStatus,
                 'finalized_at' => now()
             ]);
             
@@ -2065,9 +2079,23 @@ class ScheduleController extends Controller
                 $assignment->backup_tutor = null;
             }
             
-            // If both tutors are now null, set status back to not_assigned
+            // Update status based on remaining tutors
             if (!$assignment->main_tutor && !$assignment->backup_tutor) {
+                // Both tutors rejected or removed - back to not assigned
                 $assignment->class_status = 'not_assigned';
+            } else {
+                // At least one tutor remains
+                // Check if remaining tutor(s) have accepted
+                $remainingTutors = collect([$assignment->main_tutor, $assignment->backup_tutor])->filter();
+                
+                // Count how many tutors have accepted (have their status stored)
+                // For now, if anyone remains after rejection, keep as pending or set to partially assigned
+                if ($remainingTutors->count() == 1) {
+                    $assignment->class_status = 'partially_assigned';
+                } else {
+                    // Both tutors still assigned (one rejected, but this shouldn't happen in this flow)
+                    $assignment->class_status = 'pending_acceptance';
+                }
             }
             
             $assignment->save();
