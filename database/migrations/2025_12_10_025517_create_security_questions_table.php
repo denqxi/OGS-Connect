@@ -11,6 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Table was already introduced earlier; guard to avoid duplicate table errors on re-run
+        if (Schema::hasTable('security_questions')) {
+            return;
+        }
+
         Schema::create('security_questions', function (Blueprint $table) {
             $table->id();
             $table->string('user_type'); // 'supervisor' or 'tutor'

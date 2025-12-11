@@ -260,26 +260,33 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
             ->paginate(10)
             ->withQueryString();
         
-        // Calculate salary data
-        $totalEarnings = \App\Models\TutorWorkDetail::where('tutor_id', $tutor->tutor_id)
+        // Calculate salary data using correct pay periods (28→12, 13→27)
+        $currentPeriod = \App\Helpers\PayPeriodHelper::getCurrentPeriod();
+        
+        // Sum approved earnings (per-class or hourly fallback)
+        $totalEarnings = \App\Models\TutorWorkDetail::where('tutor_id', $tutor->tutorID)
             ->where('status', 'approved')
             ->where('payment_blocked', false)
-            ->sum('rate_per_class');
+            ->selectRaw('COALESCE(SUM(rate_per_class), 0) + COALESCE(SUM(rate_per_hour * (duration_minutes/60)), 0) AS total')
+            ->value('total');
         
-        $thisMonthEarnings = \App\Models\TutorWorkDetail::where('tutor_id', $tutor->tutor_id)
+        // This period earnings (28→12 or 13→27)
+        $thisMonthEarnings = \App\Models\TutorWorkDetail::where('tutor_id', $tutor->tutorID)
             ->where('status', 'approved')
             ->where('payment_blocked', false)
-            ->whereMonth('created_at', \Carbon\Carbon::now()->month)
-            ->whereYear('created_at', \Carbon\Carbon::now()->year)
-            ->sum('rate_per_class');
+            ->whereDate('created_at', '>=', $currentPeriod['start'])
+            ->whereDate('created_at', '<=', $currentPeriod['end'])
+            ->selectRaw('COALESCE(SUM(rate_per_class), 0) + COALESCE(SUM(rate_per_hour * (duration_minutes/60)), 0) AS total')
+            ->value('total');
         
-        $pendingPayment = \App\Models\TutorWorkDetail::where('tutor_id', $tutor->tutor_id)
+        $pendingPayment = \App\Models\TutorWorkDetail::where('tutor_id', $tutor->tutorID)
             ->where('status', 'pending')
             ->where('payment_blocked', false)
-            ->sum('rate_per_class');
+            ->selectRaw('COALESCE(SUM(rate_per_class), 0) + COALESCE(SUM(rate_per_hour * (duration_minutes/60)), 0) AS total')
+            ->value('total');
         
         // Get salary history
-        $salaryHistory = \App\Models\TutorWorkDetail::where('tutor_id', $tutor->tutor_id)
+        $salaryHistory = \App\Models\TutorWorkDetail::where('tutor_id', $tutor->tutorID)
             ->where('payment_blocked', false)
             ->with(['schedule', 'assignment'])
             ->orderBy('created_at', 'desc')
@@ -298,7 +305,7 @@ Route::middleware(['auth:tutor', 'prevent.back'])->group(function () {
                     'date' => $detail->schedule->date ?? $detail->created_at,
                     'total_classes' => 1,
                     'total_hours' => $hours,
-                    'amount' => $detail->rate_per_class ?? 0,
+                    'amount' => $detail->rate_per_class ?? $detail->computed_amount ?? 0,
                     'status' => $detail->status
                 ];
             });

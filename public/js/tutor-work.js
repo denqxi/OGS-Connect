@@ -44,6 +44,128 @@ document.addEventListener('change', function (e) {
             setTimeout(() => toast.remove(), 220);
         }, ttl);
     }
+
+    let currentProofWorkDetailId = null;
+    let currentProofWorkDetailStatus = null;
+    let currentProofAssignmentId = null;
+    let currentProofScheduleId = null;
+
+    async function fetchRejectionReason(workDetailId, reasonElement, noticeElement) {
+        try {
+            const res = await fetch(`/tutor/work-details/${encodeURIComponent(workDetailId)}`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (!res.ok) {
+                noticeElement.style.display = 'none';
+                return;
+            }
+
+            const data = await res.json();
+            if (data.success && data.approval && data.approval.note) {
+                reasonElement.textContent = data.approval.note;
+                noticeElement.style.display = 'block';
+            } else {
+                reasonElement.textContent = 'No reason provided by supervisor.';
+                noticeElement.style.display = 'block';
+            }
+        } catch (err) {
+            console.error('Failed to fetch rejection reason:', err);
+            noticeElement.style.display = 'none';
+        }
+    }
+
+    function renderProof(container, proofPath) {
+        if (!container) return;
+        if (proofPath) {
+            container.innerHTML = `<img src="/storage/${proofPath}" alt="Proof" class="w-full max-w-md h-64 object-cover rounded-lg border-2 border-gray-300 shadow-md cursor-pointer hover:opacity-90 transition-opacity" onclick="window.open('/storage/${proofPath}', '_blank')">`;
+        } else {
+            container.innerHTML = '<p class="text-gray-500 text-center py-8">No proof image uploaded yet</p>';
+        }
+    }
+
+    function bindProofUploadEvents() {
+        const proofBtn = document.getElementById('modal-proof-upload-btn');
+        const proofInput = document.getElementById('modal-proof-input');
+        const proofContainer = document.getElementById('modal-proof-container');
+        if (!proofBtn || !proofInput || !proofContainer) return;
+
+        proofBtn.addEventListener('click', () => {
+            // If no work detail exists yet, open the form to create one
+            if (!currentProofWorkDetailId) {
+                closeTutorWorkDetailModal();
+                if (currentProofAssignmentId && currentProofScheduleId) {
+                    openWorkDetailForm(currentProofAssignmentId, null, currentProofScheduleId);
+                } else {
+                    showToast('Missing assignment information. Please try again.', 'error');
+                }
+                return;
+            }
+
+            // If approved, block editing
+            if ((currentProofWorkDetailStatus || '') === 'approved') {
+                showToast('Approved work details cannot be changed.', 'info');
+                return;
+            }
+
+            // Otherwise, open file picker to upload proof
+            proofInput.value = '';
+            proofInput.click();
+        });
+
+        proofInput.addEventListener('change', async (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (!currentProofWorkDetailId) {
+                showToast('Add work details first to upload proof.', 'info');
+                return;
+            }
+
+            const form = new FormData();
+            form.append('image', file);
+            form.append('_method', 'PUT');
+            
+            // If currently rejected, set status back to pending
+            const isRejected = currentProofWorkDetailStatus === 'rejected' || currentProofWorkDetailStatus === 'reject';
+            if (isRejected) {
+                form.append('status', 'pending');
+            }
+
+            const csrf = getCsrfToken();
+            try {
+                const res = await fetch(`/tutor/work-details/${encodeURIComponent(currentProofWorkDetailId)}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrf,
+                        'Accept': 'application/json'
+                    },
+                    body: form
+                });
+
+                const body = await res.json().catch(() => null);
+                if (!res.ok) {
+                    const errMsg = body?.message || 'Failed to upload proof';
+                    showToast(errMsg, 'error');
+                    return;
+                }
+
+                const proofPath = body?.data?.proof_image;
+                renderProof(proofContainer, proofPath || null);
+                
+                if (isRejected) {
+                    showToast('Proof resubmitted and sent to supervisor for review', 'success');
+                    // Reload after a short delay so user sees the toast
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    showToast('Proof uploaded', 'success');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Could not upload proof', 'error');
+            }
+        });
+    }
     // Open Payroll Detail Modal
     window.openPayrollDetailModal = function(detail, status) {
         const modal = document.getElementById('payrollWorkDetailModal');
@@ -610,12 +732,63 @@ document.addEventListener('change', function (e) {
         const rate = workDetail?.rate_per_class || schedule?.rate;
         document.getElementById('modal-rate').textContent = rate ? '₱' + parseFloat(rate).toFixed(2) : 'N/A';
         
-        // Populate proof
+        // Populate proof and set context
         const proofContainer = document.getElementById('modal-proof-container');
-        if (workDetail?.proof_image) {
-            proofContainer.innerHTML = `<img src="/storage/${workDetail.proof_image}" alt="Proof" class="w-full max-w-md h-64 object-cover rounded-lg border-2 border-gray-300 shadow-md cursor-pointer hover:opacity-90 transition-opacity" onclick="window.open('/storage/${workDetail.proof_image}', '_blank')">`;
-        } else {
-            proofContainer.innerHTML = '<p class="text-gray-500 text-center py-8">No proof image uploaded yet</p>';
+        currentProofWorkDetailId = workDetail?.id || null;
+        currentProofWorkDetailStatus = (workDetail?.status || '').toLowerCase();
+        currentProofAssignmentId = assignment?.id || null;
+        currentProofScheduleId = assignment?.schedule_daily_data_id || null;
+        renderProof(proofContainer, workDetail?.proof_image || null);
+        
+        // Show/hide rejection notice
+        const rejectionNotice = document.getElementById('modal-rejection-notice');
+        const rejectionReason = document.getElementById('modal-rejection-reason');
+        if (rejectionNotice && rejectionReason) {
+            if (currentProofWorkDetailStatus === 'rejected' || currentProofWorkDetailStatus === 'reject') {
+                // Fetch the latest approval/rejection note
+                if (currentProofWorkDetailId) {
+                    fetchRejectionReason(currentProofWorkDetailId, rejectionReason, rejectionNotice);
+                } else {
+                    rejectionNotice.style.display = 'none';
+                }
+            } else {
+                rejectionNotice.style.display = 'none';
+            }
+        }
+        
+        // Update proof upload button text and visibility
+        const proofBtn = document.getElementById('modal-proof-upload-btn');
+        if (proofBtn) {
+            if (!currentProofWorkDetailId) {
+                proofBtn.style.display = 'flex';
+                proofBtn.disabled = false;
+                proofBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                proofBtn.classList.add('bg-purple-600', 'hover:bg-purple-700');
+                proofBtn.innerHTML = '<i class="fas fa-plus"></i> Add Work Details & Upload Proof';
+            } else if (currentProofWorkDetailStatus === 'approved') {
+                proofBtn.style.display = 'flex';
+                proofBtn.disabled = true;
+                proofBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+                proofBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                proofBtn.innerHTML = '<i class="fas fa-lock"></i> Approved (Locked)';
+            } else if (currentProofWorkDetailStatus === 'pending') {
+                // Hide button when under review
+                proofBtn.style.display = 'none';
+            } else if (currentProofWorkDetailStatus === 'rejected' || currentProofWorkDetailStatus === 'reject') {
+                // Show upload button for rejected items
+                proofBtn.style.display = 'flex';
+                proofBtn.disabled = false;
+                proofBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                proofBtn.classList.add('bg-purple-600', 'hover:bg-purple-700');
+                proofBtn.innerHTML = '<i class="fas fa-upload"></i> Resubmit Proof';
+            } else {
+                // Default: allow upload
+                proofBtn.style.display = 'flex';
+                proofBtn.disabled = false;
+                proofBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                proofBtn.classList.add('bg-purple-600', 'hover:bg-purple-700');
+                proofBtn.innerHTML = '<i class="fas fa-upload"></i> Upload Proof';
+            }
         }
         
         // Handle action buttons based on status and schedule date
@@ -1418,5 +1591,7 @@ document.addEventListener('change', function (e) {
             showToast('Something went wrong', 'error');
         }
     };
+
+    document.addEventListener('DOMContentLoaded', bindProofUploadEvents);
 
 })();

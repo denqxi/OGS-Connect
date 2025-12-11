@@ -22,7 +22,13 @@ class TutorWorkDetail extends Model
         'screenshot',
         'proof_image',
         'status',
-        'note'
+        'note',
+        'payment_blocked',
+        'block_reason'
+    ];
+
+    protected $casts = [
+        'payment_blocked' => 'boolean',
     ];
 
     // Surface helpful derived values for display and calculations

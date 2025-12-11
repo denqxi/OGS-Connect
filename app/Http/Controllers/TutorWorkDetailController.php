@@ -90,6 +90,7 @@ class TutorWorkDetailController extends Controller
             'class_no' => 'nullable|string|max:50',
             'notes' => 'nullable|string|max:2000',
             'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'status' => 'nullable|string|in:pending,approved,rejected,cancelled',
         ]);
 
         if ($validator->fails()) {
@@ -108,15 +109,17 @@ class TutorWorkDetailController extends Controller
         }
 
         // Apply editable fields
-        $detail->fill($request->only(['date', 'ph_time', 'class_no', 'notes']));
+        $detail->fill($request->only(['date', 'ph_time', 'class_no', 'notes', 'status']));
 
-        // If this work detail was previously rejected, mark it as pending again when the tutor updates (resubmission).
-        if (is_string($detail->status) && strtolower($detail->status) === 'reject') {
-            $oldStatus = $detail->status;
-            $detail->status = 'pending';
-            $detail->save();
+        // If this work detail was previously rejected and status is explicitly set to pending (resubmission)
+        $oldStatus = $detail->getOriginal('status');
+        $newStatus = $detail->status;
+        $isResubmission = in_array(strtolower($oldStatus), ['rejected', 'reject']) && strtolower($newStatus) === 'pending';
+        
+        $detail->save();
 
-            // Record a resubmission approval record (no supervisor) for auditability
+        // If resubmitting (rejected -> pending), record the resubmission
+        if ($isResubmission) {
             try {
                 TutorWorkDetailApproval::create([
                     'work_detail_id' => $detail->id,
@@ -129,8 +132,6 @@ class TutorWorkDetailController extends Controller
             } catch (\Exception $e) {
                 Log::warning('Failed to record resubmission approval: ' . $e->getMessage());
             }
-        } else {
-            $detail->save();
         }
 
         return response()->json(['message' => 'Updated', 'data' => $detail]);
@@ -174,7 +175,7 @@ public function store(Request $request)
         'start_time' => 'required|date_format:H:i',
         'end_time' => 'required|date_format:H:i',
         'notes' => 'nullable|string|max:2000',
-        'status' => 'nullable|string|in:pending,approved,reject',
+        'status' => 'nullable|string|in:pending,approved,rejected,cancelled',
         'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
     ]);
 

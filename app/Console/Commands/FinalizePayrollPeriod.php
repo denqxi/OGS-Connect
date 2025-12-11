@@ -9,11 +9,13 @@ use App\Models\PayrollHistory;
 use App\Models\PayrollFinalization;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use App\Helpers\PayPeriodHelper;
 
 class FinalizePayrollPeriod extends Command
 {
-    protected $signature = 'payroll:finalize {--period= : Pay period to finalize (e.g., "2025-12 (1-15)" or "current")}';
-    protected $description = 'Finalize payroll for a bi-monthly period and create locked PayrollHistory records';
+    protected $signature = 'payroll:finalize {--period= : Pay period to finalize (e.g., "2025-02 (28-12)" or "current")}';
+    protected $description = 'Finalize payroll for a bi-monthly period (28→12 or 13→27) and create locked PayrollHistory records';
 
     public function handle()
     {
@@ -21,21 +23,33 @@ class FinalizePayrollPeriod extends Command
             $periodOption = $this->option('period');
             
             if (!$periodOption || $periodOption === 'current') {
-                $payPeriod = $this->getCurrentPayPeriod();
+                $period = PayPeriodHelper::getCurrentPeriod();
+                $payPeriod = $period['label'];
+                $periodStart = $period['start'];
+                $periodEnd = $period['end'];
                 $this->info("Auto-detected current period: $payPeriod");
             } else {
                 $payPeriod = $periodOption;
-            }
+                
+                // Validate and parse pay period (28-12 or 13-27)
+                if (!preg_match('/^(\d{4})-(\d{2})\s+\((\d{1,2})-(\d{1,2})\)$/', $payPeriod, $matches)) {
+                    $this->error("Invalid pay period format. Expected: 2025-02 (28-12) or 2025-03 (13-27)");
+                    return 1;
+                }
 
-            // Validate and parse pay period
-            if (!preg_match('/^(\d{4})-(\d{2})\s+\((\d{1,2})-(\d{1,2})\)$/', $payPeriod, $matches)) {
-                $this->error("Invalid pay period format. Expected: 2025-12 (1-15)");
-                return 1;
+                [$fullMatch, $year, $month, $startDay, $endDay] = $matches;
+                
+                // Determine correct boundaries based on period type
+                if ($startDay == 28) {
+                    // First period: 28 of prev month → 12 of this month
+                    $periodStart = Carbon::createFromDate($year, $month, 1)->subMonth()->day(28)->startOfDay();
+                    $periodEnd = Carbon::createFromDate($year, $month, 12)->endOfDay();
+                } else {
+                    // Second period: 13 → 27 of same month
+                    $periodStart = Carbon::createFromDate($year, $month, 13)->startOfDay();
+                    $periodEnd = Carbon::createFromDate($year, $month, 27)->endOfDay();
+                }
             }
-
-            [$fullMatch, $year, $month, $startDay, $endDay] = $matches;
-            $periodStart = Carbon::createFromDate($year, $month, $startDay)->startOfDay();
-            $periodEnd = Carbon::createFromDate($year, $month, $endDay)->endOfDay();
 
             $this->info("Finalizing payroll for period: $payPeriod");
             $this->info("Period: {$periodStart->format('M d, Y')} to {$periodEnd->format('M d, Y')}");
@@ -56,59 +70,67 @@ class FinalizePayrollPeriod extends Command
 
             foreach ($tutors as $tutor) {
                 try {
-                    // Check if PayrollHistory already exists for this period
-                    $existing = PayrollHistory::where('tutor_id', $tutor->tutor_id)
-                        ->where('pay_period', $payPeriod)
-                        ->first();
+                    // Use transaction with lock to prevent double-finalization
+                    $result = DB::transaction(function () use ($tutor, $payPeriod, $periodStart, $periodEnd) {
+                        // Check if PayrollHistory already exists for this period (with lock)
+                        $existing = PayrollHistory::where('tutor_id', $tutor->tutor_id)
+                            ->where('pay_period', $payPeriod)
+                            ->lockForUpdate()
+                            ->first();
 
-                    if ($existing) {
-                        $skippedCount++;
-                        $bar->advance();
-                        continue;
-                    }
-
-                    // Calculate total amount from approved work details in this period
-                    $workDetails = TutorWorkDetail::where('tutor_id', $tutor->tutor_id)
-                        ->where('status', 'approved')
-                        ->whereBetween('created_at', [$periodStart, $periodEnd])
-                        ->get();
-
-                    $totalAmount = $workDetails->reduce(function ($carry, $wd) {
-                        if (($wd->work_type ?? '') === 'hourly') {
-                            $hours = ($wd->duration_minutes ?? 0) / 60;
-                            $carry += ($wd->rate_per_hour ?? 0) * $hours;
-                        } else {
-                            $carry += ($wd->rate_per_class ?? 0);
+                        if ($existing) {
+                            return ['created' => false];
                         }
-                        return $carry;
-                    }, 0);
 
-                    $totalAmount = round($totalAmount, 2);
+                        // Calculate total amount from approved work details in this period
+                        $workDetails = TutorWorkDetail::where('tutor_id', $tutor->tutor_id)
+                            ->where('status', 'approved')
+                            ->whereBetween('created_at', [$periodStart, $periodEnd])
+                            ->get();
 
-                    // Create PayrollHistory record with locked amount
-                    PayrollHistory::create([
-                        'tutor_id' => $tutor->tutor_id,
-                        'pay_period' => $payPeriod,
-                        'total_amount' => $totalAmount,
-                        'submission_type' => 'email',
-                        'status' => 'draft',
-                        'recipient_email' => $tutor->email,
-                        'notes' => "Auto-finalized payroll for $payPeriod. Work details count: " . $workDetails->count(),
-                        'submitted_at' => now(),
-                    ]);
+                        $totalAmount = $workDetails->reduce(function ($carry, $wd) {
+                            if (($wd->work_type ?? '') === 'hourly') {
+                                $hours = ($wd->duration_minutes ?? 0) / 60;
+                                $carry += ($wd->rate_per_hour ?? 0) * $hours;
+                            } else {
+                                $carry += ($wd->rate_per_class ?? 0);
+                            }
+                            return $carry;
+                        }, 0);
 
-                    // Create PayrollFinalization record to track the locked finalization
-                    PayrollFinalization::create([
-                        'tutor_id' => $tutor->tutor_id,
-                        'pay_period' => $payPeriod,
-                        'total_amount' => $totalAmount,
-                        'work_details_count' => $workDetails->count(),
-                        'status' => 'draft',
-                        'finalized_at' => now(),
-                        'notes' => "Payroll amount locked at finalization. {$workDetails->count()} approved work details.",
-                    ]);
+                        $totalAmount = round($totalAmount, 2);
 
-                    $createdCount++;
+                        // Create PayrollHistory record with locked amount
+                        PayrollHistory::create([
+                            'tutor_id' => $tutor->tutor_id,
+                            'pay_period' => $payPeriod,
+                            'total_amount' => $totalAmount,
+                            'submission_type' => 'email',
+                            'status' => 'draft',
+                            'recipient_email' => $tutor->email,
+                            'notes' => "Auto-finalized payroll for $payPeriod. Work details count: " . $workDetails->count(),
+                            'submitted_at' => now(),
+                        ]);
+
+                        // Create PayrollFinalization record to track the locked finalization
+                        PayrollFinalization::create([
+                            'tutor_id' => $tutor->tutor_id,
+                            'pay_period' => $payPeriod,
+                            'total_amount' => $totalAmount,
+                            'work_details_count' => $workDetails->count(),
+                            'status' => 'draft',
+                            'finalized_at' => now(),
+                            'notes' => "Payroll amount locked at finalization. {$workDetails->count()} approved work details.",
+                        ]);
+
+                        return ['created' => true];
+                    });
+
+                    if ($result['created']) {
+                        $createdCount++;
+                    } else {
+                        $skippedCount++;
+                    }
                 } catch (\Exception $e) {
                     $this->warn("Error processing tutor {$tutor->username}: " . $e->getMessage());
                     Log::error('PayrollFinalize error', ['tutor_id' => $tutor->tutor_id, 'error' => $e->getMessage()]);
@@ -133,18 +155,4 @@ class FinalizePayrollPeriod extends Command
         }
     }
 
-    /**
-     * Get the current bi-monthly pay period
-     */
-    private function getCurrentPayPeriod(): string
-    {
-        $today = Carbon::now();
-        $day = $today->day;
-
-        if ($day <= 15) {
-            return $today->format('Y-m') . ' (1-15)';
-        } else {
-            return $today->format('Y-m') . ' (16-30)';
-        }
-    }
 }

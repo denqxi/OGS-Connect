@@ -23,7 +23,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium text-gray-600 mb-1">Pending Amount</p>
-                    <p class="text-2xl font-bold text-orange-700" id="totalPendingAmount">₱0.00</p>
+                    <p class="text-2xl font-bold text-orange-700">₱{{ number_format($totalPendingAmount ?? 0, 2) }}</p>
                 </div>
                 <div class="w-12 h-12 bg-orange-200 rounded-full flex items-center justify-center">
                     <i class="fas fa-clock text-orange-600 text-lg"></i>
@@ -36,7 +36,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium text-gray-600 mb-1">Approved Amount</p>
-                    <p class="text-2xl font-bold text-green-700" id="totalApprovedAmount">₱0.00</p>
+                    <p class="text-2xl font-bold text-green-700">₱{{ number_format($totalApprovedAmount ?? 0, 2) }}</p>
                 </div>
                 <div class="w-12 h-12 bg-green-200 rounded-full flex items-center justify-center">
                     <i class="fas fa-check-circle text-green-600 text-lg"></i>
@@ -49,7 +49,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium text-gray-600 mb-1">Total Payroll</p>
-                    <p class="text-2xl font-bold text-purple-700" id="totalPayroll">₱0.00</p>
+                    <p class="text-2xl font-bold text-purple-700">₱{{ number_format($totalApprovedAmount ?? 0, 2) }}</p>
                 </div>
                 <div class="w-12 h-12 bg-purple-200 rounded-full flex items-center justify-center">
                     <i class="fas fa-money-bill-wave text-purple-600 text-lg"></i>
@@ -213,50 +213,6 @@
                 clearBtn.classList.remove('hidden');
             }
         }
-
-        // Calculate summary totals
-        async function calculateSummaryTotals() {
-            try {
-                // You can fetch actual data from backend or calculate from visible data
-                const tutorIds = @json($tutors->pluck('tutorID'));
-                
-                let totalPending = 0;
-                let totalApproved = 0;
-                
-                // Fetch summary for each tutor (this could be optimized with a single API call)
-                for (const tutorID of tutorIds) {
-                    try {
-                        const res = await fetch(`${baseUrl}/${encodeURIComponent(tutorID)}/summary`, { 
-                            headers: { 'X-Requested-With': 'XMLHttpRequest' } 
-                        });
-                        if (res.ok) {
-                            const html = await res.text();
-                            const parser = new DOMParser();
-                            const doc = parser.parseFromString(html, 'text/html');
-                            
-                            // Extract amounts from the summary (adjust selectors as needed)
-                            const pendingElements = doc.querySelectorAll('[data-status="pending"]');
-                            const approvedElements = doc.querySelectorAll('[data-status="approved"]');
-                            
-                            // This is a placeholder - adjust based on actual HTML structure
-                            // You might want to add a backend endpoint that returns JSON totals instead
-                        }
-                    } catch (err) {
-                        console.error('Error fetching tutor summary:', err);
-                    }
-                }
-                
-                // Update the display
-                document.getElementById('totalPendingAmount').textContent = '₱' + totalPending.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                document.getElementById('totalApprovedAmount').textContent = '₱' + totalApproved.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                document.getElementById('totalPayroll').textContent = '₱' + (totalPending + totalApproved).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            } catch (err) {
-                console.error('Error calculating totals:', err);
-            }
-        }
-
-        // Call on page load
-        // calculateSummaryTotals();
 
         window.openTutorSummary = async function (tutorID) {
             if (!tutorID) return;

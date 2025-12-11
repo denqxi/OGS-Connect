@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Mail\PayslipMail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use App\Helpers\PayPeriodHelper;
 
 class PayrollController extends Controller
 {
@@ -83,10 +85,50 @@ class PayrollController extends Controller
                 return $tutor;
             });
 
+            // Calculate total pending and approved amounts across all tutors
+            $totalPendingAmount = 0;
+            $totalApprovedAmount = 0;
+            
+            // Build the base tutor query (same filters as above)
+            $baseQuery = Tutor::where('status', 'active');
+            if (Auth::guard('supervisor')->check()) {
+                $supervisor = Auth::guard('supervisor')->user();
+                if ($supervisor->assigned_account) {
+                    $baseQuery->whereHas('account', function ($q) use ($supervisor) {
+                        $q->whereRaw('LOWER(account_name) = ?', [strtolower($supervisor->assigned_account)]);
+                    });
+                }
+            }
+            
+            // Get all tutors' formatted IDs (not paginated) to calculate totals
+            $allTutorIds = $baseQuery->pluck('tutorID');
+            
+            // Sum pending work details (try rate_per_class first, fallback to computed_amount)
+            $pendingWorkDetails = TutorWorkDetail::whereIn('tutor_id', $allTutorIds)
+                ->where('status', 'pending')
+                ->get();
+            
+            foreach ($pendingWorkDetails as $detail) {
+                $amount = $detail->rate_per_class ?? $detail->computed_amount ?? 0;
+                $totalPendingAmount += (float)$amount;
+            }
+            
+            // Sum approved work details (try rate_per_class first, fallback to computed_amount)
+            $approvedWorkDetails = TutorWorkDetail::whereIn('tutor_id', $allTutorIds)
+                ->where('status', 'approved')
+                ->get();
+            
+            foreach ($approvedWorkDetails as $detail) {
+                $amount = $detail->rate_per_class ?? $detail->computed_amount ?? 0;
+                $totalApprovedAmount += (float)$amount;
+            }
+
             $viewData = [
                 'payrolls' => $tutors,
                 'workDetails' => $tutors,
                 'tutors' => $tutors,
+                'totalPendingAmount' => $totalPendingAmount,
+                'totalApprovedAmount' => $totalApprovedAmount,
             ];
 
             // If history tab requested, load approvals paginator with optional filters
@@ -312,19 +354,22 @@ public function workDetails(Request $request)
                 }
             }
 
-            // diri na side kay for history log
-            $newStatus = $request->input('status', 'approved');
+            // Idempotency: if already approved and no change requested
+            $requestedStatus = $request->input('status', 'approved');
+            if ($detail->status === $requestedStatus) {
+                return response()->json(['message' => 'No change: already ' . $requestedStatus]);
+            }
+
+            // Transactional update + audit log
+            $newStatus = $requestedStatus;
             $oldStatus = $detail->status;
 
-            $detail->status = $newStatus;
-            $detail->save();
+            $supervisor = Auth::guard('supervisor')->user() ?: Auth::user();
+            $supervisorId = $supervisor->supervisor_id ?? $supervisor->id ?? null;
 
-            $supervisorId = null;
-            try {
-                $supervisor = Auth::guard('supervisor')->user() ?: Auth::user();
-                if ($supervisor) {
-                    $supervisorId = $supervisor->supervisor_id ?? $supervisor->id ?? null;
-                }
+            DB::transaction(function () use ($detail, $newStatus, $oldStatus, $request, $supervisorId) {
+                $detail->status = $newStatus;
+                $detail->save();
 
                 TutorWorkDetailApproval::create([
                     'work_detail_id' => $detail->id,
@@ -334,31 +379,35 @@ public function workDetails(Request $request)
                     'approved_at' => now(),
                     'note' => $request->input('note'),
                 ]);
-                
-                // Notify tutor of approval
-                $tutor = $detail->tutor;
-                $schedule = $detail->schedule;
-                if ($tutor && $schedule) {
-                    Notification::create([
-                        'user_id' => $tutor->tutor_id,
-                        'user_type' => 'tutor',
-                        'type' => 'work_detail_approved',
-                        'title' => 'Work Detail Approved',
-                        'message' => "Your work details for {$schedule->school} - {$schedule->class} on {$schedule->date} have been approved. Payment will be processed.",
-                        'icon' => 'fas fa-check-circle',
-                        'color' => 'green',
-                        'is_read' => false,
-                        'data' => [
-                            'work_detail_id' => $detail->id,
-                            'schedule_id' => $detail->schedule_daily_data_id,
-                            'amount' => $detail->rate_per_class ?? $detail->rate_per_hour,
-                            'supervisor_id' => $supervisorId
-                        ]
-                    ]);
+            });
+
+            // After-commit notification
+            DB::afterCommit(function () use ($detail, $supervisorId) {
+                try {
+                    $tutor = $detail->tutor;
+                    $schedule = $detail->schedule;
+                    if ($tutor && $schedule) {
+                        Notification::create([
+                            'user_id' => $tutor->tutor_id,
+                            'user_type' => 'tutor',
+                            'type' => 'work_detail_approved',
+                            'title' => 'Work Detail Approved',
+                            'message' => "Your work details for {$schedule->school} - {$schedule->class} on {$schedule->date} have been approved. Payment will be processed.",
+                            'icon' => 'fas fa-check-circle',
+                            'color' => 'green',
+                            'is_read' => false,
+                            'data' => [
+                                'work_detail_id' => $detail->id,
+                                'schedule_id' => $detail->schedule_daily_data_id,
+                                'amount' => $detail->rate_per_class ?? $detail->rate_per_hour,
+                                'supervisor_id' => $supervisorId
+                            ]
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Failed to create approval notification after commit: ' . $e->getMessage());
                 }
-            } catch (\Exception $e) {
-                Log::warning('Failed to record approval: ' . $e->getMessage());
-            }
+            });
 
             return response()->json(['message' => 'Work detail ' . $newStatus . ' successfully']);
         } catch (\Exception $e) {
@@ -397,83 +446,63 @@ public function workDetails(Request $request)
                 }
             }
 
-            $oldStatus = $detail->status;
-            $detail->status = 'reject';
-            $detail->save();
-            
-            // Notify tutor of rejection
-            try {
-                $tutor = $detail->tutor;
-                $schedule = $detail->schedule;
-                $note = $request->input('note', 'No reason provided');
-                
-                if ($tutor && $schedule) {
-                    Notification::create([
-                        'user_id' => $tutor->tutor_id,
-                        'user_type' => 'tutor',
-                        'type' => 'work_detail_rejected',
-                        'title' => 'Work Detail Rejected',
-                        'message' => "Your work details for {$schedule->school} - {$schedule->class} on {$schedule->date} have been rejected. Reason: {$note}",
-                        'icon' => 'fas fa-times-circle',
-                        'color' => 'red',
-                        'is_read' => false,
-                        'data' => [
-                            'work_detail_id' => $detail->id,
-                            'schedule_id' => $detail->schedule_daily_data_id,
-                            'rejection_reason' => $note
-                        ]
-                    ]);
-                }
-            } catch (\Exception $e) {
-                Log::warning('Failed to create rejection notification: ' . $e->getMessage());
+            // Idempotency: if already rejected
+            if ($detail->status === 'rejected') {
+                return response()->json(['message' => 'No change: already rejected']);
             }
 
-            // record approval/rejection
-            try {
-                $supervisor = Auth::guard('supervisor')->user() ?: Auth::user();
-                $supervisorId = $supervisor->supervisor_id ?? $supervisor->id ?? null;
+            $oldStatus = $detail->status;
+            $supervisor = Auth::guard('supervisor')->user() ?: Auth::user();
+            $supervisorId = $supervisor->supervisor_id ?? $supervisor->id ?? null;
+
+            DB::transaction(function () use ($detail, $oldStatus, $request, $supervisorId) {
+                $detail->status = 'rejected';
+                $detail->save();
 
                 TutorWorkDetailApproval::create([
                     'work_detail_id' => $detail->id,
                     'supervisor_id' => $supervisorId,
                     'old_status' => $oldStatus,
-                    'new_status' => 'reject',
+                    'new_status' => 'rejected',
                     'approved_at' => now(),
                     'note' => $request->input('note'),
                 ]);
-            } catch (\Exception $e) {
-                Log::warning('Failed to record rejection: ' . $e->getMessage());
-            }
+            });
 
-            // Create notification for tutor
-            try {
-                $tutor = $detail->tutor;
-                $supervisorName = $supervisor->name ?? $supervisor->username ?? 'Supervisor';
-                $rejectionNote = $request->input('note');
+            DB::afterCommit(function () use ($detail, $supervisor, $supervisorId, $request) {
+                try {
+                    $tutor = $detail->tutor;
+                    $schedule = $detail->schedule;
+                    $note = $request->input('note', 'No reason provided');
+                    $supervisorName = $supervisor->name ?? $supervisor->username ?? 'Supervisor';
 
-                Notification::create([
-                        'user_id' => $tutor->tutor_id,
-                    'user_type' => 'tutor',
-                    'type' => 'work_detail_rejected',
-                    'title' => 'Work Detail Rejected',
-                    'message' => "Your work detail has been rejected by {$supervisorName}. Reason: {$rejectionNote}",
-                    'icon' => 'fas fa-times-circle',
-                    'color' => 'red',
-                    'is_read' => false,
-                    'data' => [
+                    if ($tutor && $schedule) {
+                        Notification::create([
+                            'user_id' => $tutor->tutor_id,
+                            'user_type' => 'tutor',
+                            'type' => 'work_detail_rejected',
+                            'title' => 'Work Detail Rejected',
+                            'message' => "Your work details for {$schedule->school} - {$schedule->class} on {$schedule->date} have been rejected by {$supervisorName}. Reason: {$note}",
+                            'icon' => 'fas fa-times-circle',
+                            'color' => 'red',
+                            'is_read' => false,
+                            'data' => [
+                                'work_detail_id' => $detail->id,
+                                'schedule_id' => $detail->schedule_daily_data_id,
+                                'rejection_reason' => $note,
+                                'supervisor_id' => $supervisorId
+                            ]
+                        ]);
+                    }
+
+                    Log::info('Rejection notification created for tutor', [
                         'work_detail_id' => $detail->id,
-                        'supervisor_id' => $supervisorId,
-                        'rejection_note' => $rejectionNote
-                    ]
-                ]);
-
-                Log::info('Rejection notification created for tutor', [
-                    'work_detail_id' => $detail->id,
-                        'tutor_id' => $tutor->tutor_id
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Failed to create rejection notification: ' . $e->getMessage());
-            }
+                        'tutor_id' => $tutor->tutor_id ?? null
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to create rejection notification after commit: ' . $e->getMessage());
+                }
+            });
 
             return response()->json(['message' => 'Work detail rejected successfully']);
         } catch (\Illuminate\Validation\ValidationException $ve) {
@@ -503,15 +532,11 @@ public function workDetails(Request $request)
                 }
             }
 
-            $today = Carbon::now();
-            $day = (int) $today->format('j');
-            if ($day <= 15) {
-                $periodStart = $today->copy()->startOfMonth()->format('Y-m-d');
-                $periodEnd = $today->copy()->day(15)->format('Y-m-d');
-            } else {
-                $periodStart = $today->copy()->day(16)->format('Y-m-d');
-                $periodEnd = $today->copy()->endOfMonth()->format('Y-m-d');
-            }
+            // Use correct pay period: 28→12 or 13→27
+            $period = PayPeriodHelper::getCurrentPeriod();
+            $periodStart = $period['start']->format('Y-m-d');
+            $periodEnd = $period['end']->format('Y-m-d');
+            $releaseDate = $period['release']->format('Y-m-d');
 
             $approvedQuery = TutorWorkDetail::where('tutor_id', $tutor)
                 ->where('status', 'approved')
@@ -546,6 +571,7 @@ public function workDetails(Request $request)
                 'details' => $approved,
                 'period_start' => $periodStart,
                 'period_end' => $periodEnd,
+                'release_date' => $releaseDate,
             ];
 
             return view('payroll.partials.tutor_summary', $summary);
@@ -579,76 +605,81 @@ public function workDetails(Request $request)
                 }
             }
 
-            // Determine pay period format
+            // Determine pay period using helper
             $startDate = Carbon::parse($periodStart);
             $endDate = Carbon::parse($periodEnd);
-            $day = (int) $startDate->format('j');
-            
-            if ($day === 1 && $endDate->format('j') == 15) {
-                $payPeriod = $startDate->format('Y-m') . ' (1-15)';
-            } else {
-                $payPeriod = $startDate->format('Y-m') . ' (16-30)';
-            }
+            $payPeriod = PayPeriodHelper::formatPeriodLabel($startDate, $endDate);
 
-            // Check if already finalized
-            $existing = PayrollHistory::where('tutor_id', $tutor->tutor_id)
-                ->where('pay_period', $payPeriod)
-                ->first();
+            // Transaction to avoid partial state and re-check idempotency
+            $result = DB::transaction(function () use ($tutor, $tutorID, $periodStart, $periodEnd, $payPeriod) {
+                $existing = PayrollHistory::where('tutor_id', $tutor->tutor_id)
+                    ->where('pay_period', $payPeriod)
+                    ->lockForUpdate()
+                    ->first();
 
-            if ($existing) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Payroll for this period is already finalized'
-                ], 400);
-            }
-
-            // Get approved work details for this period
-            $workDetails = TutorWorkDetail::where('tutor_id', $tutorID)
-                ->where('status', 'approved')
-                ->whereBetween('created_at', [$periodStart . ' 00:00:00', $periodEnd . ' 23:59:59'])
-                ->get();
-
-            // Calculate total amount
-            $totalAmount = $workDetails->reduce(function ($carry, $wd) {
-                if (($wd->work_type ?? '') === 'hourly') {
-                    $hours = ($wd->duration_minutes ?? 0) / 60;
-                    $carry += ($wd->rate_per_hour ?? 0) * $hours;
-                } else {
-                    $carry += ($wd->rate_per_class ?? 0);
+                if ($existing) {
+                    return ['already' => true, 'payPeriod' => $payPeriod, 'amount' => $existing->total_amount];
                 }
-                return $carry;
-            }, 0);
 
-            $totalAmount = round($totalAmount, 2);
+                // Get approved work details for this period
+                $workDetails = TutorWorkDetail::where('tutor_id', $tutorID)
+                    ->where('status', 'approved')
+                    ->whereBetween('created_at', [$periodStart . ' 00:00:00', $periodEnd . ' 23:59:59'])
+                    ->get();
 
-            // Create PayrollHistory record
-            $payrollHistory = PayrollHistory::create([
-                'tutor_id' => $tutor->tutor_id,
-                'pay_period' => $payPeriod,
-                'total_amount' => $totalAmount,
-                'submission_type' => 'email',
-                'status' => 'finalized',
-                'recipient_email' => $tutor->email,
-                'notes' => "Finalized by supervisor. Work details count: {$workDetails->count()}",
-                'submitted_at' => now(),
-            ]);
+                // Calculate total amount
+                $totalAmount = $workDetails->reduce(function ($carry, $wd) {
+                    if (($wd->work_type ?? '') === 'hourly') {
+                        $hours = ($wd->duration_minutes ?? 0) / 60;
+                        $carry += ($wd->rate_per_hour ?? 0) * $hours;
+                    } else {
+                        $carry += ($wd->rate_per_class ?? 0);
+                    }
+                    return $carry;
+                }, 0);
 
-            // Create PayrollFinalization record
-            \App\Models\PayrollFinalization::create([
-                'tutor_id' => $tutor->tutor_id,
-                'pay_period' => $payPeriod,
-                'total_amount' => $totalAmount,
-                'work_details_count' => $workDetails->count(),
-                'status' => 'locked',
-                'finalized_at' => now(),
-                'notes' => "Manually finalized by supervisor " . Auth::guard('supervisor')->user()->username ?? 'system',
-            ]);
+                $totalAmount = round($totalAmount, 2);
+
+                // Create PayrollHistory record
+                $history = PayrollHistory::create([
+                    'tutor_id' => $tutor->tutor_id,
+                    'pay_period' => $payPeriod,
+                    'total_amount' => $totalAmount,
+                    'submission_type' => 'email',
+                    'status' => 'finalized',
+                    'recipient_email' => $tutor->email,
+                    'notes' => "Finalized by supervisor. Work details count: {$workDetails->count()}",
+                    'submitted_at' => now(),
+                ]);
+
+                // Create PayrollFinalization record
+                \App\Models\PayrollFinalization::create([
+                    'tutor_id' => $tutor->tutor_id,
+                    'pay_period' => $payPeriod,
+                    'total_amount' => $totalAmount,
+                    'work_details_count' => $workDetails->count(),
+                    'status' => 'locked',
+                    'finalized_at' => now(),
+                    'notes' => "Manually finalized by supervisor " . (Auth::guard('supervisor')->user()->username ?? 'system'),
+                ]);
+
+                return ['already' => false, 'payPeriod' => $payPeriod, 'amount' => $totalAmount];
+            });
+
+            if ($result['already'] ?? false) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Payroll already finalized for this period',
+                    'pay_period' => $result['payPeriod'],
+                    'amount' => $result['amount']
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => "Payroll finalized successfully! Amount locked: ₱" . number_format($totalAmount, 2),
-                'pay_period' => $payPeriod,
-                'amount' => $totalAmount
+                'message' => "Payroll finalized successfully! Amount locked: ₱" . number_format($result['amount'], 2),
+                'pay_period' => $result['payPeriod'],
+                'amount' => $result['amount']
             ]);
 
         } catch (\Exception $e) {
@@ -671,15 +702,10 @@ public function workDetails(Request $request)
                 $tutorModel = Tutor::where('tutorID', $tutor)->with(['account'])->firstOrFail();
             }
 
-            // Determine current pay period like in tutorSummary
-            $today = Carbon::now();
-            if ((int)$today->format('j') <= 15) {
-                $periodStart = $today->copy()->startOfMonth()->format('Y-m-d');
-                $periodEnd = $today->copy()->day(15)->format('Y-m-d');
-            } else {
-                $periodStart = $today->copy()->day(16)->format('Y-m-d');
-                $periodEnd = $today->copy()->endOfMonth()->format('Y-m-d');
-            }
+            // Determine current pay period using helper (28→12 or 13→27)
+            $period = PayPeriodHelper::getCurrentPeriod();
+            $periodStart = $period['start']->format('Y-m-d');
+            $periodEnd = $period['end']->format('Y-m-d');
 
             // Approved work details
             // TutorWorkDetail.tutor_id stores the formatted tutorID string (e.g. OGS-T0001)

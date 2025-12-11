@@ -99,6 +99,9 @@
                             } elseif ($isApproved) {
                                 $statusText = 'Approved';
                                 $statusColor = 'bg-green-100 text-green-800';
+                            } elseif ($hasSubmitted && in_array(strtolower($workDetail->status ?? ''), ['rejected', 'reject'])) {
+                                $statusText = 'Rejected';
+                                $statusColor = 'bg-red-100 text-red-800';
                             } elseif ($hasSubmitted) {
                                 $statusText = 'Pending Review';
                                 $statusColor = 'bg-yellow-100 text-yellow-800';
@@ -228,6 +231,19 @@
                     </div>
                 </div>
 
+                <!-- Rejection Notice (hidden by default) -->
+                <div id="modal-rejection-notice" class="bg-red-50 border border-red-300 rounded-lg p-4 mb-4" style="display: none;">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-circle text-red-600 text-xl"></i>
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <h4 class="text-sm font-semibold text-red-800 mb-1">Work Detail Rejected</h4>
+                            <p class="text-sm text-red-700" id="modal-rejection-reason">—</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Proof of Work Card -->
                 <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-5 border border-purple-200 shadow-sm" id="proof-section">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
@@ -235,8 +251,17 @@
                         Proof of Work
                     </h3>
                     
-                    <div class="flex justify-center" id="modal-proof-container">
+                    <div class="flex flex-col items-center" id="modal-proof-container">
                         <p class="text-gray-500 text-center py-8">No proof image uploaded yet</p>
+                    </div>
+
+                    <input type="file" id="modal-proof-input" accept="image/*" class="hidden">
+                    
+                    <div class="mt-4 flex justify-center">
+                        <button type="button" id="modal-proof-upload-btn" 
+                            class="px-6 py-2 bg-purple-600 text-white rounded-md font-medium hover:bg-purple-700 transition-colors flex items-center gap-2">
+                            <i class="fas fa-upload"></i> Upload Proof
+                        </button>
                     </div>
                 </div>
             </div>
