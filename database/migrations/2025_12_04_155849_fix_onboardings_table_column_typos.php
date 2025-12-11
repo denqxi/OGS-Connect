@@ -12,8 +12,22 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Drop foreign key constraints for the misspelled columns
-        DB::statement('ALTER TABLE onboardings DROP FOREIGN KEY onboardings_asessed_by_foreign');
+        // Check if the foreign key exists before trying to drop it
+        try {
+            $foreignKeys = DB::select("
+                SELECT CONSTRAINT_NAME 
+                FROM information_schema.KEY_COLUMN_USAGE 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_NAME = 'onboardings' 
+                AND CONSTRAINT_NAME = 'onboardings_asessed_by_foreign'
+            ");
+            
+            if (!empty($foreignKeys)) {
+                DB::statement('ALTER TABLE onboardings DROP FOREIGN KEY onboardings_asessed_by_foreign');
+            }
+        } catch (\Exception $e) {
+            // Foreign key doesn't exist, continue
+        }
         
         // Drop the misspelled columns
         Schema::table('onboardings', function (Blueprint $table) {

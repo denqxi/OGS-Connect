@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class Demo extends Model
 {
-    // This model now acts as a compatibility/proxy layer for the new `screening` table.
+    // This model now acts as a compatibility/proxy layer for the new `screenings` table.
     // Many parts of the codebase still reference `Demo` and expect denormalized fields.
     // To avoid changing all call sites, we map common attributes to related models.
 
-    protected $table = 'screening';
+    protected $table = 'screenings';
     protected $primaryKey = 'screening_id';
 
     // Allow filling the screening fields that exist in the new table (used by new flows)

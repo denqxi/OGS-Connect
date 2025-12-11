@@ -204,7 +204,7 @@ public function workDetails(Request $request)
     try {
         $search = $request->input('search');
 
-        $workQuery = TutorWorkDetail::with(['tutor.applicant'])
+        $workQuery = TutorWorkDetail::with(['tutor.applicant', 'assignment', 'schedule'])
             ->where('status', '!=', 'approved') 
             ->where('status', '!=', 'reject'); 
 

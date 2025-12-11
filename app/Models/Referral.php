@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Referral extends Model
 {
-    protected $table = 'referral';
+    protected $table = 'referrals';
     protected $primaryKey = 'applicant_referral_id';
 
     protected $fillable = [

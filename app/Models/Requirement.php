@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Requirement extends Model
 {
-    protected $table = 'requirement';
+    protected $table = 'requirements';
     protected $primaryKey = 'applicant_requirement_id';
 
     protected $fillable = [

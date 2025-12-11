@@ -2,13 +2,9 @@
     {{-- Show the daily schedule view for finalized schedules --}}
     @include('schedules.tabs.views.finalized-schedule', ['date' => request('view_date')])
 @else
-<!-- Page Title -->
-<div class="bg-white border-b border-gray-200 px-6 py-4">
-    <h2 class="text-xl font-semibold text-gray-800">Schedule History</h2>
-</div>
 
 <!-- Search Filters -->
-<div class="bg-white px-6 pb-4 border-b border-gray-200">
+<div class="bg-white px-6 pt-6 pb-4 border-b border-gray-200">
     <div class="flex items-center justify-between">
         <!-- LEFT SIDE: LABEL + FILTERS IN ONE ROW -->
         <div class="flex items-center space-x-4 overflow-x-auto whitespace-nowrap">
@@ -55,16 +51,25 @@
             </form>
         </div>
 
-        <!-- RIGHT SIDE: EXPORT BUTTON -->
-        <div class="relative">
+        <!-- RIGHT SIDE: EXPORT BUTTONS -->
+        <div class="flex items-center space-x-3">
             <button type="button"
                 id="exportButton"
                 onclick="exportSelectedSchedules()"
-                class="flex items-center space-x-2 bg-[#0E335D] text-white px-4 py-2 rounded-full text-sm font-medium 
+                class="flex items-center space-x-2 bg-[#0E335D] text-white px-4 py-2 rounded-md text-sm font-medium 
                         hover:bg-[#184679] transform transition duration-200 hover:scale-105 opacity-50 cursor-not-allowed"
-                disabled>
+                disabled
+                title="Export only the schedules you have checked">
                 <i class="fas fa-file-export"></i>
-                <span id="exportButtonText">Export File (0 selected)</span>
+                <span id="exportButtonText">Export Selected (0)</span>
+            </button>
+            
+            <button type="button" onclick="showExportAllModal()"
+                    class="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium 
+                            hover:bg-green-700 transform transition duration-200 hover:scale-105"
+                    title="Export ALL fully assigned schedules in the entire history">
+                <i class="fas fa-download"></i>
+                <span>Export All</span>
             </button>
         </div>
     </div>
@@ -72,7 +77,7 @@
 
 
 <!-- Schedule History Table -->
-<div class="bg-white overflow-x-auto">
+<div class="overflow-x-auto">
     <table class="w-full table-auto">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -92,7 +97,7 @@
                 @foreach($scheduleHistory as $history)
                 <tr class="hover:bg-gray-50">
                     <td class="px-6 py-4 text-sm">
-                        <input type="checkbox" name="selected_schedules[]" value="{{ $history->date }}" class="schedule-checkbox rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" onchange="updateExportButton()">
+                        <input type="checkbox" name="selected_schedules[]" value="{{ $history->id }}" class="schedule-checkbox rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" onchange="updateExportButton()">
                     </td>
                     <!-- Date -->
                     <td class="px-6 py-4 text-sm font-medium text-gray-900">
@@ -125,7 +130,7 @@
                     <!-- Actions -->
                     <td class="px-6 py-4 text-sm">
                         <div class="flex items-center justify-center">
-                            <button onclick="openScheduleDetailsModal('{{ \Carbon\Carbon::parse($history->date)->format('Y-m-d') }}', '{{ $history->school }}', {{ json_encode($history) }})" 
+                            <button type="button" onclick="openScheduleDetailsModal('{{ \Carbon\Carbon::parse($history->date)->format('Y-m-d') }}', '{{ $history->school }}', {{ json_encode($history) }})" 
                                     class="w-8 h-8 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 inline-flex items-center justify-center transition-colors"
                                     title="View Details">
                                 <i class="fas fa-eye text-xs"></i>
@@ -185,103 +190,189 @@
         @endif
     </div>
 </div>
-@else
-<div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-    <div class="text-sm text-gray-500">
-        @if(isset($scheduleHistory) && $scheduleHistory->count() > 0)
-            Showing 1 to {{ $scheduleHistory->count() }} of {{ $scheduleHistory->count() }} entries
-        @else
-            Showing 0 to 0 of 0 entries
-        @endif
-    </div>
-    <div class="flex items-center space-x-2">
-        <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
-            <i class="fas fa-chevron-left"></i>
-        </button>
-        <button class="px-3 py-1 bg-slate-700 text-white rounded text-sm">1</button>
-        <button class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50" disabled>
-            <i class="fas fa-chevron-right"></i>
-        </button>
-    </div>
-</div>
 @endif
 
-<!-- Schedule Details Modal (same as class-scheduling) -->
+<!-- Schedule Details Modal -->
 <div id="scheduleDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-lg w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
         <!-- Header -->
-        <div class="bg-[#0E335D] text-white px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-            <h2 class="text-xl font-bold">Schedule Details</h2>
-            <button onclick="closeScheduleDetailsModal()" class="text-white hover:text-gray-200">
+        <div class="bg-[#0E335D] text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
+            <h2 class="text-xl font-bold">Schedule Information</h2>
+            <button type="button" onclick="closeScheduleDetailsModal()" class="text-white hover:text-gray-200 transition-colors">
                 <i class="fas fa-times text-xl"></i>
             </button>
         </div>
         
         <!-- Body -->
-        <div class="p-6 space-y-4">
-            <!-- Date & Day -->
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-                    <label class="block text-sm font-bold text-blue-900 uppercase mb-2">Date</label>
-                    <input type="text" id="detail-date" readonly class="w-full bg-transparent border-0 font-semibold text-blue-900 focus:outline-none">
+        <div class="overflow-y-auto flex-grow">
+            <div class="p-6">
+                <!-- Schedule Overview Card -->
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 mb-6 border border-blue-200 shadow-sm">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-calendar-alt text-blue-600 mr-2"></i>
+                        Schedule Overview
+                    </h3>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Date -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                            <p class="text-sm font-semibold text-gray-800" id="detail-date">-</p>
+                        </div>
+                        
+                        <!-- Day -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Day</label>
+                            <p class="text-sm font-semibold text-gray-800" id="detail-day">-</p>
+                        </div>
+                        
+                        <!-- Time -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Time</label>
+                            <p class="text-sm font-semibold text-gray-800" id="detail-times">-</p>
+                        </div>
+                        
+                        <!-- Duration -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Duration</label>
+                            <p class="text-sm font-semibold text-gray-800" id="detail-duration">-</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-                    <label class="block text-sm font-bold text-purple-900 uppercase mb-2">Day</label>
-                    <input type="text" id="detail-day" readonly class="w-full bg-transparent border-0 font-semibold text-purple-900 focus:outline-none">
+
+                <!-- School & Class Information -->
+                <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-5 mb-6 border border-green-200 shadow-sm">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-school text-green-600 mr-2"></i>
+                        School & Class Details
+                    </h3>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- School -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">School</label>
+                            <p class="text-sm font-semibold text-gray-800" id="detail-school">-</p>
+                        </div>
+                        
+                        <!-- Class -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Class</label>
+                            <p class="text-sm font-semibold text-gray-800" id="detail-classes">-</p>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- School -->
-            <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200">
-                <label class="block text-sm font-bold text-indigo-900 uppercase mb-2">School</label>
-                <input type="text" id="detail-school" readonly class="w-full bg-transparent border-0 font-semibold text-indigo-900 focus:outline-none">
-            </div>
-            
-            <!-- Class -->
-            <div class="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-                <label class="block text-sm font-bold text-green-900 uppercase mb-2">Class</label>
-                <input type="text" id="detail-classes" readonly class="w-full bg-transparent border-0 font-semibold text-green-900 focus:outline-none">
-            </div>
-            
-            <!-- Time -->
-            <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
-                <label class="block text-sm font-bold text-yellow-900 uppercase mb-2">Time</label>
-                <input type="text" id="detail-times" readonly class="w-full bg-transparent border-0 font-semibold text-yellow-900 focus:outline-none">
-            </div>
-            
-            <!-- Duration -->
-            <div class="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
-                <label class="block text-sm font-bold text-orange-900 uppercase mb-2">Duration</label>
-                <input type="text" id="detail-duration" readonly class="w-full bg-transparent border-0 font-semibold text-orange-900 focus:outline-none">
-            </div>
-            
-            <!-- Status -->
-            <div class="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
-                <label class="block text-sm font-bold text-red-900 uppercase mb-2">Status</label>
-                <div id="detail-status"></div>
-            </div>
-            
-            <!-- Main Tutor -->
-            <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-                <label class="block text-sm font-bold text-blue-900 uppercase mb-2">Main Tutor</label>
-                <input type="text" id="detail-main-tutor" readonly class="w-full bg-transparent border-0 font-semibold text-blue-900 focus:outline-none">
-            </div>
-            
-            <!-- Backup Tutor -->
-            <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-                <label class="block text-sm font-bold text-purple-900 uppercase mb-2">Backup Tutor</label>
-                <input type="text" id="detail-backup-tutor" readonly class="w-full bg-transparent border-0 font-semibold text-purple-900 focus:outline-none">
+
+                <!-- Assignment Information -->
+                <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-5 mb-6 border border-purple-200 shadow-sm">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-users text-purple-600 mr-2"></i>
+                        Assignment Details
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <!-- Status -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-2">Status</label>
+                            <div id="detail-status"></div>
+                        </div>
+                        
+                        <!-- Main Tutor -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Main Tutor</label>
+                            <div class="bg-white rounded-md px-3 py-2 border border-gray-200">
+                                <p class="text-sm font-semibold text-gray-800" id="detail-main-tutor">-</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Backup Tutor -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Backup Tutor</label>
+                            <div class="bg-white rounded-md px-3 py-2 border border-gray-200">
+                                <p class="text-sm font-semibold text-gray-800" id="detail-backup-tutor">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
         <!-- Footer -->
-        <div class="px-6 py-4 bg-gray-50 flex justify-end border-t">
-            <button onclick="closeScheduleDetailsModal()" class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+        <div class="px-6 py-4 bg-gray-50 flex justify-end border-t flex-shrink-0">
+            <button type="button" onclick="closeScheduleDetailsModal()" class="px-6 py-2 bg-gray-500 text-white rounded-md font-semibold hover:bg-gray-600 transition-colors shadow-sm">
                 Close
             </button>
         </div>
     </div>
 </div>
+
+<!-- Export All Confirmation Modal -->
+<div id="exportAllModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div class="p-6">
+            <div class="flex items-start mb-4">
+                <div class="flex-shrink-0 bg-green-100 rounded-full p-3 mr-4">
+                    <i class="fas fa-download text-green-600 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Export ALL Schedules</h3>
+                    <p class="text-sm text-gray-600">
+                        Are you sure you want to export <strong>ALL fully assigned schedules</strong> to PDF?
+                    </p>
+                    <p class="text-sm text-gray-500 mt-2">
+                        This will include all schedules in the history, not just the ones on this page.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-3 rounded-b-lg">
+            <button type="button" onclick="closeExportAllModal()" 
+                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-400 transition-colors">
+                Cancel
+            </button>
+            <button type="button" onclick="confirmExportAll()" 
+                    class="px-4 py-2 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 transition-colors">
+                Export All
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Export Selected Confirmation Modal -->
+<div id="exportSelectedModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div class="p-6">
+            <div class="flex items-start mb-4">
+                <div class="flex-shrink-0 bg-blue-100 rounded-full p-3 mr-4">
+                    <i class="fas fa-file-export text-blue-600 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Export Selected Schedules</h3>
+                    <p class="text-sm text-gray-600">
+                        You are about to export <strong id="selectedCount">0</strong> schedule(s) to PDF.
+                    </p>
+                    <p class="text-sm text-gray-500 mt-2">
+                        Only the checked schedules will be exported.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-3 rounded-b-lg">
+            <button type="button" onclick="closeExportSelectedModal()" 
+                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-400 transition-colors">
+                Cancel
+            </button>
+            <button type="button" onclick="confirmExportSelected()" 
+                    class="px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors">
+                Export Selected
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Export Forms -->
+<form id="exportAllForm" method="POST" action="{{ route('schedules.export-all') }}" class="hidden">
+    @csrf
+</form>
 
 <!-- JavaScript for Schedule History -->
 <script>
@@ -292,18 +383,25 @@
     // Modal function for viewing schedule details
     function openScheduleDetailsModal(date, school, data) {
         console.log('Opening modal with data:', data);
+        console.log('Day value:', data.day);
         
         // Format date
-        document.getElementById('detail-date').value = new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        const dateObj = new Date(date);
+        document.getElementById('detail-date').textContent = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
         
-        // Day
-        document.getElementById('detail-day').value = data.day || '-';
+        // Day - if not provided in data, get from date
+        let dayName = data.day;
+        if (!dayName || dayName.trim() === '') {
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            dayName = days[dateObj.getDay()];
+        }
+        document.getElementById('detail-day').textContent = dayName || '-';
         
         // School
-        document.getElementById('detail-school').value = data.school || school || '-';
+        document.getElementById('detail-school').textContent = data.school || school || '-';
         
         // Class
-        document.getElementById('detail-classes').value = data.class || '-';
+        document.getElementById('detail-classes').textContent = data.class || '-';
         
         // Time
         if (data.time) {
@@ -311,33 +409,52 @@
                 const timeObj = new Date('2000-01-01 ' + data.time);
                 const duration = data.duration || 25;
                 const endTime = new Date(timeObj.getTime() + duration * 60000);
-                document.getElementById('detail-times').value = timeObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + 
+                document.getElementById('detail-times').textContent = timeObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + 
                     ' - ' + endTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
             } catch (e) {
-                document.getElementById('detail-times').value = data.time;
+                document.getElementById('detail-times').textContent = data.time;
             }
         } else {
-            document.getElementById('detail-times').value = '-';
+            document.getElementById('detail-times').textContent = '-';
         }
         
         // Duration
-        document.getElementById('detail-duration').value = (data.duration || 25) + ' minutes';
+        document.getElementById('detail-duration').textContent = (data.duration || 25) + ' minutes';
         
-        // Status
+        // Status with better styling
         const statusDiv = document.getElementById('detail-status');
-        statusDiv.innerHTML = '<span class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Fully Assigned</span>';
+        statusDiv.innerHTML = `
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border bg-green-100 text-green-800 border-green-200">
+                <i class="fas fa-check-circle"></i>
+                <span class="font-semibold">Fully Assigned</span>
+            </div>
+        `;
         
         // Main Tutor
-        document.getElementById('detail-main-tutor').value = data.main_tutor_name || 'Not Assigned';
+        document.getElementById('detail-main-tutor').textContent = data.main_tutor_name || 'Not Assigned';
         
         // Backup Tutor
-        document.getElementById('detail-backup-tutor').value = data.backup_tutor_name || 'Not Assigned';
+        document.getElementById('detail-backup-tutor').textContent = data.backup_tutor_name || 'Not Assigned';
         
         document.getElementById('scheduleDetailsModal').classList.remove('hidden');
     }
     
     function closeScheduleDetailsModal() {
         document.getElementById('scheduleDetailsModal').classList.add('hidden');
+    }
+    
+    function showExportAllModal() {
+        document.getElementById('exportAllModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeExportAllModal() {
+        document.getElementById('exportAllModal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+    
+    function confirmExportAll() {
+        document.getElementById('exportAllForm').submit();
     }
 </script>
 <script src="{{ asset('js/schedule-history.js') }}"></script>

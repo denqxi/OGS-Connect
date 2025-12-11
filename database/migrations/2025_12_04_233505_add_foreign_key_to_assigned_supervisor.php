@@ -15,7 +15,7 @@ return new class extends Migration
             // Add foreign key constraint for assigned_supervisor
             $table->foreign('assigned_supervisor')
                   ->references('supervisor_id')
-                  ->on('supervisor')
+                  ->on('supervisors')
                   ->onDelete('set null');
         });
     }

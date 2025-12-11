@@ -19,10 +19,10 @@
     <nav class="mt-6">
         <ul class="space-y-2 px-4 me-1">
             <!-- Dashboard -->
-            <li class="min-h-[56px] flex items-center">
+            <li class="min-h-[56px] flex items-center justify-center">
                 <a href="{{ route('dashboard') }}"
-                    class="sidebar-nav-item sidebar-hover-effect flex items-center space-x-3 w-full px-4 py-3 rounded-lg transition-all duration-300 ease-in-out 
-                    transform hover:scale-105 active:scale-95 {{ Route::is('dashboard') ? 'text-white bg-[#234D7C] hover:bg-[#033f92] active:bg-[#023873] 
+                    class="sidebar-nav-item sidebar-hover-effect flex items-center w-full px-2.5 py-3 rounded-lg transition-all duration-300 ease-in-out 
+                    transform hover:scale-105 active:scale-95 group-hover:space-x-3 {{ Route::is('dashboard') ? 'text-white bg-[#234D7C] hover:bg-[#033f92] active:bg-[#023873] 
                     shadow-md border border-white scale-105 active' : 'text-[#0E335D] hover:text-[#0B294A] active:text-[#0E335D]/80 hover:bg-gray-100 
                     hover:shadow-sm' }}">
                     <i class="sidebar-icon fas fa-home text-m"></i>
@@ -34,13 +34,13 @@
             </li>
 
             <!-- Hiring & Onboarding -->
-            <li class="min-h-[56px] flex items-center">
+            <li class="min-h-[56px] flex items-center justify-center">
                 <a href="/hiring-onboarding"
-                    class="sidebar-nav-item sidebar-hover-effect flex items-center space-x-3 w-full px-4 py-3 rounded-lg transition-all duration-300 ease-in-out 
-                    transform hover:scale-105 active:scale-95 {{ request()->is('hiring-onboarding*') ? 'text-white bg-[#234D7C] hover:bg-[#033f92] active:bg-[#023873] 
+                    class="sidebar-nav-item sidebar-hover-effect flex items-center w-full px-4 py-3 rounded-lg transition-all duration-300 ease-in-out 
+                    transform hover:scale-105 active:scale-95 group-hover:space-x-3 {{ request()->is('hiring-onboarding*') ? 'text-white bg-[#234D7C] hover:bg-[#033f92] active:bg-[#023873] 
                     shadow-md border border-white scale-105 active' : 'text-[#0E335D] hover:text-[#0B294A] active:text-[#0E335D]/80 hover:bg-gray-100 
                     hover:shadow-sm' }}">
-                    <i class="sidebar-icon fas fa-user-check text-m items-center"></i>
+                    <i class="sidebar-icon fas fa-user-check text-m"></i>
                     <span
                         class="font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out whitespace-nowrap overflow-hidden">
                         Hiring & Onboarding
@@ -49,36 +49,36 @@
             </li>
 
             <!-- Employees -->
-            <li class="min-h-[56px] flex items-center">
+            <li class="min-h-[56px] flex items-center justify-center">
                 <a href="{{ route('employees.index') }}"
-                    class="sidebar-nav-item sidebar-hover-effect flex items-center space-x-3 w-full px-4 py-3 rounded-lg transition-all duration-300 
-                    ease-in-out transform hover:scale-105 active:scale-95 {{ request()->is('employees*') ? 'text-white bg-[#234D7C] hover:bg-[#033f92] 
+                    class="sidebar-nav-item sidebar-hover-effect flex items-center w-full px-4 py-3 rounded-lg transition-all duration-300 
+                    ease-in-out transform hover:scale-105 active:scale-95 group-hover:space-x-3 {{ request()->is('employees*') ? 'text-white bg-[#234D7C] hover:bg-[#033f92] 
                     active:bg-[#023873] shadow-md border border-white scale-105 active' : 'text-[#0E335D] hover:text-[#0B294A] active:text-[#0E335D]/80 
                     hover:bg-gray-100 hover:shadow-sm' }}">
-                    <i class="sidebar-icon fas fa-users text-sm items-center"></i>
+                    <i class="sidebar-icon fas fa-users text-sm"></i>
                     <span
-                        class="sidebar-text font-medium opacity-0 group-hover:opacity-100 transition-all duration-500 ease-in-out whitespace-nowrap overflow-hidden transform translate-x-2 group-hover:translate-x-0">
+                        class="font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out whitespace-nowrap overflow-hidden">
                         Employees
                     </span>
                 </a>
             </li>
             <!-- Scheduling -->
-            <li class="min-h-[56px] flex items-center">
+            <li class="min-h-[56px] flex items-center justify-center">
                 <a href="{{ route('schedules.index', ['tab' => 'class']) }}"
-                    class="sidebar-nav-item sidebar-hover-effect flex items-center space-x-3 w-full px-4 py-3 rounded-lg transition-all duration-300 
-                    ease-in-out transform hover:scale-105 active:scale-95 {{ Route::is('schedules.*') || Route::is('class-scheduling') || request()->is('scheduling*') || request()->is('class-scheduling*') ? 'text-white bg-[#234D7C] 
+                    class="sidebar-nav-item sidebar-hover-effect flex items-center w-full px-4 py-3 rounded-lg transition-all duration-300 
+                    ease-in-out transform hover:scale-105 active:scale-95 group-hover:space-x-3 {{ Route::is('schedules.*') || Route::is('class-scheduling') || request()->is('scheduling*') || request()->is('class-scheduling*') ? 'text-white bg-[#234D7C] 
                     hover:bg-[#033f92] active:bg-[#023873] shadow-md border border-white scale-105 active' : 'text-[#0E335D] hover:text-[#0B294A] active:text-[#0E335D]/80 hover:bg-gray-100 hover:shadow-sm' }}">
-                    <i class="sidebar-icon fas fa-calendar-alt text-m items-center"></i>
+                    <i class="sidebar-icon fas fa-calendar-alt text-m"></i>
                     <span
                         class="font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out whitespace-nowrap overflow-hidden">
                         Scheduling
                     </span>
                 </a>
             </li>
-            <li class="min-h-[56px] flex items-center">
+            <li class="min-h-[56px] flex items-center justify-center">
                 <a href="{{ route('payroll.index') }}"
-                    class="sidebar-nav-item sidebar-hover-effect flex items-center space-x-3 w-full px-4 py-3 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95 {{ request()->is('payroll*') || Route::is('payroll.*') ? 'text-white bg-[#234D7C] hover:bg-[#033f92] active:bg-[#023873] shadow-md border border-white scale-105 active' : 'text-[#0E335D] hover:text-[#0B294A] active:text-[#0E335D]/80 hover:bg-gray-100 hover:shadow-sm' }}">
-                    <i class="sidebar-icon fas fa-file-invoice-dollar text-m items-center"></i>
+                    class="sidebar-nav-item sidebar-hover-effect flex items-center w-full px-4 py-3 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95 group-hover:space-x-3 {{ request()->is('payroll*') || Route::is('payroll.*') ? 'text-white bg-[#234D7C] hover:bg-[#033f92] active:bg-[#023873] shadow-md border border-white scale-105 active' : 'text-[#0E335D] hover:text-[#0B294A] active:text-[#0E335D]/80 hover:bg-gray-100 hover:shadow-sm' }}">
+                    <i class="sidebar-icon fas fa-file-invoice-dollar text-m"></i>
                     <span class="font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out whitespace-nowrap overflow-hidden">
                         Payroll
                     </span>

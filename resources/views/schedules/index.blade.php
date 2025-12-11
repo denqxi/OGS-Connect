@@ -97,9 +97,11 @@
     <!-- Main Content -->
     <div>
         <div class="max-w-full mx-auto">
-            <div class="bg-white rounded-lg shadow-sm p-4 md:p-6">
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
                 @if (request('tab', 'employee') == 'employee')
-                    @include('schedules.tabs.employee-availability-calendar')
+                    <div class="p-4 md:p-6">
+                        @include('schedules.tabs.employee-availability-calendar')
+                    </div>
                 @elseif(request('tab') == 'class')
                     @include('schedules.tabs.class-scheduling')
                 @elseif(request('tab') == 'history')
@@ -229,116 +231,7 @@ function exportSchedule(type, specificDate = null) {
     });
 }
 
-function exportSelectedSchedules() {
-    const selectedDates = Array.from(document.querySelectorAll('.schedule-checkbox:checked')).map(cb => cb.value);
-    
-    if (selectedDates.length === 0) {
-        showNotification('Please select at least one schedule to export.', 'error');
-        return;
-    }
-    
-    // Show loading indicator
-    const button = document.getElementById('exportButton');
-    const originalText = button.innerHTML;
-    
-    button.disabled = true;
-    button.innerHTML = `
-        <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        Exporting...
-    `;
-    
-    // Create form data with selected dates
-    const formData = new FormData();
-    selectedDates.forEach(date => {
-        formData.append('dates[]', date);
-    });
-    
-    // Export selected schedules
-    fetch('/schedules/export-selected', {
-        method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        },
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.blob();
-    })
-    .then(blob => {
-        // Create download link
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = `selected_schedules_${new Date().toISOString().slice(0,10)}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        // Show success message
-        showNotification(`Excel file with ${selectedDates.length} schedule(s) exported successfully!`, 'success');
-    })
-    .catch(error => {
-        console.error('Export error:', error);
-        showNotification('Error exporting selected schedules. Please try again.', 'error');
-    })
-    .finally(() => {
-        // Restore button
-        button.disabled = false;
-        button.innerHTML = originalText;
-    });
-}
-
-function toggleAllSchedules() {
-    const selectAll = document.getElementById('selectAll');
-    const checkboxes = document.querySelectorAll('.schedule-checkbox');
-    
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = selectAll.checked;
-    });
-    
-    updateExportButton();
-}
-
-function updateExportButton() {
-    const selectedCount = document.querySelectorAll('.schedule-checkbox:checked').length;
-    const exportButton = document.getElementById('exportButton');
-    const exportButtonText = document.getElementById('exportButtonText');
-    const selectAll = document.getElementById('selectAll');
-    const totalCheckboxes = document.querySelectorAll('.schedule-checkbox').length;
-    
-    if (selectedCount > 0) {
-        exportButton.disabled = false;
-        exportButton.classList.remove('opacity-50', 'cursor-not-allowed');
-        exportButton.classList.add('hover:bg-[#184679]');
-        exportButtonText.textContent = `Export File (${selectedCount} selected)`;
-    } else {
-        exportButton.disabled = true;
-        exportButton.classList.add('opacity-50', 'cursor-not-allowed');
-        exportButton.classList.remove('hover:bg-[#184679]');
-        exportButtonText.textContent = 'Export File (0 selected)';
-    }
-    
-    // Update select all checkbox
-    if (selectedCount === totalCheckboxes && totalCheckboxes > 0) {
-        selectAll.checked = true;
-        selectAll.indeterminate = false;
-    } else if (selectedCount > 0) {
-        selectAll.checked = false;
-        selectAll.indeterminate = true;
-    } else {
-        selectAll.checked = false;
-        selectAll.indeterminate = false;
-    }
-}
+// Export functions for schedule history are in schedule-history.js
 
 function showNotification(message, type) {
     // Create notification element
