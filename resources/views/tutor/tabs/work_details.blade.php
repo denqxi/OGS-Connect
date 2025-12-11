@@ -2,24 +2,18 @@
     <h2 class="text-xl font-semibold text-gray-800">Work Details</h2>
 </div>
 
-<div class="p-6 border-b border-gray-200">
-    <div class="flex items-center justify-between mb-4">
-        <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
-    </div>
-    <div class="flex justify-between items-center space-x-4">
-        <div class="flex items-center space-x-4 flex-1 max-w-lg">
-            <form method="GET" action="{{ route('tutor.portal') }}" class="relative flex-1">
-                <input type="hidden" name="tab" value="work_details">
-                <select name="status" id="filterStatus"
-                    class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white"
-                    onchange="this.form.submit()">
-                    <option value="" {{ request('status') == '' ? 'selected' : '' }}>All</option>
-                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                    <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
-                </select>
-            </form>
-        </div>
-    </div>
+<!-- Tabs -->
+<div class="border-b border-gray-200">
+    <nav class="flex -mb-px" aria-label="Tabs">
+        <a href="{{ route('tutor.portal', ['tab' => 'work_details', 'view' => 'current']) }}" 
+           class="px-6 py-3 text-sm font-medium border-b-2 {{ request('view', 'current') === 'current' ? 'border-[#0E335D] text-[#0E335D]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
+            Current
+        </a>
+        <a href="{{ route('tutor.portal', ['tab' => 'work_details', 'view' => 'history']) }}" 
+           class="px-6 py-3 text-sm font-medium border-b-2 {{ request('view') === 'history' ? 'border-[#0E335D] text-[#0E335D]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
+            History
+        </a>
+    </nav>
 </div>
 
 <!-- Work Details Table -->
@@ -31,6 +25,7 @@
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Time - End Time</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
         </thead>
@@ -64,9 +59,9 @@
                         $endTime = \Carbon\Carbon::parse($schedule->time)->addMinutes($schedule->duration)->format('g:i A');
                     }
                     
-                    // Per Class and Rate
+                    // Per Class and Rate - prioritize workDetail rate, fallback to schedule rate
                     $perClass = $schedule->class ?? 'N/A';
-                    $rate = $schedule->rate ?? 'N/A';
+                    $rate = $workDetail && $workDetail->rate_per_class ? $workDetail->rate_per_class : ($schedule->rate ?? 'N/A');
                 @endphp
                 <tr class="hover:bg-gray-50">
                     <!-- Date -->
@@ -87,6 +82,34 @@
                     <!-- Rate -->
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                         {{ is_numeric($rate) ? '₱' . number_format($rate, 2) : $rate }}
+                    </td>
+                    
+                    <!-- Status -->
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        @php
+                            $statusText = 'Pending';
+                            $statusColor = 'bg-yellow-100 text-yellow-800';
+                            
+                            if ($assignment->class_status === 'pending_acceptance') {
+                                $statusText = 'Pending Acceptance';
+                                $statusColor = 'bg-blue-100 text-blue-800';
+                            } elseif ($assignment->class_status === 'cancelled' || $assignment->is_cancelled) {
+                                $statusText = 'Cancelled';
+                                $statusColor = 'bg-red-100 text-red-800';
+                            } elseif ($isApproved) {
+                                $statusText = 'Approved';
+                                $statusColor = 'bg-green-100 text-green-800';
+                            } elseif ($hasSubmitted) {
+                                $statusText = 'Pending Review';
+                                $statusColor = 'bg-yellow-100 text-yellow-800';
+                            } elseif ($assignment->class_status === 'fully_assigned' || $assignment->class_status === 'partially_assigned') {
+                                $statusText = 'Accepted';
+                                $statusColor = 'bg-green-100 text-green-800';
+                            }
+                        @endphp
+                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusColor }}">
+                            {{ $statusText }}
+                        </span>
                     </td>
                     
                     <!-- Actions -->

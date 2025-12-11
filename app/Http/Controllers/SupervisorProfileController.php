@@ -16,12 +16,14 @@ class SupervisorProfileController extends Controller
     {
         $supervisor = Auth::user();
         
+        // Load security questions
+        $securityQuestions = $supervisor->securityQuestions;
         
-        // Load payment information and security questions relationships
-        // TODO: Uncomment when tables are ready
-        // $supervisor->load(['paymentInformation', 'securityQuestions']);
+        // Extract questions for the view
+        $securityQuestion1 = $securityQuestions->get(0)?->question ?? null;
+        $securityQuestion2 = $securityQuestions->get(1)?->question ?? null;
         
-        return view('profile_management.supervisor', compact('supervisor'));
+        return view('profile_management.supervisor', compact('supervisor', 'securityQuestion1', 'securityQuestion2'));
     }
 
     /**
@@ -48,20 +50,20 @@ class SupervisorProfileController extends Controller
         try {
             // Delete existing security questions for this supervisor
             SecurityQuestion::where('user_type', 'supervisor')
-                           ->where('user_id', $supervisor->supID)
+                           ->where('user_id', $supervisor->supervisor_id)
                            ->delete();
 
             // Create new security questions
             SecurityQuestion::create([
                 'user_type' => 'supervisor',
-                'user_id' => $supervisor->supID,
+                'user_id' => $supervisor->supervisor_id,
                 'question' => $request->security_question1,
                 'answer_hash' => Hash::make(strtolower(trim($request->security_answer1))),
             ]);
 
             SecurityQuestion::create([
                 'user_type' => 'supervisor',
-                'user_id' => $supervisor->supID,
+                'user_id' => $supervisor->supervisor_id,
                 'question' => $request->security_question2,
                 'answer_hash' => Hash::make(strtolower(trim($request->security_answer2))),
             ]);
@@ -106,6 +108,7 @@ class SupervisorProfileController extends Controller
 
         $request->validate([
             'sfname' => 'required|string|max:255',
+            'smname' => 'nullable|string|max:255',
             'slname' => 'required|string|max:255',
             'birth_date' => 'nullable|date',
             'sconNum' => 'nullable|string|max:20',
@@ -124,12 +127,13 @@ class SupervisorProfileController extends Controller
 
         try {
             $supervisor->update([
-                'sfname' => $request->sfname,
-                'slname' => $request->slname,
+                'first_name' => $request->sfname,
+                'middle_name' => $request->smname,
+                'last_name' => $request->slname,
                 'birth_date' => $request->birth_date,
-                'sconNum' => $request->sconNum,
+                'contact_number' => $request->sconNum,
                 'saddress' => $request->saddress,
-                'steams' => $request->steams,
+                'ms_teams' => $request->steams,
                 'sshift' => $request->sshift,
             ]);
 
@@ -219,6 +223,144 @@ class SupervisorProfileController extends Controller
             }
             
             return redirect()->back()->with('error', 'Failed to update password. Please try again.');
+        }
+    }
+
+    /**
+     * Update payment information
+     */
+    public function updatePaymentInfo(Request $request)
+    {
+        $supervisor = Auth::user();
+
+        $request->validate([
+            'payment_method' => 'required|string|in:gcash,paypal,paymaya,bank_transfer,cash',
+            'gcash_number' => 'required_if:payment_method,gcash|nullable|string|max:20',
+            'paypal_email' => 'required_if:payment_method,paypal|nullable|email|max:255',
+            'paymaya_number' => 'required_if:payment_method,paymaya|nullable|string|max:20',
+            'bank_name' => 'required_if:payment_method,bank_transfer|nullable|string|max:255',
+            'account_number' => 'required_if:payment_method,bank_transfer|nullable|string|max:255',
+            'account_name' => 'nullable|string|max:255',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            // Store payment info in JSON format in supervisor table
+            $paymentData = [
+                'payment_method' => $request->payment_method,
+                'updated_at' => now(),
+            ];
+
+            switch ($request->payment_method) {
+                case 'gcash':
+                    $paymentData['gcash_number'] = $request->gcash_number;
+                    break;
+                case 'paypal':
+                    $paymentData['paypal_email'] = $request->paypal_email;
+                    break;
+                case 'paymaya':
+                    $paymentData['paymaya_number'] = $request->paymaya_number;
+                    break;
+                case 'bank_transfer':
+                    $paymentData['bank_name'] = $request->bank_name;
+                    $paymentData['account_number'] = $request->account_number;
+                    $paymentData['account_name'] = $request->account_name;
+                    break;
+            }
+
+            if ($request->notes) {
+                $paymentData['notes'] = $request->notes;
+            }
+
+            $supervisor->update([
+                'payment_info' => json_encode($paymentData)
+            ]);
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Payment information updated successfully!',
+                    'payment_info' => $paymentData
+                ]);
+            }
+            
+            return redirect()->back()->with('success', 'Payment information updated successfully!');
+
+        } catch (\Exception $e) {
+            \Log::error('Payment info update error: ' . $e->getMessage());
+            
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update payment information. Please try again.'
+                ], 500);
+            }
+            
+            return redirect()->back()->with('error', 'Failed to update payment information. Please try again.');
+        }
+    }
+
+    /**
+     * Update profile photo
+     */
+    public function updateProfilePhoto(Request $request)
+    {
+        $supervisor = Auth::user();
+
+        $request->validate([
+            'profile_photo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ], [
+            'profile_photo.required' => 'Please select a photo to upload.',
+            'profile_photo.image' => 'File must be an image.',
+            'profile_photo.mimes' => 'Image must be a file of type: jpeg, png, jpg, gif.',
+            'profile_photo.max' => 'Image must not exceed 2MB.',
+        ]);
+
+        try {
+            if ($request->hasFile('profile_photo')) {
+                // Delete old photo if exists
+                if ($supervisor->profile_photo && \Storage::disk('public')->exists($supervisor->profile_photo)) {
+                    \Storage::disk('public')->delete($supervisor->profile_photo);
+                }
+
+                // Store new photo
+                $path = $request->file('profile_photo')->store('profile_photos', 'public');
+                
+                $supervisor->update([
+                    'profile_photo' => $path
+                ]);
+
+                if ($request->ajax()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Profile photo updated successfully!',
+                        'photo_url' => asset('storage/' . $path)
+                    ]);
+                }
+                
+                return redirect()->back()->with('success', 'Profile photo updated successfully!');
+            }
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No photo file received.'
+                ], 422);
+            }
+            
+            return redirect()->back()->with('error', 'No photo file received.');
+
+        } catch (\Exception $e) {
+            \Log::error('Profile photo update error: ' . $e->getMessage());
+            
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update profile photo. Please try again.'
+                ], 500);
+            }
+            
+            return redirect()->back()->with('error', 'Failed to update profile photo. Please try again.');
         }
     }
 }

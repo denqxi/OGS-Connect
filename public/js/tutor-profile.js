@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize personal information management
     setupPersonalInfoEventListeners();
+    
+    // Initialize profile photo upload
+    setupProfilePhotoUpload();
 });
 
 function setupPersonalInfoEventListeners() {
@@ -914,6 +917,81 @@ function showNotification(message, type = 'info') {
     setTimeout(() => {
         closeNotification();
     }, 5000);
+}
+
+// Profile Photo Upload
+function setupProfilePhotoUpload() {
+    const photoInput = document.getElementById('tutorProfilePhotoInput');
+    
+    if (photoInput) {
+        photoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            
+            if (file) {
+                // Validate file size (max 2MB)
+                if (file.size > 2 * 1024 * 1024) {
+                    showNotification('File size must be less than 2MB', 'error');
+                    photoInput.value = '';
+                    return;
+                }
+                
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    showNotification('Please select a valid image file', 'error');
+                    photoInput.value = '';
+                    return;
+                }
+                
+                // Show confirmation modal
+                showConfirmationModal(
+                    'Update Profile Photo',
+                    'Are you sure you want to update your profile photo?',
+                    () => uploadProfilePhoto(file)
+                );
+            }
+        });
+    }
+}
+
+async function uploadProfilePhoto(file) {
+    const formData = new FormData();
+    formData.append('profile_photo', file);
+    
+    try {
+        const response = await fetch('/tutor/profile/profile-photo', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update profile photo in the page
+            const profilePhoto = document.getElementById('tutorProfilePhoto');
+            if (profilePhoto) {
+                profilePhoto.src = data.photo_url;
+            }
+            
+            // Update header profile photo if it exists
+            const headerPhoto = document.querySelector('header img[alt="Profile"]');
+            if (headerPhoto) {
+                headerPhoto.src = data.photo_url;
+            }
+            
+            showNotification(data.message || 'Profile photo updated successfully', 'success');
+        } else {
+            showNotification(data.message || 'Failed to update profile photo', 'error');
+        }
+    } catch (error) {
+        console.error('Error uploading profile photo:', error);
+        showNotification('An error occurred while uploading the photo', 'error');
+    }
+    
+    // Reset file input
+    document.getElementById('tutorProfilePhotoInput').value = '';
 }
 
 // Close notification function

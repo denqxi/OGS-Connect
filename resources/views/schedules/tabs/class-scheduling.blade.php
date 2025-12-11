@@ -22,48 +22,21 @@
             <form method="GET" action="{{ route('schedules.index') }}" id="filterForm" class="flex items-center space-x-3">
                 <input type="hidden" name="tab" value="class">
 
-                <!-- Date -->
-                <select name="date" id="filterDate"
-                    class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
-                    <option value="">All Dates</option>
-                    @if(isset($availableDates) && $availableDates->count() > 0)
-                        @foreach($availableDates as $date)
-                            <option value="{{ $date }}" {{ request('date') == $date ? 'selected' : '' }}>
-                                {{ \Carbon\Carbon::parse($date)->format('M d, Y') }}
-                            </option>
-                        @endforeach
-                    @else
-                        <option value="" disabled>No dates available</option>
-                    @endif
-                </select>
+                <!-- From Date -->
+                <div class="flex items-center space-x-2">
+                    <label for="from_date" class="text-sm font-medium text-gray-700">From:</label>
+                    <input type="date" name="from_date" id="from_date" 
+                           value="{{ request('from_date') }}"
+                           class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+                </div>
 
-                <!-- Day -->
-                <select name="day" id="filterDay"
-                    class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white" onchange="this.form.submit()">
-                    <option value="">All Days</option>
-
-                    @if(isset($availableDays) && $availableDays->count() > 0)
-                        @foreach($availableDays as $day)
-                            @php
-                                $dayMap = [
-                                    'Mon'=>'mon','Tue'=>'tue','Wed'=>'wed','Thu'=>'thur','Fri'=>'fri',
-                                    'Monday'=>'mon','Tuesday'=>'tue','Wednesday'=>'wed','Thursday'=>'thur','Friday'=>'fri',
-                                    'mon'=>'mon','tue'=>'tue','wed'=>'wed','thur'=>'thur','fri'=>'fri'
-                                ];
-                                $displayMap = [
-                                    'Mon'=>'Monday','Tue'=>'Tuesday','Wed'=>'Wednesday','Thu'=>'Thursday','Fri'=>'Friday',
-                                    'Monday'=>'Monday','Tuesday'=>'Tuesday','Wednesday'=>'Wednesday','Thursday'=>'Thursday','Friday'=>'Friday',
-                                    'mon'=>'Monday','tue'=>'Tuesday','wed'=>'Wednesday','thur'=>'Thursday','fri'=>'Friday'
-                                ];
-                                $dayValue = $dayMap[$day] ?? strtolower($day);
-                                $dayDisplay = $displayMap[$day] ?? ucfirst($day);
-                            @endphp
-                            <option value="{{ $dayValue }}" {{ request('day') == $dayValue ? 'selected' : '' }}>
-                                {{ $dayDisplay }}
-                            </option>
-                        @endforeach
-                    @endif
-                </select>
+                <!-- To Date -->
+                <div class="flex items-center space-x-2">
+                    <label for="to_date" class="text-sm font-medium text-gray-700">To:</label>
+                    <input type="date" name="to_date" id="to_date" 
+                           value="{{ request('to_date') }}"
+                           class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+                </div>
 
                 <!-- Status -->
                 <select name="status" id="filterStatus"
@@ -71,13 +44,19 @@
                     <option value="">All Status</option>
                     <option value="fully_assigned" {{ request('status') == 'fully_assigned' ? 'selected' : '' }}>Fully Assigned</option>
                     <option value="partially_assigned" {{ request('status') == 'partially_assigned' ? 'selected' : '' }}>Partially Assigned</option>
+                    <option value="pending_acceptance" {{ request('status') == 'pending_acceptance' ? 'selected' : '' }}>Pending Acceptance</option>
                     <option value="not_assigned" {{ request('status') == 'not_assigned' ? 'selected' : '' }}>Not Assigned</option>
+                    <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                 </select>
 
+                <!-- Apply Button -->
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
+                    Apply
+                </button>
+
                 <!-- Clear -->
-                @if(request()->hasAny(['date', 'day', 'status']))
+                @if(request()->hasAny(['from_date', 'to_date', 'status']))
                     <a href="{{ route('schedules.index', ['tab' => 'class']) }}"
-                        onclick="event.preventDefault(); document.getElementById('filterForm').reset(); removePageParam(); window.location='{{ route('schedules.index', ['tab' => 'class']) }}';"
                         class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600">
                         Clear
                     </a>
@@ -110,6 +89,40 @@ function removePageParam() {
     url.searchParams.delete('page');
     window.history.replaceState({}, '', url);
 }
+
+// Date range validation for class scheduling
+document.addEventListener('DOMContentLoaded', function() {
+    const fromDate = document.getElementById('from_date');
+    const toDate = document.getElementById('to_date');
+    
+    if (fromDate && toDate) {
+        fromDate.addEventListener('change', function() {
+            if (this.value) {
+                toDate.min = this.value;
+                if (toDate.value && toDate.value < this.value) {
+                    toDate.value = '';
+                }
+            }
+        });
+        
+        toDate.addEventListener('change', function() {
+            if (this.value) {
+                fromDate.max = this.value;
+                if (fromDate.value && fromDate.value > this.value) {
+                    fromDate.value = '';
+                }
+            }
+        });
+        
+        // Initialize min/max on page load
+        if (fromDate.value) {
+            toDate.min = fromDate.value;
+        }
+        if (toDate.value) {
+            fromDate.max = toDate.value;
+        }
+    }
+});
 </script>
 
 
@@ -223,6 +236,9 @@ function removePageParam() {
                             } elseif ($rawStatus === 'partially_assigned') {
                                 $statusDisplay = 'Partially Assigned';
                                 $dotColor = 'bg-yellow-500';
+                            } elseif ($rawStatus === 'pending_acceptance') {
+                                $statusDisplay = 'Pending Acceptance';
+                                $dotColor = 'bg-blue-500';
                             } elseif ($rawStatus === 'cancelled') {
                                 $statusDisplay = 'Cancelled';
                                 $dotColor = 'bg-gray-500';
@@ -271,18 +287,26 @@ function removePageParam() {
                             </button>
                             
                             <!-- Assign Supervisor Button -->
-                            <button type="button" onclick="openAssignSupervisorModal('{{ $viewDate }}', '{{ $data->school }}', '{{ $data->time }}', {{ json_encode([
-                                'status' => $data->raw_class_status,
-                                'schedule_id' => $data->id,
-                                'main_tutor_id' => $data->assignedData->main_tutor ?? null,
-                                'backup_tutor_id' => $data->assignedData->backup_tutor ?? null,
-                                'main_tutor_name' => $data->main_tutor_name ?? null,
-                                'backup_tutor_name' => $data->backup_tutor_name ?? null
-                            ]) }})" 
-                                    class="w-8 h-8 bg-green-100 text-green-600 rounded hover:bg-green-200 inline-flex items-center justify-center transition-colors"
-                                    title="Assign Tutor">
-                                <i class="fas fa-user-plus text-xs"></i>
-                            </button>
+                            @if($data->raw_class_status === 'pending_acceptance')
+                                <button type="button" disabled
+                                        class="w-8 h-8 bg-gray-100 text-gray-400 rounded cursor-not-allowed inline-flex items-center justify-center"
+                                        title="Cannot assign - Waiting for tutor acceptance">
+                                    <i class="fas fa-user-plus text-xs"></i>
+                                </button>
+                            @else
+                                <button type="button" onclick="openAssignSupervisorModal('{{ $viewDate }}', '{{ $data->school }}', '{{ $data->time }}', {{ json_encode([
+                                    'status' => $data->raw_class_status,
+                                    'schedule_id' => $data->id,
+                                    'main_tutor_id' => $data->assignedData->main_tutor ?? null,
+                                    'backup_tutor_id' => $data->assignedData->backup_tutor ?? null,
+                                    'main_tutor_name' => $data->main_tutor_name ?? null,
+                                    'backup_tutor_name' => $data->backup_tutor_name ?? null
+                                ]) }})" 
+                                        class="w-8 h-8 bg-green-100 text-green-600 rounded hover:bg-green-200 inline-flex items-center justify-center transition-colors"
+                                        title="Assign Tutor">
+                                    <i class="fas fa-user-plus text-xs"></i>
+                                </button>
+                            @endif
                             
                             <!-- Ownership Indicator -->
                             @if(!empty($data->assigned_supervisor_ids) && !$canModify)
@@ -457,6 +481,12 @@ function removePageParam() {
                 <input type="hidden" id="detail-assignment-id" value="">
                 <input type="hidden" id="detail-raw-status" value="">
                 
+                <!-- Cancel Button (only for assigned schedules) -->
+                <button type="button" id="cancelScheduleButton" onclick="handleCancelSchedule()" class="hidden px-6 py-2 bg-red-600 text-white rounded-md font-semibold hover:bg-red-700 transition-colors flex items-center gap-2 shadow-sm">
+                    <i class="fas fa-ban"></i>
+                    <span>Cancel Schedule</span>
+                </button>
+
                 <!-- Finalize Button (only for partially_assigned) -->
                 <button type="button" id="finalizeButton" onclick="confirmFinalizeSchedule()" class="hidden px-6 py-2 bg-green-600 text-white rounded-md font-semibold hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm">
                     <i class="fas fa-check-circle"></i>
@@ -529,19 +559,114 @@ function removePageParam() {
         </div>
     </div>
 
+    <!-- Cancel Schedule Modal -->
+    <div id="cancelScheduleModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg w-full max-w-2xl shadow-2xl">
+            <div class="bg-gradient-to-r from-red-600 to-red-700 p-6 rounded-t-lg flex items-center justify-between">
+                <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Cancel Schedule
+                </h2>
+                <button type="button" onclick="closeCancelScheduleModal()" class="text-white hover:text-gray-200">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <form id="cancelScheduleForm" method="POST">
+                @csrf
+                <div class="p-6 space-y-6">
+                    <!-- Warning Banner -->
+                    <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                        <div class="flex items-start">
+                            <i class="fas fa-exclamation-circle text-red-500 text-xl mr-3 mt-0.5"></i>
+                            <div>
+                                <h4 class="font-semibold text-red-800 mb-1">Important Notice</h4>
+                                <p class="text-sm text-red-700">
+                                    Cancelling this schedule will:
+                                </p>
+                                <ul class="list-disc list-inside text-sm text-red-700 mt-2 space-y-1">
+                                    <li>Block payment for the original main tutor</li>
+                                    <li>Promote the backup tutor to main tutor (if available)</li>
+                                    <li>Notify all affected tutors</li>
+                                    <li>Require reassignment if no backup is available</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Schedule Information -->
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-gray-700 mb-3">Schedule Details</h4>
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                                <span class="text-gray-500">Date:</span>
+                                <span id="cancel-schedule-date" class="font-medium text-gray-700 ml-2">-</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">School:</span>
+                                <span id="cancel-schedule-school" class="font-medium text-gray-700 ml-2">-</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Class:</span>
+                                <span id="cancel-schedule-class" class="font-medium text-gray-700 ml-2">-</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Main Tutor:</span>
+                                <span id="cancel-schedule-main-tutor" class="font-medium text-gray-700 ml-2">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cancellation Reason -->
+                    <div>
+                        <label for="cancellation-reason" class="block text-sm font-medium text-gray-700 mb-2">
+                            Cancellation Reason <span class="text-red-500">*</span>
+                        </label>
+                        <textarea 
+                            id="cancellation-reason" 
+                            name="cancellation_reason" 
+                            rows="4" 
+                            required
+                            placeholder="Please provide a detailed reason for cancelling this schedule..."
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        ></textarea>
+                        <p class="text-xs text-gray-500 mt-1">This reason will be included in the notification to all affected parties.</p>
+                    </div>
+
+                    <!-- Cancelled By -->
+                    <input type="hidden" id="cancelled-by" name="cancelled_by" value="supervisor">
+                    <input type="hidden" id="cancel-assignment-id" name="assignment_id">
+                </div>
+
+                <!-- Actions -->
+                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex items-center justify-end gap-3">
+                    <button type="button" onclick="closeCancelScheduleModal()" 
+                        class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
+                        Keep Schedule
+                    </button>
+                    <button type="submit" id="confirmCancelButton"
+                        class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2">
+                        <i class="fas fa-ban"></i>
+                        <span>Confirm Cancellation</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Assign Supervisor Modal -->
-    <div id="assignSupervisorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg w-full max-w-xl mx-4">
+    <div id="assignSupervisorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
+        <div class="bg-white rounded-lg w-full max-w-xl max-h-[90vh] flex flex-col">
             <!-- Header -->
-            <div class="bg-[#0E335D] text-white px-6 py-4 flex items-center justify-between">
+            <div class="bg-[#0E335D] text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
                 <h2 class="text-xl font-bold">Assign Supervisor to Watch Tutor</h2>
                 <button type="button" onclick="closeAssignSupervisorModal()" class="text-white hover:text-gray-200">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
             
-            <!-- Body -->
-            <div class="p-6 space-y-4">
+            <!-- Body - Scrollable -->
+            <div class="p-6 space-y-4 overflow-y-auto flex-1">
                 <!-- Schedule Info -->
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <p class="text-sm text-gray-600 mb-1">Schedule</p>
@@ -589,7 +714,7 @@ function removePageParam() {
             </div>
             
             <!-- Footer -->
-            <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3 border-t">
+            <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3 border-t flex-shrink-0">
                 <button type="button" onclick="closeAssignSupervisorModal()" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
                     Cancel
                 </button>
@@ -672,6 +797,10 @@ function removePageParam() {
                 statusText = 'Partially Assigned';
                 statusColor = 'bg-yellow-100 text-yellow-800 border-yellow-200';
                 iconClass = 'fa-exclamation-circle';
+            } else if (rawStatus === 'pending_acceptance') {
+                statusText = 'Pending Acceptance';
+                statusColor = 'bg-blue-100 text-blue-800 border-blue-200';
+                iconClass = 'fa-clock';
             } else if (rawStatus === 'cancelled') {
                 statusText = 'Cancelled';
                 statusColor = 'bg-gray-100 text-gray-800 border-gray-200';
@@ -699,6 +828,14 @@ function removePageParam() {
             } else {
                 finalizeButton.classList.add('hidden');
             }
+
+            // Show/hide cancel button based on status (allow cancel for assigned schedules)
+            const cancelButton = document.getElementById('cancelScheduleButton');
+            if (rawStatus === 'fully_assigned' || rawStatus === 'partially_assigned') {
+                cancelButton.classList.remove('hidden');
+            } else {
+                cancelButton.classList.add('hidden');
+            }
             
             // Assigned Supervisor
             document.getElementById('detail-supervisor').textContent = data.assigned_supervisors || data.assigned_supervisor || 'None';
@@ -708,6 +845,9 @@ function removePageParam() {
             
             // Backup Tutor
             document.getElementById('detail-backup-tutor').textContent = data.backup_tutor_name || 'Not Assigned';
+
+            // Store schedule data for cancellation
+            window.currentScheduleData = data;
             
             document.getElementById('scheduleDetailsModal').classList.remove('hidden');
         }
@@ -884,18 +1024,18 @@ function removePageParam() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message || 'Tutor assigned successfully!');
+                    showNotificationModal(data.message || 'Tutor assigned successfully!', 'success');
                     closeAssignSupervisorModal();
                     location.reload(); // Refresh to show updated data
                 } else {
-                    alert('Error: ' + (data.message || 'Failed to assign tutor'));
+                    showNotificationModal(data.message || 'Failed to assign tutor', 'error');
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = originalText;
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('An error occurred while assigning the tutor');
+                showNotificationModal('An error occurred while assigning the tutor', 'error');
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
             });
@@ -996,6 +1136,95 @@ function removePageParam() {
                 setTimeout(() => document.body.removeChild(notification), 300);
             }, 4000);
         }
+
+        // Handle cancel schedule button click
+        function handleCancelSchedule() {
+            const assignmentId = document.getElementById('detail-assignment-id').value;
+            if (!assignmentId) {
+                showErrorNotification('No assignment ID found');
+                return;
+            }
+            
+            if (!window.currentScheduleData) {
+                showErrorNotification('Schedule data not available');
+                return;
+            }
+            
+            openCancelScheduleModal(assignmentId, window.currentScheduleData);
+        }
+
+        // Cancel Schedule Modal Functions
+        function openCancelScheduleModal(assignmentId, scheduleData) {
+            console.log('Opening cancel modal for assignment:', assignmentId, 'data:', scheduleData);
+            
+            // Set form action
+            const form = document.getElementById('cancelScheduleForm');
+            form.action = `/schedules/cancel/${assignmentId}`;
+            
+            // Set assignment ID
+            document.getElementById('cancel-assignment-id').value = assignmentId;
+            
+            // Populate schedule details
+            const dateObj = new Date(scheduleData.date || scheduleData.schedule_date);
+            document.getElementById('cancel-schedule-date').textContent = 
+                dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+            
+            document.getElementById('cancel-schedule-school').textContent = scheduleData.school || '-';
+            document.getElementById('cancel-schedule-class').textContent = scheduleData.class || '-';
+            document.getElementById('cancel-schedule-main-tutor').textContent = scheduleData.main_tutor_name || '-';
+            
+            // Reset form
+            document.getElementById('cancellation-reason').value = '';
+            
+            // Show modal
+            document.getElementById('cancelScheduleModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeCancelScheduleModal() {
+            document.getElementById('cancelScheduleModal').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        // Handle cancel form submission
+        document.getElementById('cancelScheduleForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const form = this;
+            const submitButton = document.getElementById('confirmCancelButton');
+            const originalText = submitButton.innerHTML;
+            
+            // Disable button and show loading
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Cancelling...';
+            
+            fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeCancelScheduleModal();
+                    closeScheduleDetailsModal();
+                    showSuccessModal(data.message || 'Schedule cancelled successfully!');
+                } else {
+                    showErrorNotification('Error: ' + (data.message || 'Failed to cancel schedule'));
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showErrorNotification('An error occurred while cancelling the schedule');
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalText;
+            });
+        });
     </script>
     <script src="{{ asset('js/class-scheduling-search.js') }}"></script>
     <script src="{{ asset('js/class-scheduling.js') }}"></script>

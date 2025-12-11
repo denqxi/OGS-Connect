@@ -58,14 +58,14 @@
             <!-- Profile Info -->
             <div class="flex items-center space-x-4 md:space-x-6">
                 <div class="relative">
-                    <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"
+                    <img id="profilePhoto" 
+                        src="{{ $supervisor->profile_photo ? asset('storage/' . $supervisor->profile_photo) : 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face' }}"
                         alt="Profile"
                         class="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full object-cover border-4 border-white shadow-md">
 
                     <!-- Camera Icon outside -->
-                    <label class="absolute -bottom-2 -right-2 cursor-pointer" title="Change Profile Photo"
-                        onclick="document.getElementById('profilePhotoInput').click()">
-                        <input type="file" id="profilePhotoInput" class="hidden">
+                    <label class="absolute -bottom-2 -right-2 cursor-pointer" title="Change Profile Photo">
+                        <input type="file" id="profilePhotoInput" class="hidden" accept="image/*">
                         <div
                             class="flex items-center justify-center bg-[#0E335D] hover:bg-[#184679] text-white rounded-full shadow-md transform transition duration-200 hover:scale-105 w-8 h-8 sm:w-10 sm:h-10">
                             <i class="fas fa-camera text-white text-sm sm:text-base"></i>
@@ -76,9 +76,9 @@
 
                 <div class="text-left">
                     <h2 class="text-lg sm:text-xl md:text-2xl font-semibold text-[#0E335D]">
-                        {{ $supervisor->full_name ?? 'Supervisor Name' }}</h2>
+                        {{ $supervisor->first_name ?? '' }} {{ $supervisor->middle_name ?? '' }} {{ $supervisor->last_name ?? 'Supervisor Name' }}</h2>
                     <p class="text-xs sm:text-sm md:text-base text-[#0E335D]">
-                        {{ $supervisor->semail ?? 'supervisor@email.com' }}</p>
+                        {{ $supervisor->email ?? 'supervisor@email.com' }}</p>
                 </div>
             </div>
 
@@ -114,8 +114,17 @@
                         <label class="text-xs sm:text-sm text-[#0E335D]">First Name *</label>
                         <input type="text" name="sfname" id="sfname" required readonly
                             class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] bg-gray-50"
-                            value="{{ old('sfname', $supervisor->sfname ?? 'John') }}">
+                            value="{{ old('sfname', $supervisor->first_name ?? 'John') }}">
                         @error('sfname')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="text-xs sm:text-sm text-[#0E335D]">Middle Name</label>
+                        <input type="text" name="smname" id="smname" readonly
+                            class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] bg-gray-50"
+                            value="{{ old('smname', $supervisor->middle_name ?? '') }}">
+                        @error('smname')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                         @enderror
                     </div>

@@ -31,7 +31,29 @@ class SecurityQuestion extends Model
      */
     public function verifyAnswer($answer)
     {
-        return Hash::check(strtolower(trim($answer)), $this->answer_hash);
+        $normalizedAnswer = strtolower(trim($answer));
+        
+        // If answer_hash is empty or null, verification should fail
+        if (empty($this->answer_hash)) {
+            \Log::warning('Security question verification failed: empty answer_hash', [
+                'question_id' => $this->id,
+                'question' => $this->question
+            ]);
+            return false;
+        }
+        
+        $result = Hash::check($normalizedAnswer, $this->answer_hash);
+        
+        // Log failed attempts for security
+        if (!$result) {
+            \Log::info('Security question verification failed', [
+                'question_id' => $this->id,
+                'user_type' => $this->user_type,
+                'user_id' => $this->user_id
+            ]);
+        }
+        
+        return $result;
     }
 
     /**

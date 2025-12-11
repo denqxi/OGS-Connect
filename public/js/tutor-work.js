@@ -605,7 +605,10 @@ document.addEventListener('change', function (e) {
         document.getElementById('modal-start-time').textContent = startTime;
         document.getElementById('modal-end-time').textContent = endTime;
         document.getElementById('modal-duration').textContent = schedule?.duration ? schedule.duration + ' min' : 'N/A';
-        document.getElementById('modal-rate').textContent = schedule?.rate ? '₱' + parseFloat(schedule.rate).toFixed(2) : 'N/A';
+        
+        // Get rate from workDetail first, fallback to schedule
+        const rate = workDetail?.rate_per_class || schedule?.rate;
+        document.getElementById('modal-rate').textContent = rate ? '₱' + parseFloat(rate).toFixed(2) : 'N/A';
         
         // Populate proof
         const proofContainer = document.getElementById('modal-proof-container');
@@ -615,12 +618,26 @@ document.addEventListener('change', function (e) {
             proofContainer.innerHTML = '<p class="text-gray-500 text-center py-8">No proof image uploaded yet</p>';
         }
         
-        // Handle action buttons based on status
+        // Handle action buttons based on status and schedule date
         const actionButtons = document.getElementById('modal-action-buttons');
         const isApproved = workDetail && workDetail.status?.toLowerCase() === 'approved';
+        const isPendingReview = workDetail && workDetail.status?.toLowerCase() === 'pending';
         const isPendingAcceptance = assignment.class_status === 'pending_acceptance';
+        const isCancelled = assignment.is_cancelled || assignment.class_status === 'cancelled';
         
-        if (isPendingAcceptance) {
+        // Check if class date has passed (compare schedule date with today)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const classDate = schedule?.date ? new Date(schedule.date) : null;
+        if (classDate) classDate.setHours(0, 0, 0, 0);
+        const isClassDatePassed = classDate && classDate < today;
+        
+        if (isCancelled) {
+            actionButtons.innerHTML = '<span class="text-sm text-red-600 font-medium flex items-center gap-2"><i class="fas fa-ban"></i> Schedule Cancelled</span>';
+        } else if (isPendingReview) {
+            actionButtons.innerHTML = '<div class="text-sm text-blue-600 font-medium text-center"><i class="fas fa-clock"></i> <span class="font-semibold">Under Supervisor Review</span><p class="text-xs text-gray-600 mt-1">Your supervisor is reviewing your work details. Please wait for approval to receive payment.</p></div>';
+        } else if (isPendingAcceptance) {
+            // BEFORE class: Accept/Reject buttons
             actionButtons.innerHTML = `
                 <button type="button" onclick="acceptAssignment(${assignment.id}); closeTutorWorkDetailModal();" 
                     class="px-6 py-2 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 transition-colors flex items-center gap-2">
@@ -633,16 +650,34 @@ document.addEventListener('change', function (e) {
             `;
         } else if (!isApproved) {
             const hasSubmitted = workDetail !== null;
-            actionButtons.innerHTML = `
-                <button type="button" onclick="closeTutorWorkDetailModal(); openWorkDetailForm(${assignment.id}, ${workDetail ? workDetail.id : 'null'}, ${assignment.schedule_daily_data_id});" 
-                    class="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
-                    <i class="fas ${hasSubmitted ? 'fa-edit' : 'fa-plus'}"></i> ${hasSubmitted ? 'Edit Work Details' : 'Add Work Details'}
-                </button>
-                ${hasSubmitted ? `<button type="button" onclick="confirmDeleteWorkDetail(${workDetail.id}); closeTutorWorkDetailModal();" 
-                    class="px-6 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors flex items-center gap-2">
-                    <i class="fas fa-trash"></i> Delete
-                </button>` : ''}
-            `;
+            const scheduleData = {
+                assignment_id: assignment.id,
+                date: schedule?.date || '',
+                school: schedule?.school || '',
+                class: schedule?.class || ''
+            };
+            
+            if (isClassDatePassed) {
+                // AFTER class date: Show Add/Edit Work Details (proof submission)
+                actionButtons.innerHTML = `
+                    <button type="button" onclick="closeTutorWorkDetailModal(); openWorkDetailForm(${assignment.id}, ${workDetail ? workDetail.id : 'null'}, ${assignment.schedule_daily_data_id});" 
+                        class="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
+                        <i class="fas ${hasSubmitted ? 'fa-edit' : 'fa-plus'}"></i> ${hasSubmitted ? 'Edit Work Details' : 'Add Work Details'}
+                    </button>
+                    ${hasSubmitted ? `<button type="button" onclick="confirmDeleteWorkDetail(${workDetail.id}); closeTutorWorkDetailModal();" 
+                        class="px-6 py-2 bg-gray-600 text-white rounded-md font-medium hover:bg-gray-700 transition-colors flex items-center gap-2">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>` : ''}
+                `;
+            } else {
+                // BEFORE class date: Show Emergency Cancel button
+                actionButtons.innerHTML = `
+                    <button type="button" onclick="openTutorEmergencyCancelModal(${assignment.id}, ${JSON.stringify(scheduleData).replace(/"/g, '&quot;')})"
+                        class="px-6 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors flex items-center gap-2">
+                        <i class="fas fa-exclamation-triangle"></i> Emergency Cancel
+                    </button>
+                `;
+            }
         } else {
             actionButtons.innerHTML = '<span class="text-sm text-green-600 font-medium flex items-center gap-2"><i class="fas fa-check-circle"></i> Approved</span>';
         }
@@ -1068,6 +1103,191 @@ document.addEventListener('change', function (e) {
             } catch (error) {
                 console.error('Error rejecting assignment:', error);
                 showToast('An error occurred while rejecting the assignment', 'error');
+            }
+        };
+    };
+
+    // Emergency Cancel Functions
+    window.openTutorEmergencyCancelModal = function(assignmentId, scheduleData) {
+        console.log('Opening emergency cancel modal:', assignmentId, scheduleData);
+        
+        // Create modal
+        const modal = document.createElement('div');
+        modal.id = 'tutorEmergencyCancelModal';
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center';
+        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+        
+        const dateObj = new Date(scheduleData.date);
+        const formattedDate = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        
+        const modalContent = document.createElement('div');
+        modalContent.className = 'bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto';
+        
+        modalContent.innerHTML = `
+            <div class="bg-gradient-to-r from-red-600 to-red-700 p-6 rounded-t-lg flex items-center justify-between sticky top-0 z-10">
+                <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Emergency Cancellation
+                </h2>
+                <button type="button" id="closeCancelModal" class="text-white hover:text-gray-200 text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <form id="emergencyCancelForm">
+                <div class="p-6 space-y-6">
+                    <!-- Critical Warning -->
+                    <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                        <div class="flex items-start">
+                            <i class="fas fa-exclamation-circle text-red-500 text-xl mr-3 mt-0.5"></i>
+                            <div>
+                                <h4 class="font-semibold text-red-800 mb-1">Critical Warning</h4>
+                                <p class="text-sm text-red-700 mb-2">
+                                    Cancelling this schedule will have the following consequences:
+                                </p>
+                                <ul class="list-disc list-inside text-sm text-red-700 space-y-1">
+                                    <li><strong>Your payment for this class will be blocked</strong></li>
+                                    <li>The backup tutor will be promoted to main tutor</li>
+                                    <li>Supervisor will be immediately notified</li>
+                                    <li>This cancellation will be recorded in your profile</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Schedule Information -->
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <h4 class="font-semibold text-gray-700 mb-3">Schedule You're Cancelling</h4>
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                                <span class="text-gray-500">Date:</span>
+                                <span class="font-medium text-gray-700 ml-2">${formattedDate}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">School:</span>
+                                <span class="font-medium text-gray-700 ml-2">${scheduleData.school || 'N/A'}</span>
+                            </div>
+                            <div class="col-span-2">
+                                <span class="text-gray-500">Class:</span>
+                                <span class="font-medium text-gray-700 ml-2">${scheduleData.class || 'N/A'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Emergency Reason -->
+                    <div>
+                        <label for="emergency-reason" class="block text-sm font-medium text-gray-700 mb-2">
+                            Emergency Reason <span class="text-red-500">*</span>
+                        </label>
+                        <textarea 
+                            id="emergency-reason" 
+                            name="cancellation_reason" 
+                            rows="4" 
+                            required
+                            placeholder="Please explain your emergency situation in detail. This will be reviewed by your supervisor..."
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        ></textarea>
+                        <p class="text-xs text-gray-500 mt-1">
+                            <i class="fas fa-info-circle"></i> Be specific and honest about your emergency. Frequent cancellations may affect your future assignments.
+                        </p>
+                    </div>
+
+                    <!-- Acknowledgment Checkbox -->
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <label class="flex items-start cursor-pointer">
+                            <input type="checkbox" id="acknowledge-payment-block" required
+                                class="mt-1 mr-3 h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                            <span class="text-sm text-gray-700">
+                                <strong>I understand and acknowledge</strong> that by cancelling this schedule, 
+                                my payment for this class will be permanently blocked and I will not be compensated.
+                            </span>
+                        </label>
+                    </div>
+
+                    <input type="hidden" id="emergency-assignment-id" value="${assignmentId}">
+                </div>
+
+                <!-- Actions -->
+                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex items-center justify-end gap-3 sticky bottom-0">
+                    <button type="button" id="cancelEmergencyBtn"
+                        class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
+                        Keep Schedule
+                    </button>
+                    <button type="submit" id="confirmEmergencyCancelBtn"
+                        class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2">
+                        <i class="fas fa-ban"></i>
+                        <span>Confirm Emergency Cancellation</span>
+                    </button>
+                </div>
+            </form>
+        `;
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // Handle close
+        const closeBtn = modal.querySelector('#closeCancelModal');
+        const cancelBtn = modal.querySelector('#cancelEmergencyBtn');
+        
+        closeBtn.onclick = () => modal.remove();
+        cancelBtn.onclick = () => modal.remove();
+        
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.remove();
+        };
+        
+        // Handle form submission
+        const form = modal.querySelector('#emergencyCancelForm');
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = modal.querySelector('#confirmEmergencyCancelBtn');
+            const originalText = submitBtn.innerHTML;
+            
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Cancelling...';
+            
+            const reason = modal.querySelector('#emergency-reason').value;
+            const acknowledged = modal.querySelector('#acknowledge-payment-block').checked;
+            
+            if (!acknowledged) {
+                showToast('Please acknowledge the payment block', 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/schedules/cancel/${assignmentId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        cancellation_reason: reason,
+                        cancelled_by: 'main_tutor'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    modal.remove();
+                    closeTutorWorkDetailModal();
+                    showToast(data.message || 'Schedule cancelled successfully. Your supervisor has been notified.', 'success');
+                    setTimeout(() => window.location.reload(), 2000);
+                } else {
+                    showToast(data.message || 'Failed to cancel schedule', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            } catch (error) {
+                console.error('Error cancelling schedule:', error);
+                showToast('An error occurred while cancelling the schedule', 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             }
         };
     };

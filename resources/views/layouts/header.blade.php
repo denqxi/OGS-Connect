@@ -97,8 +97,14 @@
 
         <!-- Profile Image with Dropdown -->
         <div x-data="{ open: false }" class="relative w-10 h-10 md:w-10 cursor-pointer">
+            @php
+                $user = Auth::guard('supervisor')->user() ?? Auth::guard('tutor')->user();
+                $defaultPhoto = 'https://ui-avatars.com/api/?name=' . urlencode($user->full_name ?? 'User') . '&color=0E335D&background=BCE6D4&size=128';
+                $profilePhoto = $user->profile_photo ?? null;
+                $photoUrl = $profilePhoto ? asset('storage/' . $profilePhoto) : $defaultPhoto;
+            @endphp
             <img @click="open = !open"
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face"
+                src="{{ $photoUrl }}"
                 alt="Profile" class="w-full h-full object-cover rounded-full">
 
             <!-- Dropdown -->
@@ -204,6 +210,18 @@
                                 if (notification.data?.tutor_id) {
                                     url.searchParams.set('tutor_name', notification.data.tutor_id);
                                 }
+                                window.location.href = url.toString();
+                            } else if (notification.type === 'assignment_accepted' || notification.type === 'assignment_rejected') {
+                                // Redirect supervisor to class scheduling page
+                                const url = new URL(window.location);
+                                url.pathname = '/schedules';
+                                url.searchParams.set('tab', 'class-scheduling');
+                                window.location.href = url.toString();
+                            } else if (notification.type === 'assignment_request') {
+                                // Redirect tutor to assignments page
+                                const url = new URL(window.location);
+                                url.pathname = '/tutor-portal';
+                                url.searchParams.set('tab', 'assignments');
                                 window.location.href = url.toString();
                             }
                         }

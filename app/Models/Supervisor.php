@@ -27,11 +27,16 @@ class Supervisor extends Authenticatable
         'timezone',
         'password',
         'status',
+        'profile_photo',
+        'payment_info',
+        'saddress',
+        'sshift',
     ];
 
     protected $casts = [
         'password' => 'hashed',
         'days_available' => 'array',
+        'payment_info' => 'array',
     ];
 
     protected $hidden = [
@@ -172,6 +177,16 @@ class Supervisor extends Authenticatable
         return $this->ms_teams;
     }
 
+    public function getSaddressAttribute($value)
+    {
+        return $this->attributes['saddress'] ?? null;
+    }
+
+    public function getSshiftAttribute($value)
+    {
+        return $this->attributes['sshift'] ?? null;
+    }
+
     /**
      * Get formatted available time
      */
@@ -260,7 +275,7 @@ class Supervisor extends Authenticatable
      */
     public function securityQuestions()
     {
-        return $this->hasMany(SecurityQuestion::class, 'user_id', 'supID')
+        return $this->hasMany(SecurityQuestion::class, 'user_id', 'supervisor_id')
                     ->where('user_type', 'supervisor');
     }
 
