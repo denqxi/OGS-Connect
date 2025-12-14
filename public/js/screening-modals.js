@@ -470,7 +470,7 @@ function showFailOptionsModal() {
     const failModalHeader = document.getElementById('failModalHeader');
     const failSubmitButton = document.getElementById('failSubmitButton');
     if (failModalHeader) failModalHeader.className = 'flex justify-between items-center px-6 py-3 bg-[#0E335D] rounded-t-lg';
-    if (failSubmitButton) failSubmitButton.className = 'bg-[#F65353] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition';
+    if (failSubmitButton) failSubmitButton.className = 'bg-[#F65353] text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition';
     
     // Pre-filter accounts for transfer
     preFilterTransferAccounts();
@@ -501,13 +501,13 @@ function toggleFailFields() {
     if (failReason === 'transfer_account') {
         if (failModalHeader) failModalHeader.className = 'flex justify-between items-center px-6 py-3 bg-[#2A5382] rounded-t-lg flex-shrink-0';
         if (failSubmitButton) {
-            failSubmitButton.className = 'bg-[#0E335D] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition';
+            failSubmitButton.className = 'bg-[#0E335D] text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition';
             failSubmitButton.textContent = 'Transfer';
         }
     } else {
         if (failModalHeader) failModalHeader.className = 'flex justify-between items-center px-6 py-3 bg-[#0E335D] rounded-t-lg flex-shrink-0';
         if (failSubmitButton) {
-            failSubmitButton.className = 'bg-[#F65353] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition';
+            failSubmitButton.className = 'bg-[#F65353] text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition';
             failSubmitButton.textContent = 'Fail';
         }
     }
@@ -1707,7 +1707,7 @@ async function submitOnboardingFail() {
     
     const failReason = document.getElementById('onboarding_fail_reason').value;
     const interviewer = document.getElementById('onboarding_fail_interviewer').value;
-    const notes = document.getElementById('onboarding_fail_notes').value;
+    const notes = document.getElementById('onboarding_pass_notes').value;
     
     if (!failReason || !interviewer) {
         showOnboardingFailErrorMessage('Please fill in all required fields');
@@ -1754,6 +1754,139 @@ async function submitOnboardingFail() {
     } catch (error) {
         console.error('Error:', error);
         showOnboardingFailErrorMessage('Error: ' + error.message);
+    }
+}
+
+// ============================================================================
+// ONBOARDING ACTIONS
+// ============================================================================
+
+/**
+ * Show confirmation modal for moving applicant to onboarding
+ */
+function showOnboardingConfirmationModal(applicationId, applicantName) {
+    currentOnboardingId = applicationId;
+    
+    const modal = document.getElementById('onboardingConfirmationModal');
+    if (!modal) {
+        console.error('Onboarding confirmation modal not found');
+        return;
+    }
+    
+    const applicantNameEl = document.getElementById('onboardingApplicantName');
+    if (applicantNameEl) {
+        applicantNameEl.textContent = applicantName || 'this applicant';
+    }
+    
+    modal.classList.remove('hidden');
+}
+
+/**
+ * Move applicant to onboarding
+ */
+async function moveToOnboarding(applicationId) {
+    if (!applicationId) {
+        console.error('No application ID provided');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/hiring-onboarding/applicant/${applicationId}/pass`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken()
+            },
+            body: JSON.stringify({
+                _token: getCsrfToken()
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to move to onboarding');
+        }
+        
+        if (data.success) {
+            // Close modal and reload
+            const modal = document.getElementById('onboardingConfirmationModal');
+            if (modal) modal.classList.add('hidden');
+            window.location.reload();
+        } else {
+            throw new Error(data.message || 'Failed to move to onboarding');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+/**
+ * Open archive/reschedule modal
+ */
+function openArchiveModal(applicationId) {
+    currentOnboardingId = applicationId;
+    
+    const modal = document.getElementById('archiveModal');
+    if (!modal) {
+        console.error('Archive modal not found');
+        return;
+    }
+    
+    // Clear previous values
+    const reasonField = document.getElementById('archive_reason');
+    if (reasonField) reasonField.value = '';
+    
+    modal.classList.remove('hidden');
+}
+
+/**
+ * Archive application with reason
+ */
+async function archiveApplication(applicationId, reason) {
+    if (!applicationId) {
+        console.error('No application ID provided');
+        return;
+    }
+    
+    if (!reason) {
+        alert('Please provide a reason for archiving');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/hiring-onboarding/applicant/${applicationId}/archive-reschedule`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken()
+            },
+            body: JSON.stringify({
+                reason: reason,
+                _token: getCsrfToken()
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to archive application');
+        }
+        
+        if (data.success) {
+            // Close modal and reload
+            const modal = document.getElementById('archiveModal');
+            if (modal) modal.classList.add('hidden');
+            window.location.reload();
+        } else {
+            throw new Error(data.message || 'Failed to archive application');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error: ' + error.message);
     }
 }
 

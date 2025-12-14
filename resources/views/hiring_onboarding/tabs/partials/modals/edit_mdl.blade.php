@@ -1169,7 +1169,7 @@
                     <!-- Notes Field -->
                     <div class="mb-4 sm:mb-6">
                         <label class="block text-gray-700 text-sm font-medium mb-1 sm:mb-2">Notes:</label>
-                        <textarea id="pass_notes" name="pass_notes" rows="2" sm:rows="3"
+                        <textarea id="onboarding_pass_notes" name="pass_notes" rows="2" sm:rows="3"
                             class="w-full px-2 sm:px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2A5382] resize-none"
                             placeholder="Enter additional notes..."></textarea>
                     </div>

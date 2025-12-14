@@ -3,10 +3,46 @@
         <table class="w-full" id="tutorTable">
             <thead class="bg-gray-50 border-b border-gray-200">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Time - End Time</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('payroll.index', array_merge(request()->query(), ['sort' => request('sort') === 'day' && request('direction') === 'desc' ? '' : 'day', 'direction' => request('sort') === 'day' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                        <div class="flex items-center gap-1">
+                            Date
+                            @if(request('sort') === 'day')
+                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                            @else
+                                <i class="fas fa-sort text-xs opacity-30"></i>
+                            @endif
+                        </div>
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('payroll.index', array_merge(request()->query(), ['sort' => request('sort') === 'tutor_name' && request('direction') === 'desc' ? '' : 'tutor_name', 'direction' => request('sort') === 'tutor_name' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                        <div class="flex items-center gap-1">
+                            Name
+                            @if(request('sort') === 'tutor_name')
+                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                            @else
+                                <i class="fas fa-sort text-xs opacity-30"></i>
+                            @endif
+                        </div>
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('payroll.index', array_merge(request()->query(), ['sort' => request('sort') === 'start_time' && request('direction') === 'desc' ? '' : 'start_time', 'direction' => request('sort') === 'start_time' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                        <div class="flex items-center gap-1">
+                            Start Time - End Time
+                            @if(request('sort') === 'start_time')
+                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                            @else
+                                <i class="fas fa-sort text-xs opacity-30"></i>
+                            @endif
+                        </div>
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('payroll.index', array_merge(request()->query(), ['sort' => request('sort') === 'rate' && request('direction') === 'desc' ? '' : 'rate', 'direction' => request('sort') === 'rate' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                        <div class="flex items-center gap-1">
+                            Rate
+                            @if(request('sort') === 'rate')
+                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                            @else
+                                <i class="fas fa-sort text-xs opacity-30"></i>
+                            @endif
+                        </div>
+                    </th>
                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>

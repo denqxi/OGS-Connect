@@ -39,12 +39,39 @@
         <table class="w-full" id="approvalsTable">
             <thead class="bg-gray-50 border-b border-gray-200">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tutor</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('payroll.index', array_merge(request()->query(), ['tab' => 'history', 'sort' => request('sort') === 'approved_at' && request('direction') === 'desc' ? '' : 'approved_at', 'direction' => request('sort') === 'approved_at' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                        <div class="flex items-center gap-1">
+                            Date
+                            @if(request('sort') === 'approved_at')
+                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                            @else
+                                <i class="fas fa-sort text-xs opacity-30"></i>
+                            @endif
+                        </div>
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('payroll.index', array_merge(request()->query(), ['tab' => 'history', 'sort' => request('sort') === 'tutor_name' && request('direction') === 'desc' ? '' : 'tutor_name', 'direction' => request('sort') === 'tutor_name' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                        <div class="flex items-center gap-1">
+                            Tutor
+                            @if(request('sort') === 'tutor_name')
+                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                            @else
+                                <i class="fas fa-sort text-xs opacity-30"></i>
+                            @endif
+                        </div>
+                    </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work Detail</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supervisor</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Old Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">New Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="window.location.href='{{ route('payroll.index', array_merge(request()->query(), ['tab' => 'history', 'sort' => request('sort') === 'new_status' && request('direction') === 'desc' ? '' : 'new_status', 'direction' => request('sort') === 'new_status' ? (request('direction') === 'asc' ? 'desc' : '') : 'asc'])) }}'">
+                        <div class="flex items-center gap-1">
+                            New Status
+                            @if(request('sort') === 'new_status')
+                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>
+                            @else
+                                <i class="fas fa-sort text-xs opacity-30"></i>
+                            @endif
+                        </div>
+                    </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
                 </tr>
             </thead>

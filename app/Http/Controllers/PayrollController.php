@@ -172,8 +172,34 @@ class PayrollController extends Controller
                     });
                 }
 
+                // Handle sorting
+                $sortColumn = $request->query('sort', 'approved_at');
+                $sortDirection = $request->query('direction', 'desc');
+                
+                // Validate sort direction
+                if (!in_array($sortDirection, ['asc', 'desc'])) {
+                    $sortDirection = 'desc';
+                }
+
+                // Apply sorting based on column
+                switch ($sortColumn) {
+                    case 'tutor_name':
+                        $approvalsQuery->join('tutor_work_details', 'tutor_work_detail_approvals.work_detail_id', '=', 'tutor_work_details.work_detail_id')
+                            ->join('tutors', 'tutor_work_details.tutor_id', '=', 'tutors.tutorID')
+                            ->join('applicants', 'tutors.applicantID', '=', 'applicants.applicantID')
+                            ->orderBy('applicants.first_name', $sortDirection)
+                            ->orderBy('applicants.last_name', $sortDirection)
+                            ->select('tutor_work_detail_approvals.*');
+                        break;
+                    case 'approved_at':
+                    case 'new_status':
+                        $approvalsQuery->orderBy($sortColumn, $sortDirection);
+                        break;
+                    default:
+                        $approvalsQuery->orderBy('approved_at', 'desc');
+                }
+
                 $approvals = $approvalsQuery
-                    ->orderBy('approved_at', 'desc')
                     ->paginate(10)
                     ->withQueryString();
 
@@ -204,8 +230,36 @@ class PayrollController extends Controller
                     });
                 }
 
+                // Handle sorting
+                $sortColumn = $request->query('sort', 'submitted_at');
+                $sortDirection = $request->query('direction', 'desc');
+                
+                // Validate sort direction
+                if (!in_array($sortDirection, ['asc', 'desc'])) {
+                    $sortDirection = 'desc';
+                }
+
+                // Apply sorting based on column
+                switch ($sortColumn) {
+                    case 'tutor_name':
+                        $historyQuery->join('tutors', 'payroll_history.tutor_id', '=', 'tutors.tutor_id')
+                            ->join('applicants', 'tutors.applicantID', '=', 'applicants.applicantID')
+                            ->orderBy('applicants.first_name', $sortDirection)
+                            ->orderBy('applicants.last_name', $sortDirection)
+                            ->select('payroll_history.*');
+                        break;
+                    case 'submitted_at':
+                    case 'pay_period':
+                    case 'total_amount':
+                    case 'submission_type':
+                    case 'status':
+                        $historyQuery->orderBy($sortColumn, $sortDirection);
+                        break;
+                    default:
+                        $historyQuery->orderBy('submitted_at', 'desc');
+                }
+
                 $payrollHistory = $historyQuery
-                    ->orderBy('submitted_at', 'desc')
                     ->paginate(10)
                     ->withQueryString();
 
@@ -269,8 +323,37 @@ public function workDetails(Request $request)
             });
         }
 
-            $workDetails = $workQuery
-            ->orderBy('created_at', 'desc')
+        // Handle sorting
+        $sortColumn = $request->query('sort', 'created_at');
+        $sortDirection = $request->query('direction', 'desc');
+        
+        // Validate sort direction
+        if (!in_array($sortDirection, ['asc', 'desc'])) {
+            $sortDirection = 'desc';
+        }
+
+        // Apply sorting based on column
+        switch ($sortColumn) {
+            case 'tutor_name':
+                $workQuery->join('tutors', 'tutor_work_details.tutor_id', '=', 'tutors.tutorID')
+                    ->join('applicants', 'tutors.applicantID', '=', 'applicants.applicantID')
+                    ->orderBy('applicants.first_name', $sortDirection)
+                    ->orderBy('applicants.last_name', $sortDirection)
+                    ->select('tutor_work_details.*');
+                break;
+            case 'day':
+            case 'start_time':
+                $workQuery->orderBy($sortColumn, $sortDirection);
+                break;
+            case 'rate':
+                // Sort by rate_per_class, fallback to rate_per_hour
+                $workQuery->orderByRaw("COALESCE(rate_per_class, rate_per_hour) $sortDirection");
+                break;
+            default:
+                $workQuery->orderBy('created_at', 'desc');
+        }
+
+        $workDetails = $workQuery
             ->paginate(10)
             ->withQueryString();
 
