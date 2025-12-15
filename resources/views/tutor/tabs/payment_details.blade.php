@@ -14,10 +14,6 @@
             <button id="addPaymentBtn" class="bg-green-600 text-white font-semibold px-4 py-2 rounded-full hover:bg-green-700 transition-colors duration-200">
                 <i class="fas fa-plus mr-1"></i>Add Payment Method
             </button>
-            <button id="editPaymentBtn"
-                class="bg-[#F39C12] text-white font-semibold px-6 py-2 rounded-full hover:bg-[#D97706] transition-colors duration-200">
-                Edit Payment Info
-            </button>
         </div>
     </div>
 

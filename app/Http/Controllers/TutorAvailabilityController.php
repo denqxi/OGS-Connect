@@ -78,6 +78,9 @@ class TutorAvailabilityController extends Controller
             // Get tutor details
             $tutorDetails = $tutor->tutorDetails;
             
+            // Load payment methods
+            $paymentMethods = $tutor->paymentMethods;
+            
             return response()->json([
                 'success' => true,
                 'data' => $availability,
@@ -92,23 +95,21 @@ class TutorAvailabilityController extends Controller
                     'address' => $tutorDetails->address ?? null,
                     'contact_number' => $tutor->phone_number ?? null,
                     'ms_teams_id' => $tutorDetails->ms_teams_id ?? null,
-                    // TODO: Uncomment when employee_payment_information table exists
-                    // 'payment_info' => $paymentMethods->map(function($payment) {
-                    //     return [
-                    //         'id' => $payment->id,
-                    //         'payment_method' => $payment->payment_method ?? null,
-                    //         'payment_method_uppercase' => $payment->payment_method_uppercase ?? null,
-                    //         'bank_name' => $payment->bank_name ?? null,
-                    //         'account_number' => $payment->account_number ?? null,
-                    //         'account_name' => $payment->account_name ?? null,
-                    //         'paypal_email' => $payment->paypal_email ?? null,
-                    //         'gcash_number' => $payment->gcash_number ?? null,
-                    //         'paymaya_number' => $payment->paymaya_number ?? null,
-                    //         'created_at' => $payment->created_at,
-                    //         'updated_at' => $payment->updated_at
-                    //     ];
-                    // })->toArray(),
-                    'payment_info' => [], // Temporary empty array
+                    'payment_info' => $paymentMethods->map(function($payment) {
+                        return [
+                            'id' => $payment->id,
+                            'payment_method' => $payment->payment_method ?? null,
+                            'payment_method_uppercase' => $payment->payment_method_uppercase ?? null,
+                            'bank_name' => $payment->bank_name ?? null,
+                            'account_number' => $payment->account_number ?? null,
+                            'account_name' => $payment->account_name ?? null,
+                            'paypal_email' => $payment->paypal_email ?? null,
+                            'gcash_number' => $payment->gcash_number ?? null,
+                            'paymaya_number' => $payment->paymaya_number ?? null,
+                            'created_at' => $payment->created_at,
+                            'updated_at' => $payment->updated_at
+                        ];
+                    })->toArray(),
                     'security_questions' => $tutor->securityQuestions->map(function($question) {
                         return [
                             'question' => $question->question ?? null,

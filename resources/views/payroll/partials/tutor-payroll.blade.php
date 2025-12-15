@@ -8,6 +8,7 @@
     </div>
 
     <form method="GET" action="{{ route('payroll.index') }}" id="tutorFilterForm">
+        <input type="hidden" name="tab" value="tutor-payroll">
         <input type="hidden" name="filter_applied" value="employee_payroll">
         <div class="flex justify-between items-center space-x-4">
             <div class="flex items-center space-x-4 flex-1 max-w-lg">

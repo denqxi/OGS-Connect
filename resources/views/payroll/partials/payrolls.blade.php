@@ -66,7 +66,7 @@
     </div>
 
     <form method="GET" action="{{ route('payroll.index') }}" id="payrollFilterForm">
-        <input type="hidden" name="tab" value="approval">
+        <input type="hidden" name="tab" value="payrolls">
         <div class="flex justify-between items-center space-x-4">
             <div class="flex items-center space-x-4 flex-1 max-w-lg">
                 <div class="relative flex-1">

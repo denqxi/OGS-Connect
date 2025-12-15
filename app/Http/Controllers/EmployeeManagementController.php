@@ -359,18 +359,16 @@ class EmployeeManagementController extends Controller
                 'date_of_birth' => $tutor->applicant?->birth_date ? \Carbon\Carbon::parse($tutor->applicant->birth_date)->format('M j, Y') : 'N/A',
                 'created_at' => $tutor->created_at ? $tutor->created_at->format('M j, Y') : null,
                 'status' => $tutor->status,
-                // TODO: Uncomment when employee_payment_information table exists
-                // 'payment_information' => $tutor->paymentInformation ? [
-                //     'payment_method' => $tutor->paymentInformation->payment_method,
-                //     'payment_method_uppercase' => $tutor->paymentInformation->payment_method_uppercase,
-                //     'bank_name' => $tutor->paymentInformation->bank_name,
-                //     'account_number' => $tutor->paymentInformation->account_number,
-                //     'account_name' => $tutor->paymentInformation->account_name,
-                //     'gcash_number' => $tutor->paymentInformation->gcash_number,
-                //     'gcash_name' => $tutor->paymentInformation->gcash_name,
-                //     'paypal_email' => $tutor->paymentInformation->paypal_email,
-                // ] : null,
-                'payment_information' => null, // Temporary
+                'payment_information' => $tutor->paymentMethods->first() ? [
+                    'payment_method' => $tutor->paymentMethods->first()->payment_method,
+                    'payment_method_uppercase' => $tutor->paymentMethods->first()->payment_method_uppercase,
+                    'bank_name' => $tutor->paymentMethods->first()->bank_name,
+                    'account_number' => $tutor->paymentMethods->first()->account_number,
+                    'account_name' => $tutor->paymentMethods->first()->account_name,
+                    'gcash_number' => $tutor->paymentMethods->first()->gcash_number,
+                    'paypal_email' => $tutor->paymentMethods->first()->paypal_email,
+                    'paymaya_number' => $tutor->paymentMethods->first()->paymaya_number,
+                ] : null,
                 'availability' => $tutor->workPreferences ? [
                     'account_name' => $tutor->account->account_name ?? 'N/A',
                     'start_time' => $tutor->workPreferences->start_time ? \Carbon\Carbon::parse($tutor->workPreferences->start_time)->format('g:i A') : 'N/A',

@@ -57,7 +57,6 @@ async function loadPaymentDetails() {
         showPaymentError();
     }
 }
-
 function displayPaymentDetails(paymentInfo) {
     const container = document.getElementById('paymentDetailsContainer');
     if (!container) return;
@@ -70,176 +69,120 @@ function displayPaymentDetails(paymentInfo) {
         'cash': 'Cash'
     };
 
-    const formatPaymentMethod = (method) => {
-        return paymentMethodNames[method] || method || 'N/A';
-    };
-
-
-            // Handle single payment record with multiple payment methods
-            const payment = paymentInfo;
-
-            let paymentFieldsHTML = '';
-
-            // Check which payment methods have data and create cards for each
-            const paymentMethodsList = [];
-            
-            // Check GCash
-            if (payment.gcash_number) {
-                paymentMethodsList.push({
-                    method: 'gcash',
-                    displayName: 'GCash',
-                    data: {
-                        gcash_number: payment.gcash_number,
-                        account_name: payment.account_name
-                    }
-                });
-            }
-            
-            // Check PayPal
-            if (payment.paypal_email) {
-                paymentMethodsList.push({
-                    method: 'paypal',
-                    displayName: 'PayPal',
-                    data: {
-                        paypal_email: payment.paypal_email,
-                        account_name: payment.account_name
-                    }
-                });
-            }
-            
-            // Check PayMaya
-            if (payment.paymaya_number) {
-                paymentMethodsList.push({
-                    method: 'paymaya',
-                    displayName: 'PayMaya',
-                    data: {
-                        paymaya_number: payment.paymaya_number,
-                        account_name: payment.account_name
-                    }
-                });
-            }
-            
-            // Check Bank Transfer
-            if (payment.bank_name && payment.account_number) {
-                paymentMethodsList.push({
-                    method: 'bank_transfer',
-                    displayName: 'Bank Transfer',
-                    data: {
-                        bank_name: payment.bank_name,
-                        account_number: payment.account_number,
-                        account_name: payment.account_name
-                    }
-                });
-            }
-            
-            // Check Cash (if no other methods or if explicitly set)
-            if (payment.payment_method === 'cash' || paymentMethodsList.length === 0) {
-                paymentMethodsList.push({
-                    method: 'cash',
-                    displayName: 'Cash',
-                    data: {
-                        account_name: payment.account_name
-                    }
-                });
-            }
-
-            // Replace the container content with multiple payment cards
-            let allPaymentCards = '';
-            
-            paymentMethodsList.forEach((paymentMethod, index) => {
-                let cardContent = `<h4 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">${paymentMethod.displayName}</h4>`;
-                
-                // Generate fields based on payment method
-                if (paymentMethod.method === 'gcash') {
-                    cardContent += `
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">GCash Number</label>
-                                <input type="text" value="${paymentMethod.data.gcash_number || 'N/A'}" disabled
-                                    class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">Account Name</label>
-                                <input type="text" value="${paymentMethod.data.account_name || 'N/A'}" disabled
-                                    class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
-                            </div>
-                        </div>
-                    `;
-                } else if (paymentMethod.method === 'paypal') {
-                    cardContent += `
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">PayPal Email</label>
-                                <input type="text" value="${paymentMethod.data.paypal_email || 'N/A'}" disabled
-                                    class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">Account Name</label>
-                                <input type="text" value="${paymentMethod.data.account_name || 'N/A'}" disabled
-                                    class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
-                            </div>
-                        </div>
-                    `;
-                } else if (paymentMethod.method === 'paymaya') {
-                    cardContent += `
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">PayMaya Number</label>
-                                <input type="text" value="${paymentMethod.data.paymaya_number || 'N/A'}" disabled
-                                    class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">Account Name</label>
-                                <input type="text" value="${paymentMethod.data.account_name || 'N/A'}" disabled
-                                    class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
-                            </div>
-                        </div>
-                    `;
-                } else if (paymentMethod.method === 'bank_transfer') {
-                    cardContent += `
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">Bank Name</label>
-                                <input type="text" value="${paymentMethod.data.bank_name || 'N/A'}" disabled
-                                    class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">Account Number</label>
-                                <input type="text" value="${paymentMethod.data.account_number || 'N/A'}" disabled
-                                    class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">Account Name</label>
-                                <input type="text" value="${paymentMethod.data.account_name || 'N/A'}" disabled
-                                    class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
-                            </div>
-                        </div>
-                    `;
-                } else if (paymentMethod.method === 'cash') {
-                    cardContent += `
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">Account Name</label>
-                                <input type="text" value="${paymentMethod.data.account_name || 'N/A'}" disabled
-                                    class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
-                            </div>
-                        </div>
-                        <div class="mt-4">
-                            <p class="text-sm text-gray-500 dark:text-gray-400">Cash payments will be handled directly with the administrator.</p>
-                        </div>
-                    `;
-                }
-                
-                // Create a complete payment card for each payment method
-                allPaymentCards += `
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 md:p-6 space-y-4 border border-gray-200 dark:border-gray-700 mb-4">
-                        ${cardContent}
+    // paymentInfo is now an array of payment records from the backend
+    const paymentRecords = Array.isArray(paymentInfo) ? paymentInfo : [paymentInfo];
+    
+    // Store payment records globally for editing
+    window.currentPaymentMethods = paymentRecords;
+    
+    let allPaymentCards = '';
+    
+    paymentRecords.forEach((payment) => {
+        const displayName = paymentMethodNames[payment.payment_method] || payment.payment_method || 'N/A';
+        let cardContent = `<h4 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">${displayName}</h4>`;
+        
+        // Generate fields based on payment method
+        if (payment.payment_method === 'gcash') {
+            cardContent += `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">GCash Number</label>
+                        <input type="text" value="${payment.gcash_number || 'N/A'}" disabled
+                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
                     </div>
-                `;
-            });
-            
-            // Replace only the paymentDetailsContainer content
-            container.innerHTML = allPaymentCards;
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">Account Name</label>
+                        <input type="text" value="${payment.account_name || 'N/A'}" disabled
+                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                    </div>
+                </div>
+            `;
+        } else if (payment.payment_method === 'paypal') {
+            cardContent += `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">PayPal Email</label>
+                        <input type="text" value="${payment.paypal_email || 'N/A'}" disabled
+                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">Account Name</label>
+                        <input type="text" value="${payment.account_name || 'N/A'}" disabled
+                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                    </div>
+                </div>
+            `;
+        } else if (payment.payment_method === 'paymaya') {
+            cardContent += `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">PayMaya Number</label>
+                        <input type="text" value="${payment.paymaya_number || 'N/A'}" disabled
+                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">Account Name</label>
+                        <input type="text" value="${payment.account_name || 'N/A'}" disabled
+                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                    </div>
+                </div>
+            `;
+        } else if (payment.payment_method === 'bank_transfer') {
+            cardContent += `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">Bank Name</label>
+                        <input type="text" value="${payment.bank_name || 'N/A'}" disabled
+                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">Account Number</label>
+                        <input type="text" value="${payment.account_number || 'N/A'}" disabled
+                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">Account Name</label>
+                        <input type="text" value="${payment.account_name || 'N/A'}" disabled
+                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                    </div>
+                </div>
+            `;
+        } else if (payment.payment_method === 'cash') {
+            cardContent += `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-200 font-medium mb-1">Account Name</label>
+                        <input type="text" value="${payment.account_name || 'N/A'}" disabled
+                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Cash payments will be handled directly with the administrator.</p>
+                </div>
+            `;
+        }
+        
+        // Create a complete payment card for each payment record with action buttons
+        allPaymentCards += `
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 md:p-6 space-y-4 border border-gray-200 dark:border-gray-700 mb-4">
+                ${cardContent}
+                <div class="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button class="editPaymentBtn flex-1 bg-[#F39C12] text-white font-semibold px-4 py-2 rounded-md hover:bg-[#D97706] transition-colors duration-200" data-payment-id="${payment.id}">
+                        <i class="fas fa-edit mr-1"></i>Edit
+                    </button>
+                    <button class="deletePaymentBtn flex-1 bg-red-600 text-white font-semibold px-4 py-2 rounded-md hover:bg-red-700 transition-colors duration-200" data-payment-id="${payment.id}">
+                        <i class="fas fa-trash mr-1"></i>Delete
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    // Replace only the paymentDetailsContainer content
+    container.innerHTML = allPaymentCards;
+    
+    // Attach event listeners to edit and delete buttons
+    setupPaymentCardEventListeners();
 
     // Event listeners are handled in setupPaymentEventListeners()
 }
@@ -1045,4 +988,195 @@ function closeConfirmationModal() {
     if (modal) {
         modal.remove();
     }
+}
+
+function setupPaymentCardEventListeners() {
+    // Setup edit buttons
+    document.querySelectorAll('.editPaymentBtn').forEach(button => {
+        button.addEventListener('click', function() {
+            const paymentId = this.dataset.paymentId;
+            showEditPaymentModal(paymentId);
+        });
+    });
+    
+    // Setup delete buttons
+    document.querySelectorAll('.deletePaymentBtn').forEach(button => {
+        button.addEventListener('click', function() {
+            const paymentId = this.dataset.paymentId;
+            showConfirmationModal(
+                'Delete Payment Method',
+                'Are you sure you want to delete this payment method? This action cannot be undone.',
+                'Delete',
+                'Cancel',
+                () => deletePaymentMethod(paymentId)
+            );
+        });
+    });
+}
+
+async function deletePaymentMethod(paymentId) {
+    try {
+        const response = await fetch(`/tutor/payment-method/${paymentId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Payment method deleted successfully!', 'success');
+            loadPaymentDetails(); // Reload the payment details
+        } else {
+            showNotification(result.message || 'Failed to delete payment method. Please try again.', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting payment method:', error);
+        showNotification('An error occurred while deleting the payment method. Please try again.', 'error');
+    }
+}
+
+function showEditPaymentModal(paymentId) {
+    // Get all payment data from the page to find the specific payment
+    const paymentData = window.currentPaymentMethods?.find(p => p.id == paymentId);
+    
+    if (!paymentData) {
+        showNotification('Payment method not found.', 'error');
+        return;
+    }
+    
+    // Show edit form modal
+    showEditPaymentFormForId(paymentId, paymentData);
+}
+
+function showEditPaymentFormForId(paymentId, paymentData) {
+    // Create and display edit form for a specific payment
+    const modal = document.createElement('div');
+    modal.id = 'editPaymentModal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+    modal.style.display = 'flex';
+
+    let fieldsHTML = '';
+    
+    switch(paymentData.payment_method) {
+        case 'gcash':
+            fieldsHTML = `
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-200 font-medium mb-2">GCash Number</label>
+                    <input type="text" name="gcash_number" value="${paymentData.gcash_number || ''}" required
+                        class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-[#F39C12] focus:outline-none"
+                        placeholder="Enter your GCash number">
+                </div>
+            `;
+            break;
+        case 'paypal':
+            fieldsHTML = `
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-200 font-medium mb-2">PayPal Email</label>
+                    <input type="email" name="paypal_email" value="${paymentData.paypal_email || ''}" required
+                        class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-[#F39C12] focus:outline-none"
+                        placeholder="Enter your PayPal email">
+                </div>
+            `;
+            break;
+        case 'paymaya':
+            fieldsHTML = `
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-200 font-medium mb-2">PayMaya Number</label>
+                    <input type="text" name="paymaya_number" value="${paymentData.paymaya_number || ''}" required
+                        class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-[#F39C12] focus:outline-none"
+                        placeholder="Enter your PayMaya number">
+                </div>
+            `;
+            break;
+        case 'bank_transfer':
+            fieldsHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-200 font-medium mb-2">Bank Name</label>
+                        <input type="text" name="bank_name" value="${paymentData.bank_name || ''}" required
+                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-[#F39C12] focus:outline-none"
+                            placeholder="Enter bank name">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-200 font-medium mb-2">Account Number</label>
+                        <input type="text" name="account_number" value="${paymentData.account_number || ''}" required
+                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-[#F39C12] focus:outline-none"
+                            placeholder="Enter account number">
+                    </div>
+                </div>
+            `;
+            break;
+    }
+
+    modal.innerHTML = `
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full p-6 space-y-6">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Edit Payment Method</h3>
+            
+            <form id="editPaymentModalForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-200 font-medium mb-2">Account Name</label>
+                    <input type="text" name="account_name" value="${paymentData.account_name || ''}" required
+                        class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-[#F39C12] focus:outline-none"
+                        placeholder="Enter account name">
+                </div>
+                
+                ${fieldsHTML}
+                
+                <div class="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button type="button" onclick="document.getElementById('editPaymentModal').remove()" 
+                        class="flex-1 bg-gray-400 text-white font-semibold px-4 py-2 rounded-md hover:bg-gray-500 transition-colors duration-200">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 bg-[#F39C12] text-white font-semibold px-4 py-2 rounded-md hover:bg-[#D97706] transition-colors duration-200">
+                        Update
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    document.getElementById('editPaymentModalForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const updateData = Object.fromEntries(formData.entries());
+        updateData.payment_method = paymentData.payment_method; // Keep the same payment method
+        
+        try {
+            const response = await fetch(`/tutor/payment-method/${paymentId}`, {
+                method: 'PUT',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(updateData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showNotification('Payment method updated successfully!', 'success');
+                document.getElementById('editPaymentModal').remove();
+                loadPaymentDetails(); // Reload the payment details
+            } else {
+                showNotification(result.message || 'Failed to update payment method. Please try again.', 'error');
+            }
+        } catch (error) {
+            console.error('Error updating payment method:', error);
+            showNotification('An error occurred while updating the payment method. Please try again.', 'error');
+        }
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
 }

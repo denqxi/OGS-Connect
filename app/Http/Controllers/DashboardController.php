@@ -12,6 +12,7 @@ use App\Models\Application;
 use App\Models\Applicant;
 use App\Models\Demo;
 use App\Models\Archive;
+use App\Models\Account;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -22,9 +23,9 @@ class DashboardController extends Controller
     /**
      * Display the dashboard with real data
      */
-    public function index()
+    public function index(Request $request)
     {
-        $stats = $this->getDashboardStats();
+        $stats = $this->getDashboardStats($request);
         
         return view('dashboard.dashboard', compact('stats'));
     }
@@ -32,39 +33,51 @@ class DashboardController extends Controller
     /**
      * Get comprehensive dashboard statistics
      */
-    public function getDashboardStats()
+    public function getDashboardStats(Request $request = null)
     {
-        $currentMonth = Carbon::now()->format('Y-m');
-        $currentWeek = Carbon::now()->startOfWeek();
+        // Get filter parameters
+        $month = $request?->input('month') ?? Carbon::now()->format('Y-m');
+        $fromDate = $request?->input('from_date');
+        $toDate = $request?->input('to_date');
+        $account = $request?->input('account');
+        
+        // Determine date range
+        if ($fromDate && $toDate) {
+            $currentMonth = null; // Will use date range instead
+            $currentWeek = Carbon::parse($fromDate);
+        } else {
+            $currentMonth = $month;
+            $currentWeek = Carbon::now()->startOfWeek();
+        }
         $lastWeek = Carbon::now()->subWeek()->startOfWeek();
         
         return [
             // Top 4 Stat Boxes
-            'applicants_this_month' => $this->getApplicantsThisMonth($currentMonth),
-            'demo_applicants' => $this->getDemoApplicants($currentMonth),
-            'onboarding_applicants' => $this->getOnboardingApplicants($currentMonth),
-            'existing_employees' => $this->getExistingEmployees(),
+            'applicants_this_month' => $this->getApplicantsThisMonth($currentMonth, $fromDate, $toDate, $account),
+            'demo_applicants' => $this->getDemoApplicants($currentMonth, $fromDate, $toDate, $account),
+            'onboarding_applicants' => $this->getOnboardingApplicants($currentMonth, $fromDate, $toDate, $account),
+            'existing_employees' => $this->getExistingEmployees($account),
             
             // GLS Scheduling Reports
-            'classes_conducted' => $this->getClassesConducted($currentWeek),
-            'cancelled_classes' => $this->getCancelledClasses($currentWeek),
-            'total_classes' => $this->getTotalClasses($currentWeek),
-            'fully_assigned_classes' => $this->getFullyAssignedClasses($currentWeek),
-            'partially_assigned_classes' => $this->getPartiallyAssignedClasses($currentWeek),
-            'unassigned_classes' => $this->getUnassignedClasses($currentWeek),
+            'classes_conducted' => $this->getClassesConducted($currentWeek, $fromDate, $toDate, $account),
+            'cancelled_classes' => $this->getCancelledClasses($currentWeek, $fromDate, $toDate, $account),
+            'total_classes' => $this->getTotalClasses($currentWeek, $fromDate, $toDate, $account),
+            'fully_assigned_classes' => $this->getFullyAssignedClasses($currentWeek, $fromDate, $toDate, $account),
+            'partially_assigned_classes' => $this->getPartiallyAssignedClasses($currentWeek, $fromDate, $toDate, $account),
+            'unassigned_classes' => $this->getUnassignedClasses($currentWeek, $fromDate, $toDate, $account),
             
             // Weekly trends
-            'weekly_trends' => $this->getWeeklyTrends(),
+            'weekly_trends' => $this->getWeeklyTrends($fromDate, $toDate, $account),
             
             // Hiring & Onboarding Reports
-            'hiring_stats' => $this->getHiringStats($currentMonth),
+            'hiring_stats' => $this->getHiringStats($currentMonth, $fromDate, $toDate, $account),
             
             // Tutor statistics
-            'active_tutors' => $this->getActiveTutorsCount(),
-            'tutor_utilization' => $this->getTutorUtilization($currentWeek),
+            'active_tutors' => $this->getActiveTutorsCount($account),
+            'tutor_utilization' => $this->getTutorUtilization($currentWeek, $fromDate, $toDate, $account),
             
             // Schedule status breakdown
-            'schedule_status_breakdown' => $this->getScheduleStatusBreakdown($currentWeek),
+            'schedule_status_breakdown' => $this->getScheduleStatusBreakdown($currentWeek, $fromDate, $toDate, $account),
             
             // Recent activity
             'recent_activity' => $this->getRecentActivity()
@@ -74,124 +87,213 @@ class DashboardController extends Controller
     /**
      * Get applicants this month (from applications table)
      */
-    private function getApplicantsThisMonth($month)
+    private function getApplicantsThisMonth($month = null, $fromDate = null, $toDate = null, $account = null)
     {
-        return Application::whereYear('application_date_time', Carbon::parse($month . '-01')->year)
-            ->whereMonth('application_date_time', Carbon::parse($month . '-01')->month)
-            ->count();
+        $query = Application::query();
+        
+        if ($fromDate && $toDate) {
+            $query->whereBetween('application_date_time', [Carbon::parse($fromDate), Carbon::parse($toDate)->endOfDay()]);
+        } elseif ($month) {
+            $query->whereYear('application_date_time', Carbon::parse($month . '-01')->year)
+                  ->whereMonth('application_date_time', Carbon::parse($month . '-01')->month);
+        }
+        
+        // Note: applications table doesn't have account field, so we can't filter by account here
+        
+        return $query->count();
     }
 
     /**
      * Get demo applicants (from Demo model - same data as for-demo.blade.php)
      */
-    private function getDemoApplicants($month)
+    private function getDemoApplicants($month = null, $fromDate = null, $toDate = null, $account = null)
     {
-        // Same logic as viewDemo method - exclude onboarding and hired applicants
-        return Demo::whereNotIn('phase', ['onboarding', 'hired'])->count();
+        $query = Demo::whereNotIn('phase', ['onboarding', 'hired']);
+        
+        if ($fromDate && $toDate) {
+            $query->whereBetween('created_at', [Carbon::parse($fromDate), Carbon::parse($toDate)->endOfDay()]);
+        }
+        
+        if ($account) {
+            // Get account ID from account name
+            $accountId = Account::where('account_name', $account)->first()?->account_id;
+            if ($accountId) {
+                $query->where('account_id', $accountId);
+            }
+        }
+        
+        return $query->count();
     }
 
     /**
      * Get onboarding applicants (from Demo model - same data as onboarding.blade.php)
      */
-    private function getOnboardingApplicants($month)
+    private function getOnboardingApplicants($month = null, $fromDate = null, $toDate = null, $account = null)
     {
-        // Same logic as viewOnboarding method - only show onboarding applicants
-        return Demo::where('phase', 'onboarding')->count();
+        $query = Demo::where('phase', 'onboarding');
+        
+        if ($fromDate && $toDate) {
+            $query->whereBetween('created_at', [Carbon::parse($fromDate), Carbon::parse($toDate)->endOfDay()]);
+        }
+        
+        if ($account) {
+            // Get account ID from account name
+            $accountId = Account::where('account_name', $account)->first()?->account_id;
+            if ($accountId) {
+                $query->where('account_id', $accountId);
+            }
+        }
+        
+        return $query->count();
     }
 
     /**
      * Get existing employees count (from Tutor model - same data as employee management)
      */
-    private function getExistingEmployees()
+    private function getExistingEmployees($account = null)
     {
-        // Count all tutors that have active status
-        return Tutor::where('status', 'active')->count();
+        $query = Tutor::where('status', 'active');
+        
+        if ($account) {
+            // Get account ID from account name
+            $accountId = Account::where('account_name', $account)->first()?->account_id;
+            if ($accountId) {
+                $query->where('account_id', $accountId);
+            }
+        }
+        
+        return $query->count();
     }
 
     /**
      * Get classes conducted (only finalized schedules - all time)
      */
-    private function getClassesConducted($weekStart)
+    private function getClassesConducted($weekStart, $fromDate = null, $toDate = null, $account = null)
     {
-        return AssignedDailyData::where('class_status', '!=', 'cancelled')
-            ->whereNotNull('finalized_at')
-            ->count();
+        $query = AssignedDailyData::where('class_status', '!=', 'cancelled')
+            ->whereNotNull('finalized_at');
+        
+        if ($fromDate && $toDate) {
+            $query->whereBetween('finalized_at', [Carbon::parse($fromDate), Carbon::parse($toDate)->endOfDay()]);
+        }
+        
+        // Note: schedules_daily_data doesn't have account_id, so we can't filter by account here
+        
+        return $query->count();
     }
 
     /**
      * Get cancelled classes (only finalized schedules - all time)
      */
-    private function getCancelledClasses($weekStart)
+    private function getCancelledClasses($weekStart, $fromDate = null, $toDate = null, $account = null)
     {
-        return AssignedDailyData::where('class_status', 'cancelled')
-            ->whereNotNull('finalized_at')
-            ->count();
+        $query = AssignedDailyData::where('class_status', 'cancelled')
+            ->whereNotNull('finalized_at');
+        
+        if ($fromDate && $toDate) {
+            $query->whereBetween('finalized_at', [Carbon::parse($fromDate), Carbon::parse($toDate)->endOfDay()]);
+        }
+        
+        // Note: schedules_daily_data doesn't have account_id, so we can't filter by account here
+        
+        return $query->count();
     }
 
     /**
      * Get total classes (only finalized schedules - all time)
      */
-    private function getTotalClasses($weekStart)
+    private function getTotalClasses($weekStart, $fromDate = null, $toDate = null, $account = null)
     {
-        return AssignedDailyData::whereNotNull('finalized_at')
-            ->count();
+        $query = AssignedDailyData::whereNotNull('finalized_at');
+        
+        if ($fromDate && $toDate) {
+            $query->whereBetween('finalized_at', [Carbon::parse($fromDate), Carbon::parse($toDate)->endOfDay()]);
+        }
+        
+        // Note: schedules_daily_data doesn't have account_id, so we can't filter by account here
+        
+        return $query->count();
     }
 
     /**
      * Get fully assigned classes (only finalized schedules - all time)
      */
-    private function getFullyAssignedClasses($weekStart)
+    private function getFullyAssignedClasses($weekStart, $fromDate = null, $toDate = null, $account = null)
     {
-        return AssignedDailyData::whereNotNull('finalized_at')
-            ->whereNotNull('main_tutor')
-            ->count();
+        $query = AssignedDailyData::whereNotNull('finalized_at')
+            ->whereNotNull('main_tutor');
+        
+        if ($fromDate && $toDate) {
+            $query->whereBetween('finalized_at', [Carbon::parse($fromDate), Carbon::parse($toDate)->endOfDay()]);
+        }
+        
+        // Note: schedules_daily_data doesn't have account_id, so we can't filter by account here
+        
+        return $query->count();
     }
 
     /**
      * Get partially assigned classes (only finalized schedules - all time)
      */
-    private function getPartiallyAssignedClasses($weekStart)
+    private function getPartiallyAssignedClasses($weekStart, $fromDate = null, $toDate = null, $account = null)
     {
-        return AssignedDailyData::whereNotNull('finalized_at')
+        $query = AssignedDailyData::whereNotNull('finalized_at')
             ->whereNull('main_tutor')
-            ->whereNotNull('backup_tutor')
-            ->count();
+            ->whereNotNull('backup_tutor');
+        
+        if ($fromDate && $toDate) {
+            $query->whereBetween('finalized_at', [Carbon::parse($fromDate), Carbon::parse($toDate)->endOfDay()]);
+        }
+        
+        // Note: schedules_daily_data doesn't have account_id, so we can't filter by account here
+        
+        return $query->count();
     }
 
     /**
      * Get unassigned classes (only finalized schedules - all time)
      */
-    private function getUnassignedClasses($weekStart)
+    private function getUnassignedClasses($weekStart, $fromDate = null, $toDate = null, $account = null)
     {
-        return AssignedDailyData::whereNotNull('finalized_at')
+        $query = AssignedDailyData::whereNotNull('finalized_at')
             ->whereNull('main_tutor')
-            ->whereNull('backup_tutor')
-            ->count();
+            ->whereNull('backup_tutor');
+        
+        if ($fromDate && $toDate) {
+            $query->whereBetween('finalized_at', [Carbon::parse($fromDate), Carbon::parse($toDate)->endOfDay()]);
+        }
+        
+        // Note: schedules_daily_data doesn't have account_id, so we can't filter by account here
+        
+        return $query->count();
     }
 
     /**
      * Get weekly trends for the last 4 weeks (only finalized schedules)
      */
-    private function getWeeklyTrends()
+    private function getWeeklyTrends($fromDate = null, $toDate = null, $account = null)
     {
         $weeks = [];
+        
         for ($i = 3; $i >= 0; $i--) {
             $weekStart = Carbon::now()->subWeeks($i)->startOfWeek();
             $weekEnd = $weekStart->copy()->endOfWeek();
             
-            $conducted = ScheduleDailyData::whereBetween('date', [$weekStart, $weekEnd])
+            $conductedQuery = ScheduleDailyData::whereBetween('date', [$weekStart, $weekEnd])
                 ->whereHas('assignedData', function($q) {
                     $q->where('class_status', '!=', 'cancelled')
                       ->whereNotNull('finalized_at');
-                })
-                ->count();
-                
-            $cancelled = ScheduleDailyData::whereBetween('date', [$weekStart, $weekEnd])
+                });
+            
+            $conducted = $conductedQuery->count();
+            
+            $cancelledQuery = ScheduleDailyData::whereBetween('date', [$weekStart, $weekEnd])
                 ->whereHas('assignedData', function($q) {
                     $q->where('class_status', 'cancelled')
                       ->whereNotNull('finalized_at');
-                })
-                ->count();
+                });
+            
+            $cancelled = $cancelledQuery->count();
             
             $weeks[] = [
                 'week' => 'Week ' . (4 - $i),
@@ -207,12 +309,19 @@ class DashboardController extends Controller
     /**
      * Get hiring statistics from archived applications (same data as archive.blade.php)
      */
-    private function getHiringStats($month)
+    private function getHiringStats($month = null, $fromDate = null, $toDate = null, $account = null)
     {
-        // Get hiring stats from Archive model - same data as archive.blade.php
-        $notRecommended = Archive::where('status', 'not_recommended')->count();
-        $noAnswer = Archive::where('status', 'no_answer_3_attempts')->count();
-        $declined = Archive::where('status', 'declined')->count();
+        $query = Archive::query();
+        
+        if ($fromDate && $toDate) {
+            $query->whereBetween('created_at', [Carbon::parse($fromDate), Carbon::parse($toDate)->endOfDay()]);
+        }
+        
+        // Note: archives table doesn't have account_id, so we can't filter by account here
+        
+        $notRecommended = (clone $query)->where('status', 'not_recommended')->count();
+        $noAnswer = (clone $query)->where('status', 'no_answer_3_attempts')->count();
+        $declined = (clone $query)->where('status', 'declined')->count();
         
         return [
             'not_recommended' => $notRecommended,
@@ -224,27 +333,41 @@ class DashboardController extends Controller
     /**
      * Get active tutors count
      */
-    private function getActiveTutorsCount()
+    private function getActiveTutorsCount($account = null)
     {
-        return Tutor::where('status', 'active')
-            ->whereHas('account', function($query) {
-                $query->where('account_name', 'GLS');
-            })->count();
+        $query = Tutor::where('status', 'active');
+        
+        if ($account) {
+            // Get account ID from account name
+            $accountId = Account::where('account_name', $account)->first()?->account_id;
+            if ($accountId) {
+                $query->where('account_id', $accountId);
+            }
+        }
+        
+        return $query->count();
     }
 
     /**
      * Get tutor utilization rate (only finalized schedules - all time)
      */
-    private function getTutorUtilization($weekStart)
+    private function getTutorUtilization($weekStart, $fromDate = null, $toDate = null, $account = null)
     {
-        $totalTutors = $this->getActiveTutorsCount();
-        // Count unique tutors assigned to finalized schedules
-        $assignedTutors = AssignedDailyData::whereNotNull('finalized_at')
+        $totalTutors = $this->getActiveTutorsCount($account);
+        
+        $query = AssignedDailyData::whereNotNull('finalized_at')
             ->where(function($q) {
                 $q->whereNotNull('main_tutor')
                   ->orWhereNotNull('backup_tutor');
-            })
-            ->distinct()
+            });
+        
+        if ($fromDate && $toDate) {
+            $query->whereBetween('finalized_at', [Carbon::parse($fromDate), Carbon::parse($toDate)->endOfDay()]);
+        }
+        
+        // Note: schedules_daily_data doesn't have account_id, so we can't filter by account here
+        
+        $assignedTutors = $query->distinct()
             ->count(DB::raw('COALESCE(main_tutor, backup_tutor)'));
         
         return $totalTutors > 0 ? round(($assignedTutors / $totalTutors) * 100, 1) : 0;
@@ -253,12 +376,23 @@ class DashboardController extends Controller
     /**
      * Get schedule status breakdown (all time)
      */
-    private function getScheduleStatusBreakdown($weekStart)
+    private function getScheduleStatusBreakdown($weekStart, $fromDate = null, $toDate = null, $account = null)
     {
-        $finalized = AssignedDailyData::whereNotNull('finalized_at')->count();
-        $notFinalized = ScheduleDailyData::whereDoesntHave('assignedData', function($q) {
+        $query = AssignedDailyData::whereNotNull('finalized_at');
+        
+        if ($fromDate && $toDate) {
+            $query->whereBetween('finalized_at', [Carbon::parse($fromDate), Carbon::parse($toDate)->endOfDay()]);
+        }
+        
+        // Note: schedules_daily_data doesn't have account_id, so we can't filter by account here
+        
+        $finalized = $query->count();
+        
+        $notFinalizedQuery = ScheduleDailyData::whereDoesntHave('assignedData', function($q) {
             $q->whereNotNull('finalized_at');
-        })->count();
+        });
+        
+        $notFinalized = $notFinalizedQuery->count();
             
         return [
             'finalized' => $finalized,

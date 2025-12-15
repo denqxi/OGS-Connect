@@ -1,7 +1,8 @@
 <?php
 
 namespace App\Models;
-use App\Models\TutorWorkDetail; 
+use App\Models\TutorWorkDetail;
+use App\Models\EmployeePaymentInformation;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Carbon\Carbon;
@@ -348,13 +349,12 @@ class Tutor extends Authenticatable
 
     /**
      * Get all payment information for this tutor
-     * TODO: Uncomment when employee_payment_information table exists
      */
-    // public function paymentMethods()
-    // {
-    //     return $this->hasMany(EmployeePaymentInformation::class, 'employee_id', 'tutorID')
-    //                 ->where('employee_type', 'tutor');
-    // }
+    public function paymentMethods()
+    {
+        return $this->hasMany(EmployeePaymentInformation::class, 'employee_id', 'tutorID')
+                    ->where('employee_type', 'tutor');
+    }
 
     /**
      * Get the tutor details from applicant relationship

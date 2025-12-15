@@ -640,7 +640,7 @@
         if (toDate) params.append('to_date', toDate);
         if (account) params.append('account', account);
         
-        window.location.href = '/supervisor/dashboard?' + params.toString();
+        window.location.href = '/dashboard?' + params.toString();
     }
     
     function resetFilters() {
@@ -648,7 +648,7 @@
         document.getElementById('filterFromDate').value = '';
         document.getElementById('filterToDate').value = '';
         document.getElementById('filterAccount').value = '';
-        window.location.href = '/supervisor/dashboard';
+        window.location.href = '/dashboard';
     }
     
     // Close modal on escape key
