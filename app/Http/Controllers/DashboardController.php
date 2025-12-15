@@ -22,182 +22,245 @@ class DashboardController extends Controller
     /**
      * Display the dashboard with real data
      */
-    public function index()
+    public function index(Request $request)
     {
-        $stats = $this->getDashboardStats();
+        // Get filter parameters
+        $filters = [
+            'month' => $request->get('month', Carbon::now()->format('Y-m')),
+            'from_date' => $request->get('from_date'),
+            'to_date' => $request->get('to_date'),
+            'account' => $request->get('account')
+        ];
         
-        return view('dashboard.dashboard', compact('stats'));
+        $stats = $this->getDashboardStats($filters);
+        
+        return view('dashboard.dashboard', compact('stats', 'filters'));
     }
 
     /**
      * Get comprehensive dashboard statistics
      */
-    public function getDashboardStats()
+    public function getDashboardStats($filters = [])
     {
-        $currentMonth = Carbon::now()->format('Y-m');
+        $currentMonth = $filters['month'] ?? Carbon::now()->format('Y-m');
         $currentWeek = Carbon::now()->startOfWeek();
         $lastWeek = Carbon::now()->subWeek()->startOfWeek();
         
         return [
             // Top 4 Stat Boxes
-            'applicants_this_month' => $this->getApplicantsThisMonth($currentMonth),
-            'demo_applicants' => $this->getDemoApplicants($currentMonth),
-            'onboarding_applicants' => $this->getOnboardingApplicants($currentMonth),
-            'existing_employees' => $this->getExistingEmployees(),
+            'applicants_this_month' => $this->getApplicantsThisMonth($currentMonth, $filters),
+            'demo_applicants' => $this->getDemoApplicants($currentMonth, $filters),
+            'onboarding_applicants' => $this->getOnboardingApplicants($currentMonth, $filters),
+            'existing_employees' => $this->getExistingEmployees($filters),
             
             // GLS Scheduling Reports
-            'classes_conducted' => $this->getClassesConducted($currentWeek),
-            'cancelled_classes' => $this->getCancelledClasses($currentWeek),
-            'total_classes' => $this->getTotalClasses($currentWeek),
-            'fully_assigned_classes' => $this->getFullyAssignedClasses($currentWeek),
-            'partially_assigned_classes' => $this->getPartiallyAssignedClasses($currentWeek),
-            'unassigned_classes' => $this->getUnassignedClasses($currentWeek),
+            'classes_conducted' => $this->getClassesConducted($currentWeek, $filters),
+            'cancelled_classes' => $this->getCancelledClasses($currentWeek, $filters),
+            'total_classes' => $this->getTotalClasses($currentWeek, $filters),
+            'fully_assigned_classes' => $this->getFullyAssignedClasses($currentWeek, $filters),
+            'partially_assigned_classes' => $this->getPartiallyAssignedClasses($currentWeek, $filters),
+            'unassigned_classes' => $this->getUnassignedClasses($currentWeek, $filters),
             
             // Weekly trends
-            'weekly_trends' => $this->getWeeklyTrends(),
+            'weekly_trends' => $this->getWeeklyTrends($filters),
             
             // Hiring & Onboarding Reports
-            'hiring_stats' => $this->getHiringStats($currentMonth),
+            'hiring_stats' => $this->getHiringStats($currentMonth, $filters),
             
             // Tutor statistics
-            'active_tutors' => $this->getActiveTutorsCount(),
-            'tutor_utilization' => $this->getTutorUtilization($currentWeek),
+            'active_tutors' => $this->getActiveTutorsCount($filters),
+            'tutor_utilization' => $this->getTutorUtilization($currentWeek, $filters),
             
             // Schedule status breakdown
-            'schedule_status_breakdown' => $this->getScheduleStatusBreakdown($currentWeek),
+            'schedule_status_breakdown' => $this->getScheduleStatusBreakdown($currentWeek, $filters),
             
             // Recent activity
-            'recent_activity' => $this->getRecentActivity()
+            'recent_activity' => $this->getRecentActivity($filters)
         ];
     }
 
     /**
      * Get applicants this month (from applications table)
      */
-    private function getApplicantsThisMonth($month)
+    private function getApplicantsThisMonth($month, $filters = [])
     {
-        return Application::whereYear('application_date_time', Carbon::parse($month . '-01')->year)
-            ->whereMonth('application_date_time', Carbon::parse($month . '-01')->month)
-            ->count();
+        $query = Application::query();
+        
+        // Apply date filters
+        if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+            $query->whereBetween('created_at', [$filters['from_date'], $filters['to_date']]);
+        } else {
+            $query->whereYear('created_at', Carbon::parse($month . '-01')->year)
+                  ->whereMonth('created_at', Carbon::parse($month . '-01')->month);
+        }
+        
+        return $query->count();
     }
 
     /**
      * Get demo applicants (from Demo model - same data as for-demo.blade.php)
      */
-    private function getDemoApplicants($month)
+    private function getDemoApplicants($month, $filters = [])
     {
-        // Same logic as viewDemo method - exclude onboarding and hired applicants
-        return Demo::whereNotIn('phase', ['onboarding', 'hired'])->count();
+        $query = Demo::whereNotIn('phase', ['onboarding', 'hired']);
+        
+        // Apply date filters
+        if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+            $query->whereBetween('created_at', [$filters['from_date'], $filters['to_date']]);
+        }
+        
+        return $query->count();
     }
 
     /**
      * Get onboarding applicants (from Demo model - same data as onboarding.blade.php)
      */
-    private function getOnboardingApplicants($month)
+    private function getOnboardingApplicants($month, $filters = [])
     {
-        // Same logic as viewOnboarding method - only show onboarding applicants
-        return Demo::where('phase', 'onboarding')->count();
+        $query = Demo::where('phase', 'onboarding');
+        
+        // Apply date filters
+        if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+            $query->whereBetween('created_at', [$filters['from_date'], $filters['to_date']]);
+        }
+        
+        return $query->count();
     }
 
     /**
      * Get existing employees count (from Tutor model - same data as employee management)
      */
-    private function getExistingEmployees()
+    private function getExistingEmployees($filters = [])
     {
-        // Count all tutors that have active status
-        return Tutor::where('status', 'active')->count();
+        $query = Tutor::where('status', 'active');
+        
+        return $query->count();
     }
 
     /**
      * Get classes conducted (only finalized schedules - all time)
      */
-    private function getClassesConducted($weekStart)
+    private function getClassesConducted($weekStart, $filters = [])
     {
-        return AssignedDailyData::where('class_status', '!=', 'cancelled')
-            ->whereNotNull('finalized_at')
-            ->count();
+        $query = AssignedDailyData::where('class_status', '!=', 'cancelled')
+            ->whereNotNull('finalized_at');
+        
+        // Apply date filters
+        if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+            $query->whereBetween('finalized_at', [$filters['from_date'], $filters['to_date']]);
+        }
+            
+        return $query->count();
     }
 
     /**
      * Get cancelled classes (only finalized schedules - all time)
      */
-    private function getCancelledClasses($weekStart)
+    private function getCancelledClasses($weekStart, $filters = [])
     {
-        return AssignedDailyData::where('class_status', 'cancelled')
-            ->whereNotNull('finalized_at')
-            ->count();
+        $query = AssignedDailyData::where('class_status', 'cancelled')
+            ->whereNotNull('finalized_at');
+        
+        // Apply date filters
+        if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+            $query->whereBetween('finalized_at', [$filters['from_date'], $filters['to_date']]);
+        }
+            
+        return $query->count();
     }
 
     /**
      * Get total classes (only finalized schedules - all time)
      */
-    private function getTotalClasses($weekStart)
+    private function getTotalClasses($weekStart, $filters = [])
     {
-        return AssignedDailyData::whereNotNull('finalized_at')
-            ->count();
+        $query = AssignedDailyData::whereNotNull('finalized_at');
+        
+        // Apply date filters
+        if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+            $query->whereBetween('finalized_at', [$filters['from_date'], $filters['to_date']]);
+        }
+            
+        return $query->count();
     }
 
     /**
      * Get fully assigned classes (only finalized schedules - all time)
      */
-    private function getFullyAssignedClasses($weekStart)
+    private function getFullyAssignedClasses($weekStart, $filters = [])
     {
-        return AssignedDailyData::whereNotNull('finalized_at')
-            ->whereNotNull('main_tutor')
-            ->count();
+        $query = AssignedDailyData::whereNotNull('finalized_at')
+            ->whereNotNull('main_tutor');
+        
+        // Apply date filters
+        if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+            $query->whereBetween('finalized_at', [$filters['from_date'], $filters['to_date']]);
+        }
+            
+        return $query->count();
     }
 
     /**
      * Get partially assigned classes (only finalized schedules - all time)
      */
-    private function getPartiallyAssignedClasses($weekStart)
+    private function getPartiallyAssignedClasses($weekStart, $filters = [])
     {
-        return AssignedDailyData::whereNotNull('finalized_at')
+        $query = AssignedDailyData::whereNotNull('finalized_at')
             ->whereNull('main_tutor')
-            ->whereNotNull('backup_tutor')
-            ->count();
+            ->whereNotNull('backup_tutor');
+        
+        // Apply date filters
+        if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+            $query->whereBetween('finalized_at', [$filters['from_date'], $filters['to_date']]);
+        }
+            
+        return $query->count();
     }
 
     /**
      * Get unassigned classes (only finalized schedules - all time)
      */
-    private function getUnassignedClasses($weekStart)
+    private function getUnassignedClasses($weekStart, $filters = [])
     {
-        return AssignedDailyData::whereNotNull('finalized_at')
+        $query = AssignedDailyData::whereNotNull('finalized_at')
             ->whereNull('main_tutor')
-            ->whereNull('backup_tutor')
-            ->count();
+            ->whereNull('backup_tutor');
+        
+        // Apply date filters
+        if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+            $query->whereBetween('finalized_at', [$filters['from_date'], $filters['to_date']]);
+        }
+            
+        return $query->count();
     }
 
     /**
      * Get weekly trends for the last 4 weeks (only finalized schedules)
      */
-    private function getWeeklyTrends()
+    private function getWeeklyTrends($filters = [])
     {
         $weeks = [];
         for ($i = 3; $i >= 0; $i--) {
             $weekStart = Carbon::now()->subWeeks($i)->startOfWeek();
             $weekEnd = $weekStart->copy()->endOfWeek();
             
-            $conducted = ScheduleDailyData::whereBetween('date', [$weekStart, $weekEnd])
+            $conductedQuery = ScheduleDailyData::whereBetween('date', [$weekStart, $weekEnd])
                 ->whereHas('assignedData', function($q) {
                     $q->where('class_status', '!=', 'cancelled')
                       ->whereNotNull('finalized_at');
-                })
-                ->count();
+                });
                 
-            $cancelled = ScheduleDailyData::whereBetween('date', [$weekStart, $weekEnd])
+            $cancelledQuery = ScheduleDailyData::whereBetween('date', [$weekStart, $weekEnd])
                 ->whereHas('assignedData', function($q) {
                     $q->where('class_status', 'cancelled')
                       ->whereNotNull('finalized_at');
-                })
-                ->count();
+                });
             
             $weeks[] = [
                 'week' => 'Week ' . (4 - $i),
                 'date_range' => $weekStart->format('M j') . ' – ' . $weekEnd->format('M j'),
-                'conducted' => $conducted,
-                'cancelled' => $cancelled
+                'conducted' => $conductedQuery->count(),
+                'cancelled' => $cancelledQuery->count()
             ];
         }
         
@@ -207,12 +270,18 @@ class DashboardController extends Controller
     /**
      * Get hiring statistics from archived applications (same data as archive.blade.php)
      */
-    private function getHiringStats($month)
+    private function getHiringStats($month, $filters = [])
     {
-        // Get hiring stats from Archive model - same data as archive.blade.php
-        $notRecommended = Archive::where('status', 'not_recommended')->count();
-        $noAnswer = Archive::where('status', 'no_answer_3_attempts')->count();
-        $declined = Archive::where('status', 'declined')->count();
+        $query = Archive::query();
+        
+        // Apply date filters
+        if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+            $query->whereBetween('created_at', [$filters['from_date'], $filters['to_date']]);
+        }
+        
+        $notRecommended = (clone $query)->where('status', 'not_recommended')->count();
+        $noAnswer = (clone $query)->where('status', 'no_answer_3_attempts')->count();
+        $declined = (clone $query)->where('status', 'declined')->count();
         
         return [
             'not_recommended' => $notRecommended,
@@ -224,27 +293,30 @@ class DashboardController extends Controller
     /**
      * Get active tutors count
      */
-    private function getActiveTutorsCount()
+    private function getActiveTutorsCount($filters = [])
     {
-        return Tutor::where('status', 'active')
-            ->whereHas('account', function($query) {
-                $query->where('account_name', 'GLS');
-            })->count();
+        return Tutor::where('status', 'active')->count();
     }
 
     /**
      * Get tutor utilization rate (only finalized schedules - all time)
      */
-    private function getTutorUtilization($weekStart)
+    private function getTutorUtilization($weekStart, $filters = [])
     {
-        $totalTutors = $this->getActiveTutorsCount();
-        // Count unique tutors assigned to finalized schedules
-        $assignedTutors = AssignedDailyData::whereNotNull('finalized_at')
+        $totalTutors = $this->getActiveTutorsCount($filters);
+        
+        $query = AssignedDailyData::whereNotNull('finalized_at')
             ->where(function($q) {
                 $q->whereNotNull('main_tutor')
                   ->orWhereNotNull('backup_tutor');
-            })
-            ->distinct()
+            });
+        
+        // Apply date filters
+        if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+            $query->whereBetween('finalized_at', [$filters['from_date'], $filters['to_date']]);
+        }
+        
+        $assignedTutors = $query->distinct()
             ->count(DB::raw('COALESCE(main_tutor, backup_tutor)'));
         
         return $totalTutors > 0 ? round(($assignedTutors / $totalTutors) * 100, 1) : 0;
@@ -253,12 +325,22 @@ class DashboardController extends Controller
     /**
      * Get schedule status breakdown (all time)
      */
-    private function getScheduleStatusBreakdown($weekStart)
+    private function getScheduleStatusBreakdown($weekStart, $filters = [])
     {
-        $finalized = AssignedDailyData::whereNotNull('finalized_at')->count();
-        $notFinalized = ScheduleDailyData::whereDoesntHave('assignedData', function($q) {
+        $finalizedQuery = AssignedDailyData::whereNotNull('finalized_at');
+        
+        // Apply date filters
+        if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+            $finalizedQuery->whereBetween('finalized_at', [$filters['from_date'], $filters['to_date']]);
+        }
+        
+        $finalized = $finalizedQuery->count();
+        
+        $notFinalizedQuery = ScheduleDailyData::whereDoesntHave('assignedData', function($q) {
             $q->whereNotNull('finalized_at');
-        })->count();
+        });
+        
+        $notFinalized = $notFinalizedQuery->count();
             
         return [
             'finalized' => $finalized,
@@ -271,12 +353,18 @@ class DashboardController extends Controller
     /**
      * Get recent activity from schedule history
      */
-    private function getRecentActivity()
+    private function getRecentActivity($filters = [])
     {
-        return ScheduleHistory::with('dailyData')
+        $query = ScheduleHistory::with('dailyData')
             ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get()
+            ->limit(10);
+        
+        // Apply date filters
+        if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+            $query->whereBetween('created_at', [$filters['from_date'], $filters['to_date']]);
+        }
+        
+        return $query->get()
             ->map(function($activity) {
                 return [
                     'action' => $activity->action,

@@ -14,11 +14,11 @@
                 <!-- Date Range Filter -->
                 <div class="flex items-center gap-2">
                     <label class="text-sm font-medium text-gray-700">From:</label>
-                    <input type="date" id="filterFromDate" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
+                    <input type="date" id="filterFromDate" class="border border-gray-300 rounded-md px-3 py-2 text-sm" value="{{ $filters['from_date'] ?? '' }}">
                 </div>
                 <div class="flex items-center gap-2">
                     <label class="text-sm font-medium text-gray-700">To:</label>
-                    <input type="date" id="filterToDate" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
+                    <input type="date" id="filterToDate" class="border border-gray-300 rounded-md px-3 py-2 text-sm" value="{{ $filters['to_date'] ?? '' }}">
                 </div>
                 
                 <!-- Month Filter -->
@@ -29,18 +29,10 @@
                             $date = \Carbon\Carbon::now()->subMonths($i);
                             $value = $date->format('Y-m');
                             $label = $date->format('F Y');
+                            $selected = ($filters['month'] ?? \Carbon\Carbon::now()->format('Y-m')) === $value;
                         @endphp
-                        <option value="{{ $value }}" {{ $i === 0 ? 'selected' : '' }}>{{ $label }}</option>
+                        <option value="{{ $value }}" {{ $selected ? 'selected' : '' }}>{{ $label }}</option>
                     @endfor
-                </select>
-                
-                <!-- Account Filter -->
-                <select id="filterAccount" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
-                    <option value="">All Accounts</option>
-                    <option value="GLS">GLS</option>
-                    <option value="talk915">Talk915</option>
-                    <option value="babilala">Babilala</option>
-                    <option value="tutlo">Tutlo</option>
                 </select>
                 
                 <!-- Apply & Reset Buttons -->
@@ -631,24 +623,18 @@
         const month = document.getElementById('filterMonth').value;
         const fromDate = document.getElementById('filterFromDate').value;
         const toDate = document.getElementById('filterToDate').value;
-        const account = document.getElementById('filterAccount').value;
         
         // Reload page with filters
         const params = new URLSearchParams();
         if (month) params.append('month', month);
         if (fromDate) params.append('from_date', fromDate);
         if (toDate) params.append('to_date', toDate);
-        if (account) params.append('account', account);
         
-        window.location.href = '/supervisor/dashboard?' + params.toString();
+        window.location.href = '{{ route("dashboard") }}?' + params.toString();
     }
     
     function resetFilters() {
-        document.getElementById('filterMonth').value = '{{ \Carbon\Carbon::now()->format("Y-m") }}';
-        document.getElementById('filterFromDate').value = '';
-        document.getElementById('filterToDate').value = '';
-        document.getElementById('filterAccount').value = '';
-        window.location.href = '/supervisor/dashboard';
+        window.location.href = '{{ route("dashboard") }}';
     }
     
     // Close modal on escape key

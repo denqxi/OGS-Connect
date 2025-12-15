@@ -10,6 +10,7 @@ use App\Models\Supervisor;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class TutorWorkDetailController extends Controller
@@ -97,6 +98,9 @@ class TutorWorkDetailController extends Controller
             return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
 
+        // Capture old status before any changes
+        $oldStatus = $detail->status;
+
         // Handle optional image upload on update
         if ($request->hasFile('image')) {
             try {
@@ -111,16 +115,16 @@ class TutorWorkDetailController extends Controller
         // Apply editable fields
         $detail->fill($request->only(['date', 'ph_time', 'class_no', 'notes', 'status']));
 
-        // If this work detail was previously rejected and status is explicitly set to pending (resubmission)
-        $oldStatus = $detail->getOriginal('status');
+        // Determine if this is a resubmission (rejected -> pending)
         $newStatus = $detail->status;
         $isResubmission = in_array(strtolower($oldStatus), ['rejected', 'reject']) && strtolower($newStatus) === 'pending';
         
-        $detail->save();
+        // Wrap update + approval logging in transaction
+        DB::transaction(function () use ($detail, $isResubmission, $oldStatus) {
+            $detail->save();
 
-        // If resubmitting (rejected -> pending), record the resubmission
-        if ($isResubmission) {
-            try {
+            // If resubmitting (rejected -> pending), record the resubmission
+            if ($isResubmission) {
                 TutorWorkDetailApproval::create([
                     'work_detail_id' => $detail->id,
                     'supervisor_id' => null,
@@ -129,10 +133,8 @@ class TutorWorkDetailController extends Controller
                     'approved_at' => now(),
                     'note' => 'Resubmitted by tutor',
                 ]);
-            } catch (\Exception $e) {
-                Log::warning('Failed to record resubmission approval: ' . $e->getMessage());
             }
-        }
+        });
 
         return response()->json(['message' => 'Updated', 'data' => $detail]);
     }
@@ -205,59 +207,71 @@ public function store(Request $request)
     $ratePerHour = $workType === 'hourly' ? 120 : 0;
     $ratePerClass = $workType === 'per class' ? 50 : 0;
 
-    $detail = TutorWorkDetail::create([
-        'tutor_id' => $tutor->tutorID,
-        'assignment_id' => $request->assignment_id,
-        'schedule_daily_data_id' => $request->schedule_daily_data_id,
-        'date' => $date,
-        'start_time' => $request->start_time,
-        'end_time' => $request->end_time,
-        'duration_minutes' => $duration,
-        'note' => $request->notes,
-        'status' => $request->status ?? 'pending',
-        'work_type' => $workType,
-        'rate_per_hour' => $ratePerHour,
-        'rate_per_class' => $ratePerClass,
-        'proof_image' => $imagePath,
-    ]);
+    $detail = null;
 
-    // Create one shared notification for all supervisors of the same account
-    try {
-        $tutorName = $tutor->applicant 
-            ? $tutor->applicant->first_name . ' ' . $tutor->applicant->last_name 
-            : $tutor->username ?? 'Unknown';
+    // Wrap creation in transaction
+    DB::transaction(function () use ($tutor, $request, $date, $duration, $workType, $ratePerHour, $ratePerClass, $imagePath, &$detail) {
+        $detail = TutorWorkDetail::create([
+            'tutor_id' => $tutor->tutorID,
+            'assignment_id' => $request->assignment_id,
+            'schedule_daily_data_id' => $request->schedule_daily_data_id,
+            'date' => $date,
+            'start_time' => $request->start_time,
+            'end_time' => $request->end_time,
+            'duration_minutes' => $duration,
+            'note' => $request->notes,
+            'status' => $request->status ?? 'pending',
+            'work_type' => $workType,
+            'rate_per_hour' => $ratePerHour,
+            'rate_per_class' => $ratePerClass,
+            'proof_image' => $imagePath,
+        ]);
+    });
+
+    // After-commit notification to supervisors
+    DB::afterCommit(function () use ($tutor, $detail, $workType) {
+        if (!$detail) {
+            Log::warning('Detail is null in afterCommit, skipping notification');
+            return;
+        }
         
-        $accountId = $tutor->account_id;
-        $supervisorCount = Supervisor::where('status', 'active')
-            ->where('assigned_account', $accountId)
-            ->count();
-        
-        // Create one notification shared among supervisors of this account
-        Notification::create([
-            'type' => 'work_detail_submitted',
-            'title' => 'New Work Detail Submitted',
-            'message' => "{$tutorName} has submitted new work details for approval.",
-            'icon' => 'fas fa-clock',
-            'color' => 'blue',
-            'is_read' => false,
-            'data' => [
-                'tutor_id' => $tutor->tutorID,
+        try {
+            $tutorName = $tutor->applicant 
+                ? $tutor->applicant->first_name . ' ' . $tutor->applicant->last_name 
+                : $tutor->username ?? 'Unknown';
+            
+            $accountId = $tutor->account_id;
+            $supervisorCount = Supervisor::where('status', 'active')
+                ->where('assigned_account', $accountId)
+                ->count();
+            
+            // Create one notification shared among supervisors of this account
+            Notification::create([
+                'type' => 'work_detail_submitted',
+                'title' => 'New Work Detail Submitted',
+                'message' => "{$tutorName} has submitted new work details for approval.",
+                'icon' => 'fas fa-clock',
+                'color' => 'blue',
+                'is_read' => false,
+                'data' => [
+                    'tutor_id' => $tutor->tutorID,
+                    'work_detail_id' => $detail->id,
+                    'work_type' => $workType,
+                    'account_id' => $accountId,
+                    'supervisor_count' => $supervisorCount
+                ]
+            ]);
+            
+            Log::info('Work detail notification created for account supervisors', [
                 'work_detail_id' => $detail->id,
-                'work_type' => $workType,
+                'tutor_id' => $tutor->tutorID,
                 'account_id' => $accountId,
                 'supervisor_count' => $supervisorCount
-            ]
-        ]);
-        
-        Log::info('Work detail notification created for account supervisors', [
-            'work_detail_id' => $detail->id,
-            'tutor_id' => $tutor->tutorID,
-            'account_id' => $accountId,
-            'supervisor_count' => $supervisorCount
-        ]);
-    } catch (\Exception $e) {
-        Log::error('Failed to create work detail notification from tutor: ' . $e->getMessage());
-    }
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to create work detail notification from tutor: ' . $e->getMessage());
+        }
+    });
 
     return response()->json(['message' => 'Work detail created', 'data' => $detail]);
 }
