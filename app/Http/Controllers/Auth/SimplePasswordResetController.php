@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules\Password;
 
 class SimplePasswordResetController extends Controller
@@ -46,6 +48,9 @@ class SimplePasswordResetController extends Controller
             'security_answer2.min' => 'Security answer must be at least 2 characters.',
         ]);
 
+        // Check if this is an AJAX request
+        $isAjax = $request->expectsJson();
+
         $username = $request->username;
         $userType = $request->user_type;
         $securityQuestion = $request->security_question;
@@ -79,25 +84,28 @@ class SimplePasswordResetController extends Controller
         }
 
         if (!$user) {
-            return back()->withErrors([
-                'username' => 'No account found with the provided email or ID.',
-            ])->withInput();
+            if ($isAjax) {
+                return response()->json(['success' => false, 'message' => 'No account found with the provided email or ID.'], 404);
+            }
+            return back()->withErrors(['username' => 'No account found with the provided email or ID.'])->withInput();
         }
 
         // Verify that the detected user type matches the submitted user type
         if ($detectedUserType !== $userType) {
-            return back()->withErrors([
-                'username' => 'Account type mismatch. Please try again.',
-            ])->withInput();
+            if ($isAjax) {
+                return response()->json(['success' => false, 'message' => 'Account type mismatch. Please try again.'], 422);
+            }
+            return back()->withErrors(['username' => 'Account type mismatch. Please try again.'])->withInput();
         }
 
         // Check if user has security questions set up
         $securityQuestions = SecurityQuestion::getAllForUser($userType, $user->getKey());
         
         if ($securityQuestions->count() < 2) {
-            return back()->withErrors([
-                'username' => 'Not enough security questions set up for this account. Please contact support.',
-            ])->withInput();
+            if ($isAjax) {
+                return response()->json(['success' => false, 'message' => 'Not enough security questions set up for this account. Please contact support.'], 422);
+            }
+            return back()->withErrors(['username' => 'Not enough security questions set up for this account. Please contact support.'])->withInput();
         }
 
         // Find the matching security question records
@@ -105,9 +113,10 @@ class SimplePasswordResetController extends Controller
         $question2Record = $securityQuestions->where('question', $securityQuestion2)->first();
 
         if (!$question1Record || !$question2Record) {
-            return back()->withErrors([
-                'security_question' => 'Selected security questions do not match the ones set up for this account.',
-            ])->withInput();
+            if ($isAjax) {
+                return response()->json(['success' => false, 'message' => 'Selected security questions do not match the ones set up for this account.'], 422);
+            }
+            return back()->withErrors(['security_question' => 'Selected security questions do not match the ones set up for this account.'])->withInput();
         }
 
         // Verify both answers
@@ -123,9 +132,10 @@ class SimplePasswordResetController extends Controller
                 'user_type' => $userType,
                 'user_id' => $user->getKey()
             ]);
-            return back()->withErrors([
-                'security_answer1' => 'Incorrect answer to the first security question. Please try again.',
-            ])->withInput();
+            if ($isAjax) {
+                return response()->json(['success' => false, 'message' => 'Incorrect answer to the first security question. Please try again.'], 422);
+            }
+            return back()->withErrors(['security_answer1' => 'Incorrect answer to the first security question. Please try again.'])->withInput();
         }
 
         if (!$question2Record->verifyAnswer($securityAnswer2)) {
@@ -133,9 +143,10 @@ class SimplePasswordResetController extends Controller
                 'user_type' => $userType,
                 'user_id' => $user->getKey()
             ]);
-            return back()->withErrors([
-                'security_answer2' => 'Incorrect answer to the second security question. Please try again.',
-            ])->withInput();
+            if ($isAjax) {
+                return response()->json(['success' => false, 'message' => 'Incorrect answer to the second security question. Please try again.'], 422);
+            }
+            return back()->withErrors(['security_answer2' => 'Incorrect answer to the second security question. Please try again.'])->withInput();
         }
         
         \Log::info('Security questions verified successfully', [
@@ -150,6 +161,10 @@ class SimplePasswordResetController extends Controller
             'username' => $username,
             'name' => $userType === 'tutor' ? $user->getFullNameAttribute() : $user->getFullNameAttribute(),
         ]);
+
+        if ($isAjax) {
+            return response()->json(['success' => true, 'message' => 'Security questions verified! Redirecting...']);
+        }
 
         // Redirect to password reset form
         return redirect()->route('password.reset.form')
@@ -193,6 +208,13 @@ class SimplePasswordResetController extends Controller
         $username = $request->username;
         $userType = $request->user_type;
 
+        // Ensure the password reset was authorized via server-side verification
+        $sessionUser = Session::get('password_reset_user');
+        if (!$sessionUser || ($sessionUser['username'] ?? '') !== $username || ($sessionUser['type'] ?? '') !== $userType) {
+            return redirect()->route('password.request')
+                           ->withErrors(['error' => 'Unauthorized password reset attempt or session expired. Please verify first.']);
+        }
+
         // Find the user based on type and email/ID
         $user = null;
         if ($userType === 'tutor') {
@@ -217,6 +239,9 @@ class SimplePasswordResetController extends Controller
         } else {
             $user->update(['password' => Hash::make($request->password)]);
         }
+
+        // Clear the password reset session marker
+        Session::forget('password_reset_user');
 
         return redirect()->route('login')
                         ->with('status', 'Password updated successfully! You can now log in with your new password.');
@@ -293,5 +318,127 @@ class SimplePasswordResetController extends Controller
                 'message' => 'Server error: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Send an email OTP for password reset.
+     */
+    public function sendOtp(Request $request)
+    {
+        $request->validate([
+            'username' => 'required|string|max:255',
+        ]);
+
+        $username = $request->input('username');
+
+        // Auto-detect account type and user
+        $user = null;
+        $userType = null;
+
+        $tutor = Tutor::where('email', $username)
+                     ->orWhere('tutorID', $username)
+                     ->orWhere('username', $username)
+                     ->first();
+        if ($tutor) {
+            $user = $tutor;
+            $userType = 'tutor';
+        } else {
+            $supervisor = Supervisor::where('email', $username)
+                                   ->orWhere('supID', $username)
+                                   ->first();
+            if ($supervisor) {
+                $user = $supervisor;
+                $userType = 'supervisor';
+            }
+        }
+
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'No account found for the provided identifier.'], 404);
+        }
+
+        // Generate OTP and store hashed in cache for 10 minutes
+        $otp = strval(mt_rand(100000, 999999));
+        $cacheKey = "password_reset_otp:{$userType}:{$user->getKey()}";
+        Cache::put($cacheKey, Hash::make($otp), now()->addMinutes(10));
+
+        try {
+            // Send OTP by email
+            Mail::to($user->email)->send(new \App\Mail\PasswordResetOtpMail($otp, $user));
+        } catch (\Exception $e) {
+            Log::error('Failed to send OTP email: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to send OTP. Please try again later.'], 500);
+        }
+
+        return response()->json(['success' => true, 'message' => 'OTP sent to the registered email address.']);
+    }
+
+    /**
+     * Verify OTP and create reset session.
+     */
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'username' => 'required|string|max:255',
+            'otp' => 'required|string|min:6|max:6'
+        ]);
+
+        $username = $request->input('username');
+        $otp = $request->input('otp');
+        $isAjax = $request->expectsJson();
+
+        // Find user
+        $user = null;
+        $userType = null;
+
+        $tutor = Tutor::where('email', $username)
+                     ->orWhere('tutorID', $username)
+                     ->orWhere('username', $username)
+                     ->first();
+        if ($tutor) {
+            $user = $tutor;
+            $userType = 'tutor';
+        } else {
+            $supervisor = Supervisor::where('email', $username)
+                                   ->orWhere('supID', $username)
+                                   ->first();
+            if ($supervisor) {
+                $user = $supervisor;
+                $userType = 'supervisor';
+            }
+        }
+
+        if (!$user) {
+            if ($isAjax) return response()->json(['success' => false, 'message' => 'No account found for the provided identifier.'], 404);
+            return back()->withErrors(['username' => 'No account found for the provided identifier.']);
+        }
+
+        $cacheKey = "password_reset_otp:{$userType}:{$user->getKey()}";
+        $hash = Cache::get($cacheKey);
+        if (!$hash) {
+            if ($isAjax) return response()->json(['success' => false, 'message' => 'OTP expired or not found. Request a new one.'], 422);
+            return back()->withErrors(['otp' => 'OTP expired or not found. Request a new one.']);
+        }
+
+        if (!Hash::check($otp, $hash)) {
+            if ($isAjax) return response()->json(['success' => false, 'message' => 'Invalid OTP. Please check and try again.'], 422);
+            return back()->withErrors(['otp' => 'Invalid OTP. Please check and try again.']);
+        }
+
+        // OTP valid — store password reset session and clear cache
+        Session::put('password_reset_user', [
+            'id' => $user->getKey(),
+            'type' => $userType,
+            'username' => $username,
+            'name' => method_exists($user, 'getFullNameAttribute') ? $user->getFullNameAttribute() : ($user->name ?? $username),
+        ]);
+
+        Cache::forget($cacheKey);
+
+        if ($isAjax) {
+            return response()->json(['success' => true, 'message' => 'OTP verified! Ready to set new password.']);
+        }
+
+        return redirect()->route('password.reset.form')
+                         ->with('status', 'OTP verified! Please set your new password.');
     }
 }

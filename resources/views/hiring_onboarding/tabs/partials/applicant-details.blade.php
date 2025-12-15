@@ -13,13 +13,12 @@
 
 <!-- Header with Back Button -->
 <div class="flex items-center justify-between mb-4">
-    <h1 class="text-xl font-bold text-gray-800 dark:text-gray-200">Applicant Details</h1>
     <a href="{{ route('hiring_onboarding.index') }}"
        class="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-md text-sm font-medium 
               hover:bg-gray-700 transition duration-200">
         <i class="fas fa-arrow-left"></i>
-        <span>Back to List</span>
     </a>
+    <h1 class="text-xl font-bold text-gray-800 dark:text-gray-200">Applicant Details</h1>
 </div>
 
 <!-- Progress Bar -->
@@ -540,10 +539,11 @@
 
                 <!-- Call Button (Right Side) -->
                 <button type="button" @click="showModal = true"
-                    class="px-6 py-2 rounded-md bg-blue-800 text-white text-sm font-medium hover:bg-blue-900 transition-all">
+                        class="px-6 py-2 rounded-md bg-gray-700 text-gray-100 text-sm font-medium hover:bg-gray-800 transition-all flex items-center">
                     <i class="fas fa-phone-alt mr-2"></i>
                     Call Applicant
                 </button>
+
             </div>
         </div>
     </div>

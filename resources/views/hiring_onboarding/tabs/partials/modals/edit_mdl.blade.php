@@ -107,11 +107,11 @@
                 <!-- Submit Buttons -->
                 <div class="flex justify-center pt-2 space-x-4">
                     <button type="button" onclick="showFailOptionsModal()"
-                        class="bg-[#F65353] text-white px-8 py-2 rounded-full font-bold hover:opacity-90 transition-opacity">
+                        class="bg-[#F65353] text-white px-6 py-2 rounded-lg font-bold hover:opacity-90 transition-opacity">
                         Fail
                     </button>
                     <button type="button" onclick="showPassModal()"
-                        class="bg-[#65DB7F] text-white px-8 py-2 rounded-full font-bold hover:opacity-90 transition-opacity">
+                        class="bg-[#65DB7F] text-white px-6 py-2 rounded-lg font-bold hover:opacity-90 transition-opacity">
                         Pass
                     </button>
                 </div>
@@ -129,7 +129,7 @@
         <!-- Body -->
         <div class="p-6 text-center">
             <div class="flex justify-center mb-4" id="failConfirmationIcon">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-red-500" fill="none"
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-gray-600" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M6 18L18 6M6 6l12 12" />
@@ -143,15 +143,16 @@
         </div>
 
         <!-- Footer Buttons -->
-        <div class="flex justify-center gap-4 pb-6">
+        <div class="flex justify-center pt-2 pb-3 space-x-4">
             <button onclick="hideFailConfirmation()"
-                class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">
+                class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">
                 Cancel
             </button>
-            <button onclick="submitFailAction()"
-                class="bg-[#F65353] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">
+            <button id="failConfirmBtn" onclick="submitFailAction()"
+                class="bg-[#F65353] text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">
                 Confirm
             </button>
+            <br>
         </div>
     </div>
 </div>
@@ -236,10 +237,14 @@
             </div>
             
             <!-- Submit Button -->
-            <div class="flex justify-center">
+            <div class="flex justify-center pt-2 space-x-4">
+                <button type="button" onclick="hidePassModal()"
+                    class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">
+                    Cancel
+                </button>
                 <button type="button" onclick="showPassConfirmation()"
-                    class="bg-[#65DB7F] text-white px-8 py-2 rounded-full font-bold hover:opacity-90 transition-opacity">
-                    Confirm Pass
+                    class="bg-[#65DB7F] text-white px-6 py-2 rounded-lg font-bold hover:opacity-90 transition-opacity">
+                    Pass
                 </button>
             </div>
         </form>
@@ -270,12 +275,12 @@
 
         <!-- Footer Buttons -->
         <div class="flex justify-center gap-4 pb-6">
-            <button onclick="hidePassConfirmation()"
-                class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">
+            <button type="button" onclick="hidePassConfirmation()"
+                class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">
                 Cancel
             </button>
-            <button onclick="submitPassForm()"
-                class="bg-[#65DB7F] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">
+            <button id="passConfirmBtn" type="button" onclick="submitPassForm()"
+                class="bg-[#65DB7F] text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">
                 Confirm
             </button>
         </div>
@@ -308,7 +313,7 @@
         <!-- Footer Buttons -->
         <div class="flex justify-center gap-4 pb-6">
             <button onclick="confirmPassFailAction()"
-                class="bg-[#65DB7F] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">
+                class="bg-[#65DB7F] text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">
                 Confirm
             </button>
         </div>
@@ -356,11 +361,11 @@
             <!-- Buttons -->
             <div class="flex justify-center gap-4 pt-4">
                 <button type="button" onclick="hideNextStepModal()"
-                    class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">
+                    class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">
                     Cancel
                 </button>
                 <button type="button" onclick="submitNextStepForm()"
-                    class="bg-[#65DB7F] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">
+                    class="bg-[#65DB7F] text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">
                     Save
                 </button>
             </div>
@@ -385,7 +390,7 @@
         </div>
 
         <div class="flex justify-center gap-4 pb-6">
-            <button onclick="confirmPassSubmit()" class="bg-[#0E335D] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">Confirm</button>
+            <button onclick="confirmPassSubmit()" class="bg-[#0E335D] text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">Confirm</button>
         </div>
     </div>
 </div>
@@ -407,7 +412,7 @@
         </div>
 
         <div class="flex justify-center pb-6">
-            <button onclick="registerApplicant()" class="bg-[#0E335D] text-white px-8 py-2 rounded-full font-semibold hover:opacity-90 transition">
+            <button onclick="registerApplicant()" class="bg-[#0E335D] text-white px-8 py-2 rounded-lg font-semibold hover:opacity-90 transition">
                 Register Applicant
             </button>
         </div>
@@ -481,7 +486,7 @@
             <!-- Submit Button -->
             <div class="flex justify-center pt-4">
                 <button type="button" onclick="submitEmployeeRegistration()"
-                    class="bg-[#0E335D] text-white px-8 py-2 rounded-full font-semibold hover:opacity-90 transition">
+                    class="bg-[#0E335D] text-white px-8 py-2 rounded-lg font-semibold hover:opacity-90 transition">
                     Complete Registration
                 </button>
             </div>
@@ -537,7 +542,7 @@
         <div class="px-6 pb-5 space-y-4 overflow-y-auto flex-grow">
             <!-- Interviewer Field - Always visible at the top -->
             <div>
-                <label class="block text-gray-700 text-sm font-medium mb-2">Interviewer: <span class="text-red-500">*</span></label>
+                <label class="block text-gray-700 text-sm font-medium mb-2 mt-2">Interviewer: <span class="text-red-500">*</span></label>
                 <input type="text" id="fail_interviewer" name="fail_interviewer" required readonly
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none bg-gray-50 text-gray-700 cursor-not-allowed"
                     placeholder="Enter interviewer name"
@@ -609,11 +614,11 @@
             <!-- Action Buttons -->
             <div class="flex justify-center gap-4 pt-4">
                 <button type="button" onclick="hideFailOptionsModal()"
-                    class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">
+                    class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">
                     Cancel
                 </button>
                 <button id="failSubmitButton" type="button" onclick="showFailConfirmation()"
-                    class="bg-[#F65353] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">
+                    class="bg-[#F65353] text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">
                     Fail
                 </button>
             </div>
@@ -648,8 +653,8 @@
         </div>
 
         <div class="flex justify-center gap-4 pb-6">
-            <button onclick="hideDemoDetailsConfirmation()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">Cancel</button>
-            <button onclick="proceedToApplicantDetails()" class="bg-[#2A5382] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">View Details</button>
+            <button onclick="hideDemoDetailsConfirmation()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">Cancel</button>
+            <button onclick="proceedToApplicantDetails()" class="bg-[#2A5382] text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">View Details</button>
         </div>
     </div>
 </div>
@@ -704,11 +709,11 @@
                 </p>
                 <div class="flex justify-center gap-4">
                     <button type="button" onclick="showDemoFailConfirmation()"
-                        class="bg-[#F65353] text-white px-10 py-2 rounded-full font-bold hover:opacity-90 transition">
+                        class="bg-[#F65353] text-white px-10 py-2 rounded-lg font-bold hover:opacity-90 transition">
                         Fail
                     </button>
                     <button type="button" onclick="showDemoPassConfirmation()"
-                        class="bg-[#2A5382] text-white px-10 py-2 rounded-full font-bold hover:opacity-90 transition">
+                        class="bg-[#65DB7F] text-white px-10 py-2 rounded-lg font-bold hover:opacity-90 transition">
                         Pass
                     </button>
                 </div>
@@ -734,8 +739,8 @@
         </div>
 
         <div class="flex justify-center gap-4 pb-6">
-            <button onclick="hideDemoPassConfirmation()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">Cancel</button>
-            <button onclick="confirmDemoPass()" class="bg-[#2A5382] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">Confirm</button>
+            <button onclick="hideDemoPassConfirmation()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">Cancel</button>
+            <button onclick="confirmDemoPass()" class="bg-[#65DB7F] text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">Confirm</button>
         </div>
     </div>
 </div>
@@ -838,11 +843,11 @@
             <!-- Action Buttons -->
             <div class="flex justify-center gap-4 pt-4">
                 <button type="button" onclick="hideDemoFailConfirmation()"
-                    class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">
+                    class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">
                     Cancel
                 </button>
                 <button type="button" onclick="submitDemoFailAction()"
-                    class="bg-[#F65353] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">
+                    class="bg-[#F65353] text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">
                     Confirm
                 </button>
             </div>
@@ -900,11 +905,11 @@
                 </p>
                 <div class="flex justify-center gap-4">
                     <button type="button" onclick="showOnboardingFailModal()"
-                        class="bg-[#F65353] text-white px-10 py-2 rounded-full font-bold hover:opacity-90 transition">
+                        class="bg-[#F65353] text-white px-10 py-2 rounded-lg font-bold hover:opacity-90 transition">
                         Fail
                     </button>
                     <button type="button" onclick="showOnboardingPassConfirmation()"
-                        class="bg-[#65DB7F] text-white px-10 py-2 rounded-full font-bold hover:opacity-90 transition">
+                        class="bg-[#65DB7F] text-white px-10 py-2 rounded-lg font-bold hover:opacity-90 transition">
                         Pass
                     </button>
                 </div>
@@ -951,8 +956,8 @@
         </div>
 
         <div class="flex justify-center gap-4 pb-6">
-            <button onclick="hideOnboardingPassConfirmation()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">Cancel</button>
-            <button onclick="confirmOnboardingPass()" class="bg-[#2A5382] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">Confirm</button>
+            <button onclick="hideOnboardingPassConfirmation()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">Cancel</button>
+            <button onclick="confirmOnboardingPass()" class="bg-[#2A5382] text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">Confirm</button>
         </div>
     </div>
 </div>
@@ -1021,8 +1026,8 @@
         </form>
 
         <div class="flex justify-center gap-4 pb-6">
-            <button type="button" onclick="hideOnboardingFailModal()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">Cancel</button>
-            <button type="button" onclick="confirmOnboardingFailSubmit()" class="bg-red-500 text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">Submit</button>
+            <button type="button" onclick="hideOnboardingFailModal()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">Cancel</button>
+            <button type="button" onclick="confirmOnboardingFailSubmit()" class="bg-red-500 text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">Submit</button>
         </div>
     </div>
 </div>
@@ -1065,8 +1070,8 @@
         </div>
 
         <div class="flex justify-center gap-4 pb-6">
-            <button type="button" onclick="hideOnboardingFailConfirmation()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">Cancel</button>
-            <button type="button" onclick="submitOnboardingFail()" class="bg-red-500 text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">Confirm Failure</button>
+            <button type="button" onclick="hideOnboardingFailConfirmation()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">Cancel</button>
+            <button type="button" onclick="submitOnboardingFail()" class="bg-red-500 text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">Confirm Failure</button>
         </div>
     </div>
 </div>
@@ -1178,7 +1183,7 @@
         </form>
 
         <div class="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4 p-3 sm:p-4 md:p-6 pt-0">
-            <button onclick="submitOnboardingPassForm();" class="bg-[#2A5382] text-white px-4 sm:px-6 py-2 rounded-full font-semibold hover:opacity-90 transition text-sm sm:text-base">Register Tutor</button>
+            <button onclick="submitOnboardingPassForm();" class="bg-[#2A5382] text-white px-4 sm:px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition text-sm sm:text-base">Register Tutor</button>
         </div>
     </div>
 </div>

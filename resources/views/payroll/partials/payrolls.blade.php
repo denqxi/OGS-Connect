@@ -1,6 +1,18 @@
-<div class="p-6 border-b border-gray-200">
-    <h2 class="text-xl font-semibold text-gray-800">Payroll Approval</h2>
-</div>
+@php
+    // Fallbacks when controller didn't provide $tutors
+    $__tutors = $tutors ?? null;
+    $__tutors_count = 0;
+    $__has_pagination = false;
+
+    if ($__tutors) {
+        if (is_object($__tutors) && method_exists($__tutors, 'total')) {
+            $__tutors_count = $__tutors->total();
+            $__has_pagination = true;
+        } elseif (is_countable($__tutors)) {
+            $__tutors_count = count($__tutors);
+        }
+    }
+@endphp
 
 <!-- Summary Cards -->
 <div class="p-6 border-b border-gray-200">
@@ -10,7 +22,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium text-gray-600 mb-1">Total Tutors</p>
-                    <p class="text-2xl font-bold text-blue-700">{{ $tutors->total() ?? 0 }}</p>
+                    <p class="text-2xl font-bold text-blue-700">{{ $__tutors_count ?? 0 }}</p>
                 </div>
                 <div class="w-12 h-12 bg-blue-200 rounded-full flex items-center justify-center">
                     <i class="fas fa-users text-blue-600 text-lg"></i>
@@ -60,33 +72,45 @@
 </div>
 
 <!-- Search Filter -->
-<div class="p-6 border-b border-gray-200">
-    <div class="flex items-center justify-between mb-4">
-        <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
-    </div>
+<div class="p-6 border-b border-gray-200 overflow-x-auto">
+    <form method="GET"
+          action="{{ route('payroll.index') }}"
+          id="payrollFilterForm"
+          class="flex flex-nowrap items-center gap-4 w-full">
 
-    <form method="GET" action="{{ route('payroll.index') }}" id="payrollFilterForm">
-        <input type="hidden" name="tab" value="approval">
-        <div class="flex justify-between items-center space-x-4">
-            <div class="flex items-center space-x-4 flex-1 max-w-lg">
-                <div class="relative flex-1">
-                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                    <input type="text" name="search" value="{{ request('search') }}"
-                        placeholder="Search tutor name..." id="payrollSearch"
-                        class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md text-sm 
-                                  focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
-                                  focus:ring-0 focus:shadow-xl">
-                    <button type="button" id="clearPayrollSearch"
-                        class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-            <button type="submit"
-                class="px-4 py-2 bg-[#0E335D] text-white rounded-md text-sm font-medium hover:bg-[#0B2847] transition-colors">
-                <i class="fas fa-search mr-2"></i>Search
+        <input type="hidden" name="tab" value="payrolls">
+
+        <!-- Title -->
+        <span class="text-sm font-medium text-gray-700 shrink-0">
+            Search Filter
+        </span>
+
+        <!-- Search input -->
+        <div class="relative shrink-0 w-72">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+
+            <input type="text"
+                   name="search"
+                   value="{{ request('search') }}"
+                   placeholder="Search tutor name..."
+                   id="payrollSearch"
+                   class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md text-sm
+                          focus:outline-none focus:border-[#2A5382] focus:ring-0">
+
+            <button type="button"
+                    id="clearPayrollSearch"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden">
+                <i class="fas fa-times"></i>
             </button>
         </div>
+
+        <!-- Search button -->
+        <button type="submit"
+                class="shrink-0 px-4 py-2 bg-[#0E335D] text-white rounded-md text-sm font-medium hover:bg-[#0B2847] transition-colors flex items-center">
+            <i class="fas fa-search mr-2"></i>
+            Search
+        </button>
+
     </form>
 </div>
 
@@ -101,7 +125,7 @@
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-                @forelse($tutors as $tutor)
+                @forelse($__tutors ?? collect() as $tutor)
                     <tr class="hover:bg-gray-50">
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $tutor->full_name ?? $tutor->username }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $tutor->account?->account_name ?? 'N/A' }}</td>
@@ -136,45 +160,113 @@
     </div>
 
     <!-- Pagination -->
-    @if($tutors->hasPages())
-        <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-            <div class="text-sm text-gray-500">
-                Showing {{ $tutors->firstItem() ?? 0 }} to {{ $tutors->lastItem() ?? 0 }} of {{ $tutors->total() }} results
+    @php
+        $queryParams = request()->query();
+        unset($queryParams['page']);
+        $baseUrl = route('payroll.index', array_merge($queryParams, ['tab' => 'payrolls']));
+        $separator = strpos($baseUrl, '?') !== false ? '&' : '?';
+
+        if ($__has_pagination) {
+            $currentPage = $__tutors->currentPage();
+            $lastPage = $__tutors->lastPage();
+            $totalRows = $__tutors->total() ?? 0;
+        } else {
+            $currentPage = 1;
+            $lastPage = 1;
+            $totalRows = $__tutors_count ?? 0;
+        }
+
+        $useCompactPagination = $lastPage > 7;
+        if (!$useCompactPagination) {
+            $startPage = max(1, $currentPage - 2);
+            $endPage = min($lastPage, $currentPage + 2);
+            if ($endPage - $startPage < 4) {
+                if ($startPage == 1) {
+                    $endPage = min($lastPage, $startPage + 4);
+                } else {
+                    $startPage = max(1, $endPage - 4);
+                }
+            }
+        }
+    @endphp
+    @if($__has_pagination && $__tutors->hasPages() && $totalRows >= 5)
+        <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between h-16 w-full">
+                <div class="text-sm text-gray-500">
+                @if($totalRows > 0)
+                    @if($__has_pagination)
+                        Showing {{ $__tutors->firstItem() }} to {{ $__tutors->lastItem() }} of {{ $totalRows }} results
+                    @else
+                        Showing 1 to {{ $totalRows }} of {{ $totalRows }} results
+                    @endif
+                @else
+                    Showing 0 results
+                @endif
             </div>
-            <div class="flex items-center space-x-2">
-                {{-- Previous Button --}}
-                @if ($tutors->onFirstPage())
-                    <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-400 flex items-center justify-center cursor-not-allowed" disabled>
+            <div class="flex items-center justify-center space-x-2 w-[300px]">
+                @if ($__tutors->onFirstPage())
+                    <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center" disabled>
                         <i class="fas fa-chevron-left"></i>
                     </button>
                 @else
-                    <a href="{{ $tutors->previousPageUrl() }}" class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center">
+                    <a href="{{ $baseUrl . $separator . 'page=' . ($currentPage - 1) }}"
+                       class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                       data-page="{{ $currentPage - 1 }}">
                         <i class="fas fa-chevron-left"></i>
                     </a>
                 @endif
 
-                {{-- Page Numbers --}}
-                @foreach ($tutors->getUrlRange(1, $tutors->lastPage()) as $page => $url)
-                    @if ($page == $tutors->currentPage())
-                        <button class="w-8 h-8 bg-slate-700 text-white rounded text-sm flex items-center justify-center font-medium">
-                            {{ $page }}
-                        </button>
-                    @else
-                        <a href="{{ $url }}" class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center">
-                            {{ $page }}
-                        </a>
+                @if($useCompactPagination)
+                    <button class="w-8 h-8 bg-slate-700 text-white rounded text-sm flex items-center justify-center font-medium">{{ $currentPage }}</button>
+                @else
+                    @if($startPage > 1)
+                        <a href="{{ $baseUrl . $separator . 'page=1' }}"
+                           class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                           data-page="1">1</a>
+                        @if($startPage > 2)
+                            <span class="w-8 h-8 flex items-center justify-center text-gray-400">...</span>
+                        @endif
                     @endif
-                @endforeach
 
-                {{-- Next Button --}}
-                @if ($tutors->hasMorePages())
-                    <a href="{{ $tutors->nextPageUrl() }}" class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center">
+                    @for($page = $startPage; $page <= $endPage; $page++)
+                        @if ($page == $currentPage)
+                            <button class="w-8 h-8 bg-slate-700 text-white rounded text-sm flex items-center justify-center font-medium">{{ $page }}</button>
+                        @else
+                            <a href="{{ $baseUrl . $separator . 'page=' . $page }}"
+                               class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                               data-page="{{ $page }}">{{ $page }}</a>
+                        @endif
+                    @endfor
+
+                    @if($endPage < $lastPage)
+                        @if($endPage < $lastPage - 1)
+                            <span class="w-8 h-8 flex items-center justify-center text-gray-400">...</span>
+                        @endif
+                        <a href="{{ $baseUrl . $separator . 'page=' . $lastPage }}"
+                           class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                           data-page="{{ $lastPage }}">{{ $lastPage }}</a>
+                    @endif
+                @endif
+
+                @if ($__tutors->hasMorePages())
+                    <a href="{{ $baseUrl . $separator . 'page=' . ($currentPage + 1) }}"
+                       class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                       data-page="{{ $currentPage + 1 }}">
                         <i class="fas fa-chevron-right"></i>
                     </a>
                 @else
-                    <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-400 flex items-center justify-center cursor-not-allowed" disabled>
+                    <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center" disabled>
                         <i class="fas fa-chevron-right"></i>
                     </button>
+                @endif
+            </div>
+        </div>
+    @elseif($totalRows > 0)
+        <div class="px-6 py-4 border-t border-gray-200">
+            <div class="text-sm text-gray-500">
+                @if($__has_pagination)
+                    Showing {{ $__tutors->firstItem() }} to {{ $__tutors->lastItem() }} of {{ $totalRows }} results
+                @else
+                    Showing 1 to {{ $totalRows }} of {{ $totalRows }} results
                 @endif
             </div>
         </div>

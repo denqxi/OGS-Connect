@@ -38,6 +38,13 @@ Route::middleware('guest')->group(function () {
     Route::post('forgot-password-simple', [\App\Http\Controllers\Auth\SimplePasswordResetController::class, 'requestReset'])
         ->name('password.reset.request');
 
+    // OTP endpoints for password reset
+    Route::post('forgot-password-otp', [\App\Http\Controllers\Auth\SimplePasswordResetController::class, 'sendOtp'])
+        ->name('password.reset.otp.send');
+
+    Route::post('verify-password-otp', [\App\Http\Controllers\Auth\SimplePasswordResetController::class, 'verifyOtp'])
+        ->name('password.reset.otp.verify');
+
     Route::get('reset-password-simple', [\App\Http\Controllers\Auth\SimplePasswordResetController::class, 'showResetForm'])
         ->name('password.reset.form');
 

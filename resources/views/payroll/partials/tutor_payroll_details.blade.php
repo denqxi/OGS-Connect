@@ -105,10 +105,100 @@
             </tbody>
         </table>
 
-        {{-- Pagination - Only show if there are pages --}}
-        @if(isset($workDetails) && method_exists($workDetails, 'hasPages') && $workDetails->hasPages())
+        {{-- Pagination --}}
+        @php
+            $queryParams = request()->query();
+            unset($queryParams['page']);
+            $baseUrl = route('payroll.work-details', $queryParams);
+            $separator = strpos($baseUrl, '?') !== false ? '&' : '?';
+            $currentPage = isset($workDetails) && method_exists($workDetails, 'currentPage') ? $workDetails->currentPage() : 1;
+            $lastPage = isset($workDetails) && method_exists($workDetails, 'lastPage') ? $workDetails->lastPage() : 1;
+            $totalRows = isset($workDetails) && method_exists($workDetails, 'total') ? $workDetails->total() : (isset($workDetails) ? $workDetails->count() : 0);
+            $useCompactPagination = $lastPage > 7;
+            if (!$useCompactPagination) {
+                $startPage = max(1, $currentPage - 2);
+                $endPage = min($lastPage, $currentPage + 2);
+                if ($endPage - $startPage < 4) {
+                    if ($startPage == 1) {
+                        $endPage = min($lastPage, $startPage + 4);
+                    } else {
+                        $startPage = max(1, $endPage - 4);
+                    }
+                }
+            }
+        @endphp
+        @if(isset($workDetails) && method_exists($workDetails, 'hasPages') && $workDetails->hasPages() && $totalRows >= 5)
+            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between h-16 w-full">
+                <div class="text-sm text-gray-500">
+                    @if($totalRows > 0)
+                        Showing {{ $workDetails->firstItem() }} to {{ $workDetails->lastItem() }} of {{ $totalRows }} results
+                    @else
+                        Showing 0 results
+                    @endif
+                </div>
+                <div class="flex items-center justify-center space-x-2 w-[300px]">
+                    @if ($workDetails->onFirstPage())
+                        <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                    @else
+                        <a href="{{ $baseUrl . $separator . 'page=' . ($currentPage - 1) }}"
+                           class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                           data-page="{{ $currentPage - 1 }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    @endif
+
+                    @if($useCompactPagination)
+                        <button class="w-8 h-8 bg-slate-700 text-white rounded text-sm flex items-center justify-center font-medium">{{ $currentPage }}</button>
+                    @else
+                        @if($startPage > 1)
+                            <a href="{{ $baseUrl . $separator . 'page=1' }}"
+                               class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                               data-page="1">1</a>
+                            @if($startPage > 2)
+                                <span class="w-8 h-8 flex items-center justify-center text-gray-400">...</span>
+                            @endif
+                        @endif
+
+                        @for($page = $startPage; $page <= $endPage; $page++)
+                            @if ($page == $currentPage)
+                                <button class="w-8 h-8 bg-slate-700 text-white rounded text-sm flex items-center justify-center font-medium">{{ $page }}</button>
+                            @else
+                                <a href="{{ $baseUrl . $separator . 'page=' . $page }}"
+                                   class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                                   data-page="{{ $page }}">{{ $page }}</a>
+                            @endif
+                        @endfor
+
+                        @if($endPage < $lastPage)
+                            @if($endPage < $lastPage - 1)
+                                <span class="w-8 h-8 flex items-center justify-center text-gray-400">...</span>
+                            @endif
+                            <a href="{{ $baseUrl . $separator . 'page=' . $lastPage }}"
+                               class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                               data-page="{{ $lastPage }}">{{ $lastPage }}</a>
+                        @endif
+                    @endif
+
+                    @if ($workDetails->hasMorePages())
+                        <a href="{{ $baseUrl . $separator . 'page=' . ($currentPage + 1) }}"
+                           class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                           data-page="{{ $currentPage + 1 }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    @else
+                        <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center" disabled>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    @endif
+                </div>
+            </div>
+        @elseif($totalRows > 0)
             <div class="px-6 py-4 border-t border-gray-200">
-                {{ $workDetails->links() }}
+                <div class="text-sm text-gray-500">
+                    Showing {{ isset($workDetails) && method_exists($workDetails, 'firstItem') ? $workDetails->firstItem() : 1 }} to {{ isset($workDetails) && method_exists($workDetails, 'lastItem') ? $workDetails->lastItem() : $totalRows }} of {{ $totalRows }} results
+                </div>
             </div>
         @endif
     </div>

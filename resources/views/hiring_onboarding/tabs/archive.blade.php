@@ -1,27 +1,32 @@
 <!-- Search Filters -->
-<div class="px-4 md:px-6 py-4 border-b border-gray-200">
-    <div class="flex items-center justify-between mb-4">
-        <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
-    </div>
-    <form method="GET" action="{{ route('hiring_onboarding.index') }}" id="searchForm" class="flex justify-between items-center space-x-4">
+<div class="px-4 md:px-6 py-4 border-b border-gray-200 overflow-x-auto">
+    <form method="GET" action="{{ route('hiring_onboarding.index') }}" id="searchForm"
+          class="flex flex-row flex-nowrap items-center gap-4 w-full">
+
         <input type="hidden" name="tab" value="archive">
-        <!-- Left side -->
-        <div class="flex items-center space-x-4 flex-1 max-w-lg">
-            <div class="relative flex-1">
-                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" id="searchIcon"></i>
-                <i class="fas fa-spinner fa-spin absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hidden" id="loadingIcon"></i>
-                <input type="text" name="search" id="searchInput" placeholder="search name..." value="{{ request('search') }}"
-                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm 
-              focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
-              focus:ring-0 focus:shadow-xl">
-            </div>
-            <select name="status" id="statusSelect" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
-                <option value="">Select Status</option>
-                <option value="declined" {{ request('status') == 'declined' ? 'selected' : '' }}>Declined</option>
-                <option value="not_recommended" {{ request('status') == 'not_recommended' ? 'selected' : '' }}>Not Recommended</option>
-                <option value="no_answer" {{ request('status') == 'no_answer' ? 'selected' : '' }}>No Answer</option>
-            </select>
+
+        <!-- Title -->
+        <span class="text-sm font-medium text-gray-700 shrink-0">Search Filters:</span>
+
+        <!-- Search input -->
+        <div class="relative flex-shrink-0 w-64">
+            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" id="searchIcon"></i>
+            <i class="fas fa-spinner fa-spin absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hidden" id="loadingIcon"></i>
+            <input type="text" name="search" id="searchInput" placeholder="search name..."
+                   value="{{ request('search') }}"
+                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm
+                          focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] focus:ring-0 focus:shadow-xl shrink-0">
         </div>
+
+        <!-- Status select -->
+        <select name="status" id="statusSelect"
+                class="shrink-0 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+            <option value="">Select Status</option>
+            <option value="declined" {{ request('status') == 'declined' ? 'selected' : '' }}>Declined</option>
+            <option value="not_recommended" {{ request('status') == 'not_recommended' ? 'selected' : '' }}>Not Recommended</option>
+            <option value="no_answer" {{ request('status') == 'no_answer' ? 'selected' : '' }}>No Answer</option>
+        </select>
+
     </form>
 </div>
 

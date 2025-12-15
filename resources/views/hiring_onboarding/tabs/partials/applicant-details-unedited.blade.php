@@ -13,13 +13,13 @@
 
 <!-- Header with Back Button -->
 <div class="flex items-center justify-between mb-4">
-    <h1 class="text-xl font-bold text-gray-800 dark:text-gray-200">Applicant Details</h1>
+    
     <a href="{{ route('hiring_onboarding.index', ['tab' => request('tab', 'demo')]) }}"
        class="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-md text-sm font-medium 
               hover:bg-gray-700 transition duration-200">
         <i class="fas fa-arrow-left"></i>
-        <span>Back to List</span>
     </a>
+    <h1 class="text-xl font-bold text-gray-800 dark:text-gray-200">Applicant Details</h1>
 </div>
 
 <!-- Progress Bar -->
@@ -465,19 +465,18 @@
 
     <!-- Navigation Buttons -->
     <div class="flex justify-between items-center mt-8 pt-6 border-t">
-        <button @click="prevPage()" :disabled="currentPage === 1" 
-            class="px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            :class="currentPage === 1 ? 'bg-gray-300 text-gray-500' : 'bg-[#0E335D] text-white hover:opacity-90'">
+        <button @click="prevPage()" :disabled="currentPage === 1"
+            class="px-5 py-2 rounded-md text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            :class="currentPage === 1 ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400' : 'bg-gray-500 text-gray-100 hover:bg-gray-600'">
             <i class="fas fa-chevron-left mr-2"></i>
             Previous
         </button>
-        
         <div class="text-sm font-medium text-gray-600">
             Page <span class="text-[#0E335D] font-bold" x-text="currentPage"></span> of <span class="text-[#0E335D] font-bold" x-text="totalPages"></span>
         </div>
         
         <button @click="nextPage()" :disabled="currentPage === totalPages" 
-            class="px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-5 py-2 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             :class="currentPage === totalPages ? 'bg-gray-300 text-gray-500' : 'bg-[#65DB7F] text-white hover:opacity-90'">
             Next
             <i class="fas fa-chevron-right ml-2"></i>
@@ -525,7 +524,7 @@
                         <button 
                             type="button"
                             onclick="showOnboardingPassFailModal({{ $demo->id }}, '{{ $demo->first_name }} {{ $demo->last_name }}', '{{ $demo->email }}', '{{ $demo->contact_number }}', '{{ $demo->assigned_account ?? 'N/A' }}', '{{ $demo->interview_time ? \Carbon\Carbon::parse($demo->interview_time)->format('F d, Y - h:i A') : ($demo->demo_schedule ? \Carbon\Carbon::parse($demo->demo_schedule)->format('F d, Y - h:i A') : ($demo->scheduled_at ? \Carbon\Carbon::parse($demo->scheduled_at)->format('F d, Y - h:i A') : 'N/A')) }}', '{{ addslashes($demo->notes ?? 'No notes available') }}')"
-                            class="px-6 py-2 rounded-md bg-[#2A5382] text-white text-sm font-medium hover:bg-[#0E335D transition-all">
+                            class="px-6 py-2 rounded-md bg-gray-700 text-gray-100 text-sm font-medium hover:bg-gray-800 transition-all flex items-center">
                             <i class="fas fa-clipboard-check mr-2"></i>
                             Review Onboarding
                         </button>
@@ -533,7 +532,7 @@
                         <button 
                             type="button"
                             onclick="showDemoPassFailModal({{ $demo->id }}, '{{ $demo->first_name }} {{ $demo->last_name }}', '{{ $demo->email }}', '{{ $demo->contact_number }}', '{{ $demo->assigned_account ?? 'N/A' }}', '{{ $demo->scheduled_at ? \Carbon\Carbon::parse($demo->scheduled_at)->format('F d, Y - h:i A') : 'N/A' }}', '{{ addslashes($demo->notes ?? 'No notes available') }}')"
-                            class="px-6 py-2 rounded-md bg-[#2A5382]  text-white text-sm font-medium hover:bg-[#0E335D] transition-all">
+                            class="px-6 py-2 rounded-md bg-gray-700 text-gray-100 text-sm font-medium hover:bg-gray-800 transition-all flex items-center">
                             <i class="fas fa-clipboard-check mr-2"></i>
                             Review Demo
                         </button>
@@ -541,7 +540,7 @@
                         <button 
                             type="button"
                             onclick="loadEditModalData({{ $demo->id }})"
-                            class="px-6 py-2 rounded-md text-white text-sm bg-[#2A5382] font-medium hover:bg-[#0E335D] transition-all">
+                            class="px-6 py-2 rounded-md bg-gray-700 text-gray-100 text-sm font-medium hover:bg-gray-800 transition-all flex items-center">
                             <i class="fas fa-edit mr-2"></i>
                             Edit Details
                         </button>

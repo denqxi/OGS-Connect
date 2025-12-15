@@ -34,7 +34,33 @@ function setupEventListeners() {
     // Security questions update
     const updateSecurityBtn = document.getElementById('updateSecurityQuestionsBtn');
     if (updateSecurityBtn) {
-        updateSecurityBtn.addEventListener('click', handleSecurityQuestionsUpdate);
+        updateSecurityBtn.addEventListener('click', function() {
+            const modal = document.getElementById('securityQuestionsUpdateForm');
+            if (modal) modal.classList.remove('hidden');
+        });
+    }
+
+    // Security questions update form submit
+    const updateSecurityForm = document.getElementById('updateSecurityForm');
+    if (updateSecurityForm) {
+        updateSecurityForm.addEventListener('submit', handleSecurityQuestionsUpdate);
+    }
+
+    // Cancel security questions update
+    const cancelBtn = document.getElementById('cancelSecurityUpdate');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() {
+            const modal = document.getElementById('securityQuestionsUpdateForm');
+            if (modal) modal.classList.add('hidden');
+        });
+    }
+
+    // Close modal when clicking outside
+    const modal = document.getElementById('securityQuestionsUpdateForm');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) modal.classList.add('hidden');
+        });
     }
 
     // Password toggle functionality
@@ -384,10 +410,12 @@ function showPasswordMessage(message, type) {
     }
 }
 
-async function handleSecurityQuestionsUpdate() {
+async function handleSecurityQuestionsUpdate(e) {
+    e.preventDefault();
     const questions = [];
     const answers = [];
-    const updateBtn = document.getElementById('updateSecurityQuestionsBtn');
+    const updateBtn = document.querySelector('#updateSecurityForm button[type="submit"]');
+    const errorDiv = document.getElementById('securityUpdateError');
 
     // Collect security questions and answers
     for (let i = 1; i <= 2; i++) {
@@ -399,7 +427,10 @@ async function handleSecurityQuestionsUpdate() {
             const answer = answerInput.value.trim();
 
             if (!question || !answer) {
-                showErrorModal('Missing Information', `Please fill in both question and answer for Security Question ${i}.`);
+                if (errorDiv) {
+                    errorDiv.classList.remove('hidden');
+                    errorDiv.textContent = `Please fill in both question and answer for Security Question ${i}.`;
+                }
                 return;
             }
 
@@ -409,22 +440,15 @@ async function handleSecurityQuestionsUpdate() {
     }
 
     if (questions.length === 0) {
-        showErrorModal('Missing Information', 'Please set up at least one security question.');
+        if (errorDiv) {
+            errorDiv.classList.remove('hidden');
+            errorDiv.textContent = 'Please set up at least one security question.';
+        }
         return;
     }
 
-    // Show confirmation modal
-    showConfirmationModal(
-        'Update Security Questions',
-        'Are you sure you want to update your security questions? This will replace your existing questions.',
-        'Update Questions',
-        'Cancel',
-        () => proceedWithSecurityQuestionsUpdate(questions, answers)
-    );
-}
-
-async function proceedWithSecurityQuestionsUpdate(questions, answers) {
-    const updateBtn = document.getElementById('updateSecurityQuestionsBtn');
+    // Hide error div and proceed
+    if (errorDiv) errorDiv.classList.add('hidden');
 
     // Disable button and show loading
     updateBtn.disabled = true;
@@ -448,6 +472,25 @@ async function proceedWithSecurityQuestionsUpdate(questions, answers) {
 
         if (result.success) {
             showSecurityMessage('Security questions updated successfully!', 'success');
+            // Close modal
+            const modal = document.getElementById('securityQuestionsUpdateForm');
+            if (modal) setTimeout(() => modal.classList.add('hidden'), 1000);
+        } else {
+            if (errorDiv) {
+                errorDiv.classList.remove('hidden');
+                errorDiv.textContent = result.message || 'Failed to update security questions.';
+            }
+        }
+    } catch (error) {
+        if (errorDiv) {
+            errorDiv.classList.remove('hidden');
+            errorDiv.textContent = 'An error occurred. Please try again.';
+        }
+        console.error('Error:', error);
+    } finally {
+        updateBtn.disabled = false;
+        updateBtn.innerHTML = 'Save Changes';
+    }
             showNotification('Security questions updated successfully!', 'success');
             // Reload security questions
             loadSecurityQuestions();

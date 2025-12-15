@@ -34,12 +34,12 @@
             <div class="flex justify-center space-x-6">
                 <button type="button" 
                     @click="showModal = false; showFailModal = true"
-                    class="bg-[#F65353] text-white px-6 py-2 rounded-full font-bold hover:opacity-90 text-sm">
+                    class="bg-[#F65353] text-white px-6 py-2 rounded-lg font-bold hover:opacity-90 text-sm">
                     Fail
                 </button>
                 <button type="button" 
                     @click="showModal = false; showPassModal = true"
-                    class="bg-[#65DB7F] text-white px-6 py-2 rounded-full font-bold hover:opacity-90 text-sm">
+                    class="bg-[#65DB7F] text-white px-6 py-2 rounded-lg font-bold hover:opacity-90 text-sm">
                     Pass
                 </button>
             </div>

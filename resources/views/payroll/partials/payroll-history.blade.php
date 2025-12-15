@@ -1,41 +1,5 @@
 
-<div class="p-6 border-b border-gray-200">
-    <div class="flex items-center justify-between mb-4">
-        <h3 class="text-sm font-medium text-gray-700">Payslip Submissions</h3>
-    </div>
-
-    <form method="GET" action="{{ route('payroll.index') }}" class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
-        <input type="hidden" name="tab" value="payroll-history">
-        <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">Tutor Name</label>
-            <input type="text" name="tutor_name" value="{{ request('tutor_name') }}" placeholder="Search tutor" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
-        </div>
-        <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">Month</label>
-            <select name="month" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
-                <option value="">All</option>
-                @for ($m = 1; $m <= 12; $m++)
-                    @php $value = str_pad($m, 2, '0', STR_PAD_LEFT); @endphp
-                    <option value="{{ $value }}" {{ request('month') == $value ? 'selected' : '' }}>{{ date('F', mktime(0, 0, 0, $m, 1)) }}</option>
-                @endfor
-            </select>
-        </div>
-        <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">Year</label>
-            <select name="year" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
-                <option value="">All</option>
-                @for ($y = date('Y'); $y >= date('Y') - 5; $y--)
-                    <option value="{{ $y }}" {{ request('year') == $y ? 'selected' : '' }}>{{ $y }}</option>
-                @endfor
-            </select>
-        </div>
-        <div class="flex items-end gap-2">
-            <button type="submit" class="px-4 py-2 bg-[#0E335D] text-white text-sm rounded-md hover:bg-[#0c294a]">Filter</button>
-            <a href="{{ route('payroll.index', ['tab' => 'payroll-history']) }}" class="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">Reset</a>
-        </div>
-    </form>
-
-    <div class="overflow-x-auto">
+<div class="overflow-x-auto">
         <table class="w-full" id="payrollHistoryTable">
             <thead class="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -107,7 +71,8 @@
                     @php
                         $tutor = $record->tutor;
                         $tutorName = $tutor?->applicant?->first_name . ' ' . $tutor?->applicant?->last_name;
-                        $submittedDate = $record->submitted_at ? $record->submitted_at->format('M d, Y H:i') : 'N/A';
+                        $dateObj = $record->submitted_at ?? null;
+                        $submittedDate = $dateObj ? $dateObj->format('F j, Y') : 'N/A';
                         
                         // For finalized status, show em dash for submission type
                         $isFinalized = ($record->status === 'finalized');
@@ -125,14 +90,14 @@
                             default => ucfirst($record->submission_type)
                         };
                         
-                        // Determine status color
-                        $statusColor = match($record->status ?? '') {
-                            'sent' => 'bg-green-100 text-green-800',
-                            'pending' => 'bg-yellow-100 text-yellow-800',
-                            'failed' => 'bg-red-100 text-red-800',
-                            'draft' => 'bg-gray-100 text-gray-800',
-                            'finalized' => 'bg-indigo-100 text-indigo-800',
-                            default => 'bg-gray-100 text-gray-800'
+                        // Determine status color for circle
+                        $statusCircleColor = match($record->status ?? '') {
+                            'sent' => 'bg-green-500',
+                            'pending' => 'bg-yellow-500',
+                            'failed' => 'bg-red-500',
+                            'draft' => 'bg-gray-500',
+                            'finalized' => 'bg-indigo-500',
+                            default => 'bg-gray-500'
                         };
                         
                         $statusLabel = match($record->status ?? '') {
@@ -148,14 +113,19 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $tutorName }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $record->pay_period ?? '—' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">₱{{ number_format($record->total_amount ?? 0, 2) }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            @if($isFinalized)
-                                <span class="text-gray-500">{{ $typeLabel }}</span>
-                            @else
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $typeBadgeColor }}">
-                                    {{ $typeLabel }}
-                                </span>
-                            @endif
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            @php
+                                $typeLabel = $isFinalized ? '—' : match($record->submission_type) {
+                                    'email' => 'Email',
+                                    'pdf' => 'PDF Download',
+                                    'print' => 'Print',
+                                    default => ucfirst($record->submission_type)
+                                };
+                            @endphp
+
+                            <span class="{{ $isFinalized ? 'text-gray-500' : '' }}">
+                                {{ $typeLabel }}
+                            </span>
                         </td>
                         <td class="px-6 py-4 text-sm text-gray-700">
                             @if($isFinalized)
@@ -168,10 +138,11 @@
                                 {{ $details }}
                             @endif
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
-                                {{ $statusLabel }}
-                            </span>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full {{ $statusCircleColor }}"></span>
+                                <span>{{ $statusLabel }}</span>
+                            </div>
                         </td>
                     </tr>
                 @empty
@@ -185,9 +156,103 @@
             </tbody>
         </table>
 
-        @if(isset($payrollHistory) && method_exists($payrollHistory, 'links'))
-            <div class="mt-4">{{ $payrollHistory->links() }}</div>
+        @php
+            $queryParams = request()->query();
+            unset($queryParams['page']);
+            $baseUrl = route('payroll.index', array_merge($queryParams, ['tab' => 'payroll-history']));
+            $separator = strpos($baseUrl, '?') !== false ? '&' : '?';
+            $currentPage = isset($payrollHistory) && method_exists($payrollHistory, 'currentPage') ? $payrollHistory->currentPage() : 1;
+            $lastPage = isset($payrollHistory) && method_exists($payrollHistory, 'lastPage') ? $payrollHistory->lastPage() : 1;
+            $totalRows = isset($payrollHistory) && method_exists($payrollHistory, 'total') ? $payrollHistory->total() : (isset($payrollHistory) ? $payrollHistory->count() : 0);
+            $useCompactPagination = $lastPage > 7;
+            if (!$useCompactPagination) {
+                $startPage = max(1, $currentPage - 2);
+                $endPage = min($lastPage, $currentPage + 2);
+                if ($endPage - $startPage < 4) {
+                    if ($startPage == 1) {
+                        $endPage = min($lastPage, $startPage + 4);
+                    } else {
+                        $startPage = max(1, $endPage - 4);
+                    }
+                }
+            }
+        @endphp
+        @if(isset($payrollHistory) && method_exists($payrollHistory, 'hasPages') && $payrollHistory->hasPages() && $totalRows >= 5)
+            <div class="mt-4 px-6 py-4 border-t border-gray-200 flex items-center justify-between h-16 w-full">
+                <div class="text-sm text-gray-500">
+                    @if($totalRows > 0)
+                        Showing {{ $payrollHistory->firstItem() }} to {{ $payrollHistory->lastItem() }} of {{ $totalRows }} results
+                    @else
+                        Showing 0 results
+                    @endif
+                </div>
+                <div class="flex items-center justify-center space-x-2 w-[300px]">
+                    @if ($payrollHistory->onFirstPage())
+                        <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                    @else
+                        <a href="{{ $baseUrl . $separator . 'page=' . ($currentPage - 1) }}"
+                           class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                           data-page="{{ $currentPage - 1 }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    @endif
+
+                    @if($useCompactPagination)
+                        <button class="w-8 h-8 bg-slate-700 text-white rounded text-sm flex items-center justify-center font-medium">{{ $currentPage }}</button>
+                    @else
+                        @if($startPage > 1)
+                            <a href="{{ $baseUrl . $separator . 'page=1' }}"
+                               class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                               data-page="1">1</a>
+                            @if($startPage > 2)
+                                <span class="w-8 h-8 flex items-center justify-center text-gray-400">...</span>
+                            @endif
+                        @endif
+
+                        @for($page = $startPage; $page <= $endPage; $page++)
+                            @if ($page == $currentPage)
+                                <button class="w-8 h-8 bg-slate-700 text-white rounded text-sm flex items-center justify-center font-medium">{{ $page }}</button>
+                            @else
+                                <a href="{{ $baseUrl . $separator . 'page=' . $page }}"
+                                   class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                                   data-page="{{ $page }}">{{ $page }}</a>
+                            @endif
+                        @endfor
+
+                        @if($endPage < $lastPage)
+                            @if($endPage < $lastPage - 1)
+                                <span class="w-8 h-8 flex items-center justify-center text-gray-400">...</span>
+                            @endif
+                            <a href="{{ $baseUrl . $separator . 'page=' . $lastPage }}"
+                               class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                               data-page="{{ $lastPage }}">{{ $lastPage }}</a>
+                        @endif
+                    @endif
+
+                    @if ($payrollHistory->hasMorePages())
+                        <a href="{{ $baseUrl . $separator . 'page=' . ($currentPage + 1) }}"
+                           class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                           data-page="{{ $currentPage + 1 }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    @else
+                        <button class="w-8 h-8 border border-gray-300 rounded text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center" disabled>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    @endif
+                </div>
+            </div>
+        @elseif($totalRows > 0)
+            <div class="mt-4 px-6 py-4 border-t border-gray-200">
+                <div class="text-sm text-gray-500">
+                    Showing {{ isset($payrollHistory) && method_exists($payrollHistory, 'firstItem') ? $payrollHistory->firstItem() : 1 }} to {{ isset($payrollHistory) && method_exists($payrollHistory, 'lastItem') ? $payrollHistory->lastItem() : $totalRows }} of {{ $totalRows }} results
+                </div>
+            </div>
         @endif
     </div>
 </div>
+
+<!-- Date validation handled in parent index view -->
 

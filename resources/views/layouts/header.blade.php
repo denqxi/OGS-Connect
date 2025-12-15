@@ -1,7 +1,7 @@
 <!-- Backdrop cover for header -->
 <div id="headerBackdrop" class="fixed top-0 left-20 right-0 h-24 bg-gray-50 z-40 transition-all duration-500 ease-in-out"></div>
 
-<div id="mainHeader" class="bg-white shadow-md rounded-xl px-6 py-2.5 flex items-center justify-between fixed top-3 ml-20 mr-6 left-6 right-6 z-50 transition-all duration-500 ease-in-out">
+<div id="mainHeader" class="bg-white shadow-md rounded-xl px-7 py-2.5 flex items-center justify-between fixed top-3 ml-20 mr-0 left-6 right-6 z-50 transition-all duration-500 ease-in-out">
     <h1 class="text-base md:text-lg font-bold text-[#0E335D]">{{ $pageTitle ?? 'OGS Connect' }}</h1>
 
     <div class="flex items-center space-x-3 md:space-x-4">

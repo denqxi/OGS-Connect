@@ -14,7 +14,7 @@
                 class="flex-shrink-0 py-3 md:py-4 px-2 md:px-1 
                {{ request('tab', 'payrolls') == 'payrolls' ? 'border-b-2 border-[#0E335D] text-[#0E335D]' : 'text-[#0E335D] hover:text-[#0E335D]/70' }} 
                font-medium text-sm md:text-base flex items-center space-x-2">
-                <i class="fas fa-history"></i>
+                <i class="fas fa-user-clock"></i>
                 <span class="hidden sm:inline">Payroll</span>
             </a>
             
@@ -23,7 +23,7 @@
                {{ request('tab') == 'payroll' ? 'border-b-2 border-[#0E335D] text-[#0E335D]' : 'text-[#0E335D] hover:text-[#0E335D]/70' }} 
                font-medium text-sm md:text-base flex items-center space-x-2">
                 <i class="fas fa-user-clock"></i>
-                <span class="hidden sm:inline">Tutor Work Details</span>
+                <span class="hidden sm:inline">Class Verification</span>
             </a>
 
             <a href="{{ route('payroll.index', ['tab' => 'history']) }}"
@@ -38,43 +38,110 @@
 
     </div>
 
-    <!-- Subtabs for History Section -->
-    @if (request('tab') == 'history' || request('tab') == 'payroll-history')
-        <div class="bg-gray-50 border-b border-gray-200 px-4 md:px-6">
-            <nav class="flex overflow-x-auto md:space-x-4 no-scrollbar">
-                <a href="{{ route('payroll.index', ['tab' => 'history']) }}"
-                    class="flex-shrink-0 py-3 md:py-4 px-2 md:px-1 
-                   {{ request('tab', 'history') == 'history' ? 'border-b-2 border-[#0E335D] text-[#0E335D]' : 'text-gray-600 hover:text-gray-800' }} 
-                   font-medium text-sm md:text-base flex items-center space-x-2">
-                    <i class="fas fa-check-circle"></i>
-                    <span class="hidden sm:inline">Approval History</span>
-                </a>
-                <a href="{{ route('payroll.index', ['tab' => 'payroll-history']) }}"
-                    class="flex-shrink-0 py-3 md:py-4 px-2 md:px-1 
-                   {{ request('tab') == 'payroll-history' ? 'border-b-2 border-[#0E335D] text-[#0E335D]' : 'text-gray-600 hover:text-gray-800' }} 
-                   font-medium text-sm md:text-base flex items-center space-x-2">
-                    <i class="fas fa-file-invoice"></i>
-                    <span class="hidden sm:inline">Payroll History</span>
-                </a>
-            </nav>
-        </div>
-    @endif
 
     <div>
         <div class="max-w-full mx-auto">
-            <div class="bg-white rounded-lg shadow-sm p-4 md:p-6">
+            <div class="bg-white rounded-lg shadow-sm p-0 md:p-0">
+
                 @if (request('tab', 'payrolls') == 'payrolls')
                     @include('payroll.partials.payrolls')
+
                 @elseif(request('tab') == 'payroll')
                     @include('payroll.partials.tutor-payroll')
-                @elseif(request('tab') == 'history')
-                    @include('payroll.partials.history')
-                @elseif(request('tab') == 'payroll-history')
-                    @include('payroll.partials.payroll-history')
+
+                @elseif(request('tab') == 'history' || request('tab') == 'payroll-history')
+
+                    <!-- Combined History Header + Filters -->
+                    <div class="px-3 py-2 border-b border-gray-200">
+                        <form method="GET" action="{{ route('payroll.index') }}" class="mb-0 w-full">
+                            <input type="hidden" name="tab" id="history_tab_input" value="{{ request('tab', 'history') }}">
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <div class="flex items-center gap-4">
+                                    <h3 class="text-sm font-medium text-gray-700 whitespace-nowrap">Type of History</h3>
+
+                                    <div class="relative">
+                                        <select
+                                            id="historyTypeSelect"
+                                            name="tab"
+                                            onchange="this.form.submit()"
+                                            class="appearance-none bg-white border border-gray-300 rounded-md px-4 py-2 pr-8 text-sm focus:outline-none focus:ring-1 focus:ring-black-500"
+                                        >
+                                            <option value="history" {{ request('tab', 'history') == 'history' ? 'selected' : '' }}>Approval History</option>
+                                            <option value="payroll-history" {{ request('tab') == 'payroll-history' ? 'selected' : '' }}>Payroll History</option>
+                                        </select>
+
+                                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                            <i class="fas fa-chevron-down text-xs"></i>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Filters (single row) -->
+                                <div class="flex items-center space-x-2 ml-auto">
+                                    <input type="text" name="tutor_name" id="tutor_name" value="{{ request('tutor_name') }}" placeholder="Search tutor" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+
+                                    <label for="date_from" class="text-sm font-medium text-gray-700">From:</label>
+                                    <input type="date" name="date_from" id="date_from" value="{{ request('date_from') }}" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+
+                                    <label for="date_to" class="text-sm font-medium text-gray-700">To:</label>
+                                    <input type="date" name="date_to" id="date_to" value="{{ request('date_to') }}" min="{{ request('date_from') }}" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+
+                                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">Apply</button>
+
+                                    @if(request()->hasAny(['tutor_name', 'date_from', 'date_to']))
+                                        <a href="{{ route('payroll.index', ['tab' => request('tab', 'history')]) }}" class="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">Clear</a>
+                                    @endif
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- History Content -->
+                    @if(request('tab') == 'history')
+                        @include('payroll.partials.history')
+                    @elseif(request('tab') == 'payroll-history')
+                        @include('payroll.partials.payroll-history')
+                    @endif
+
                 @endif
+
             </div>
         </div>
+
         <script>
+            // Date range validation for shared filters
+            document.addEventListener('DOMContentLoaded', function() {
+                const fromDate = document.getElementById('date_from');
+                const toDate = document.getElementById('date_to');
+
+                if (fromDate && toDate) {
+                    fromDate.addEventListener('change', function() {
+                        if (this.value) {
+                            toDate.min = this.value;
+                            if (toDate.value && toDate.value < this.value) {
+                                toDate.value = '';
+                            }
+                        }
+                    });
+
+                    toDate.addEventListener('change', function() {
+                        if (this.value) {
+                            fromDate.max = this.value;
+                            if (fromDate.value && fromDate.value > this.value) {
+                                fromDate.value = '';
+                            }
+                        }
+                    });
+
+                    // Initialize min/max on page load if values exist
+                    if (fromDate.value) {
+                        toDate.min = fromDate.value;
+                    }
+                    if (toDate.value) {
+                        fromDate.max = toDate.value;
+                    }
+                }
+            });
             window.printPayslip = function() {
                 // Get tutor_id from the modal
                 const tutorIdElement = document.querySelector('[data-tutor-id]');

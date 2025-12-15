@@ -5,7 +5,7 @@
     x-transition>
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto relative">
         <!-- Header -->
-        <div class="flex justify-between items-center px-6 py-3 bg-[#1E40AF] rounded-t-xl">
+        <div class="flex justify-between items-center px-6 py-3 bg-[#234D7C] rounded-t-xl">
             <h2 class="text-white text-lg font-bold">Confirm Pass</h2>
             <button type="button"
                 @click="closePassModal()"
@@ -96,8 +96,8 @@
             <!-- Submit Button -->
             <div class="flex justify-center">
                 <button type="button" onclick="showPassConfirmation()"
-                    class="bg-[#65DB7F] text-white px-8 py-2 rounded-full font-bold hover:opacity-90 transition-opacity">
-                    Confirm Pass
+                    class="bg-[#65DB7F] text-white px-7 py-2 rounded-lg font-bold hover:opacity-90 transition-opacity">
+                    Confirm
                 </button>
             </div>
         </div>
@@ -111,7 +111,7 @@
         <!-- Body -->
         <div class="p-6 text-center">
             <div class="flex justify-center mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-green-500" fill="none"
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-gray-500" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -120,14 +120,18 @@
             
             <h3 class="font-bold text-lg">Applicant Passed</h3>
             <p class="text-gray-600 mt-2">
-                This applicant has been <span class="font-bold text-green-600">passed</span> and moved to the Demo stage.
+                This applicant has been <span class="font-bold text-gray-600">passed</span> and moved to the For Demo stage.
             </p>
         </div>
 
         <!-- Footer Buttons -->
         <div class="flex justify-center gap-4 pb-6">
+            <button onclick="hidePassConfirmation()"
+                class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">
+                Cancel
+            </button>
             <button onclick="submitPassForm()"
-                class="bg-[#65DB7F] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">
+                class="bg-[#65DB7F] text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">
                 Confirm
             </button>
         </div>
@@ -135,6 +139,9 @@
 </div>
 
 <script>
+function hidePassConfirmation() {
+    document.getElementById('passConfirmationModal').style.display = 'none';
+}
 // Initialize the demo schedule field on page load
 document.addEventListener('DOMContentLoaded', function() {
     const demoScheduleField = document.getElementById('demo_schedule_field');

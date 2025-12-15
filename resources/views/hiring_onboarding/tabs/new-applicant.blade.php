@@ -3,40 +3,56 @@
     @include('hiring_onboarding.tabs.partials.applicant-details')
 @else
 
-    <!-- Search Filters -->
-    <div class="px-4 md:px-6 py-4 border-b border-gray-200">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-medium text-gray-500">Search Filters</h3>
-        </div>
-        <form method="GET" action="{{ route('hiring_onboarding.index') }}" id="searchForm" class="flex justify-between items-center space-x-4">
+   <!-- Search Filters-->
+    <div class="px-4 md:px-6 py-4 border-b border-gray-200 overflow-x-auto">
+        <form method="GET"
+            action="{{ route('hiring_onboarding.index') }}"
+            id="searchForm"
+            class="flex flex-row flex-nowrap items-center gap-4 w-full">
+
+            <!-- Title -->
+            <span class="text-sm font-medium text-gray-500 shrink-0">Search Filters:</span>
+
             <input type="hidden" name="tab" value="new">
-            <!-- Left side -->
-            <div class="flex items-center space-x-4 flex-1 max-w-lg">
-                <div class="relative flex-1">
-                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" id="searchIcon"></i>
-                    <i class="fas fa-spinner fa-spin absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hidden" id="loadingIcon"></i>
-                    <input type="text" name="search" id="searchInput" placeholder="search..." value="{{ request('search') }}"
-                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm 
-                focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
-                focus:ring-0 focus:shadow-xl">
-                </div>
-                <select name="status" id="statusSelect" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
-                    <option value="">Select Status</option>
-                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                    <option value="no_answer" {{ request('status') == 'no_answer' ? 'selected' : '' }}>No Answer</option>
-                    <option value="re_schedule" {{ request('status') == 're_schedule' ? 'selected' : '' }}>Re-schedule</option>
-                </select>
-                <select name="source" id="sourceSelect" class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
-                    <option value="">Select Source</option>
-                    @foreach($sources as $source)
-                        <option value="{{ $source }}" {{ request('source') == $source ? 'selected' : '' }}>
-                            {{ ucwords(str_replace('_', ' ', $source)) }}
-                        </option>
-                    @endforeach
-                </select>
+
+            <!-- Search -->
+            <div class="relative shrink-0 w-64">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <i class="fas fa-spinner fa-spin absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hidden"></i>
+
+                <input type="text"
+                    name="search"
+                    placeholder="Search..."
+                    value="{{ request('search') }}"
+                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm
+                            focus:outline-none focus:border-[#2A5382] focus:ring-0 shrink-0">
             </div>
+
+            <!-- Status -->
+            <select name="status"
+                    class="shrink-0 w-40 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+                <option value="">Select Status</option>
+                <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                <option value="no_answer" {{ request('status') == 'no_answer' ? 'selected' : '' }}>No Answer</option>
+                <option value="re_schedule" {{ request('status') == 're_schedule' ? 'selected' : '' }}>Re-schedule</option>
+            </select>
+
+            <!-- Source -->
+            <select name="source"
+                    class="shrink-0 w-44 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 bg-white">
+                <option value="">Select Source</option>
+                @foreach($sources as $source)
+                    <option value="{{ $source }}" {{ request('source') == $source ? 'selected' : '' }}>
+                        {{ ucwords(str_replace('_', ' ', $source)) }}
+                    </option>
+                @endforeach
+            </select>
+
         </form>
     </div>
+
+
+
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -256,12 +272,12 @@
                                     <i class="fas fa-eye text-xs"></i>
                                 </a>
                                 <!-- Archive Button -->
-                                <button
+                                {{-- <button
                                     onclick="openArchiveModal({{ $applicant->application_id }})"
                                     class="w-8 h-8 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
                                     title="Archive Applicant">
                                     <i class="fas fa-archive text-xs"></i>
-                                </button>
+                                </button> --}}
                                 @if($applicant->status === 'onboarding')
                                 <!-- Onboarding Review Button -->
                                 <button 

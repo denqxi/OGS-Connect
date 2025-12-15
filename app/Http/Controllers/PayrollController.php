@@ -24,22 +24,33 @@ class PayrollController extends Controller
     public function index(Request $request)
     {
         try {
-            // Base query with relationships
-            $query = Tutor::with(['applicant', 'workDetails', 'account'])
-                ->where('status', 'active');
+            // Initialize viewData with defaults
+            $viewData = [
+                'payrolls' => collect(),
+                'workDetails' => collect(),
+                'tutors' => collect(),
+                'totalPendingAmount' => 0,
+                'totalApprovedAmount' => 0,
+            ];
 
-            // If supervisor is logged in, filter tutors by their assigned account
-            if (Auth::guard('supervisor')->check()) {
-                $supervisor = Auth::guard('supervisor')->user();
-                if ($supervisor->assigned_account) {
-                    $query->whereHas('account', function ($q) use ($supervisor) {
-                        $q->whereRaw('LOWER(account_name) = ?', [strtolower($supervisor->assigned_account)]);
-                    });
-                } else {
-                    // Supervisor with no assigned account sees no tutors
-                    return view('payroll.index')->with(['payrolls' => collect(), 'workDetails' => collect(), 'tutors' => collect()]);
+            // Only load tutors data if on payrolls tab
+            if ($request->query('tab', 'payrolls') === 'payrolls') {
+                // Base query with relationships
+                $query = Tutor::with(['applicant', 'workDetails', 'account'])
+                    ->where('status', 'active');
+
+                // If supervisor is logged in, filter tutors by their assigned account
+                if (Auth::guard('supervisor')->check()) {
+                    $supervisor = Auth::guard('supervisor')->user();
+                    if ($supervisor->assigned_account) {
+                        $query->whereHas('account', function ($q) use ($supervisor) {
+                            $q->whereRaw('LOWER(account_name) = ?', [strtolower($supervisor->assigned_account)]);
+                        });
+                    } else {
+                        // Supervisor with no assigned account sees no tutors
+                        return view('payroll.index', $viewData);
+                    }
                 }
-            }
 
             // Search
             if ($request->filled('search')) {
@@ -69,8 +80,8 @@ class PayrollController extends Controller
                     ->whereColumn('applicant_id', 'tutors.applicant_id')
             );
 
-            // Pagination
-            $tutors = $query->paginate(10)->withQueryString();
+            // Pagination - 5 rows per page for payroll tab
+            $tutors = $query->paginate(5)->withQueryString();
 
             // Add computed payroll values
             $tutors->getCollection()->transform(function ($tutor) {
@@ -123,17 +134,16 @@ class PayrollController extends Controller
                 $totalApprovedAmount += (float)$amount;
             }
 
-            $viewData = [
-                'payrolls' => $tutors,
-                'workDetails' => $tutors,
-                'tutors' => $tutors,
-                'totalPendingAmount' => $totalPendingAmount,
-                'totalApprovedAmount' => $totalApprovedAmount,
-            ];
+                $viewData['payrolls'] = $tutors;
+                $viewData['workDetails'] = $tutors;
+                $viewData['tutors'] = $tutors;
+                $viewData['totalPendingAmount'] = $totalPendingAmount;
+                $viewData['totalApprovedAmount'] = $totalApprovedAmount;
+            }
 
             // If history tab requested, load approvals paginator with optional filters
             if ($request->query('tab') === 'history') {
-                $approvalsQuery = TutorWorkDetailApproval::with(['workDetail.tutor.applicant', 'supervisor']);
+                $approvalsQuery = TutorWorkDetailApproval::with(['workDetail.tutor.applicant', 'workDetail.schedule', 'workDetail.assignment', 'supervisor']);
 
                 // If supervisor is logged in, filter by their assigned account
                 if (Auth::guard('supervisor')->check()) {
@@ -149,19 +159,30 @@ class PayrollController extends Controller
                     }
                 }
 
-                $year = $request->query('year');
-                $month = $request->query('month');
                 $tutorName = $request->query('tutor_name');
+                $dateFrom = $request->query('date_from');
+                $dateTo = $request->query('date_to');
 
-                // Filter by approved_at date (year/month)
-                if ($year && $month) {
-                    $start = Carbon::create((int) $year, (int) $month, 1)->startOfMonth();
-                    $end = $start->copy()->endOfMonth();
-                    $approvalsQuery->whereBetween('approved_at', [$start, $end]);
-                } elseif ($year) {
-                    $start = Carbon::create((int) $year, 1, 1)->startOfYear();
-                    $end = $start->copy()->endOfYear();
-                    $approvalsQuery->whereBetween('approved_at', [$start, $end]);
+                // Filter by approved_at date (From/To) - using Y-m-d format from date input
+                if ($dateFrom) {
+                    try {
+                        $fromDate = Carbon::parse($dateFrom)->startOfDay();
+                        if ($dateTo) {
+                            $toDate = Carbon::parse($dateTo)->endOfDay();
+                            $approvalsQuery->whereBetween('approved_at', [$fromDate, $toDate]);
+                        } else {
+                            $approvalsQuery->where('approved_at', '>=', $fromDate);
+                        }
+                    } catch (\Exception $e) {
+                        // Invalid date format, skip filter
+                    }
+                } elseif ($dateTo) {
+                    try {
+                        $toDate = Carbon::parse($dateTo)->endOfDay();
+                        $approvalsQuery->where('approved_at', '<=', $toDate);
+                    } catch (\Exception $e) {
+                        // Invalid date format, skip filter
+                    }
                 }
 
                 // Filter by tutor name (first or last)
@@ -200,7 +221,7 @@ class PayrollController extends Controller
                 }
 
                 $approvals = $approvalsQuery
-                    ->paginate(10)
+                    ->paginate(5)
                     ->withQueryString();
 
                 $viewData['workApprovals'] = $approvals;
@@ -210,16 +231,30 @@ class PayrollController extends Controller
             if ($request->query('tab') === 'payroll-history') {
                 $historyQuery = PayrollHistory::with(['tutor.applicant']);
 
-                $year = $request->query('year');
-                $month = $request->query('month');
                 $tutorName = $request->query('tutor_name');
+                $dateFrom = $request->query('date_from');
+                $dateTo = $request->query('date_to');
 
-                // Filter by pay period (year/month)
-                if ($year && $month) {
-                    $period = sprintf('%04d-%02d', (int) $year, (int) $month);
-                    $historyQuery->where('pay_period', $period);
-                } elseif ($year) {
-                    $historyQuery->where('pay_period', 'like', sprintf('%04d-%%', (int) $year));
+                // Filter by submitted_at date (From/To) - using Y-m-d format from date input
+                if ($dateFrom) {
+                    try {
+                        $fromDate = Carbon::parse($dateFrom)->startOfDay();
+                        if ($dateTo) {
+                            $toDate = Carbon::parse($dateTo)->endOfDay();
+                            $historyQuery->whereBetween('submitted_at', [$fromDate, $toDate]);
+                        } else {
+                            $historyQuery->where('submitted_at', '>=', $fromDate);
+                        }
+                    } catch (\Exception $e) {
+                        // Invalid date format, skip filter
+                    }
+                } elseif ($dateTo) {
+                    try {
+                        $toDate = Carbon::parse($dateTo)->endOfDay();
+                        $historyQuery->where('submitted_at', '<=', $toDate);
+                    } catch (\Exception $e) {
+                        // Invalid date format, skip filter
+                    }
                 }
 
                 // Filter by tutor name (first or last)
@@ -260,7 +295,7 @@ class PayrollController extends Controller
                 }
 
                 $payrollHistory = $historyQuery
-                    ->paginate(10)
+                    ->paginate(5)
                     ->withQueryString();
 
                 // Attach total earnings, preferring stored value and falling back to computation
@@ -354,7 +389,7 @@ public function workDetails(Request $request)
         }
 
         $workDetails = $workQuery
-            ->paginate(10)
+            ->paginate(5)
             ->withQueryString();
 
         return view('payroll.partials.tutor_payroll_details', compact('workDetails'));

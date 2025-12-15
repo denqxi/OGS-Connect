@@ -568,13 +568,6 @@
                     Please choose questions and answers that only you would know.
                 </p>
 
-                @php
-                    // TODO: Uncomment when security_questions table is ready
-                    // $securityQuestions = $supervisor->securityQuestions;
-                    $securityQuestion1 = null;
-                    $securityQuestion2 = null;
-                @endphp
-
                 <form method="POST" action="{{ route('supervisor.security-questions.update') }}" id="securityQuestionsForm" class="space-y-4">
                     @csrf
 
@@ -618,7 +611,7 @@
                             <label class="block text-xs sm:text-sm text-[#0E335D] mb-2">Answer 1 *</label>
                             <input type="text" name="security_answer1" required
                                 class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent"
-                                placeholder="Enter your answer" value="{{ old('security_answer1', '') }}">
+                                placeholder="Enter your answer" value="">
                             @error('security_answer1')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                             @enderror
@@ -663,7 +656,7 @@
                             <label class="block text-xs sm:text-sm text-[#0E335D] mb-2">Answer 2 *</label>
                             <input type="text" name="security_answer2" required
                                 class="w-full border border-gray-300 rounded-lg p-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#0E335D] focus:border-transparent"
-                                placeholder="Enter your answer" value="{{ old('security_answer2', '') }}">
+                                placeholder="Enter your answer" value="">
                             @error('security_answer2')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                             @enderror

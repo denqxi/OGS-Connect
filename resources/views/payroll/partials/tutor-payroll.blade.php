@@ -1,30 +1,35 @@
-<div class="p-6 border-b border-gray-200">
-    <h2 class="text-xl font-semibold text-gray-800">Work Details</h2>
-</div>
+<div class="p-6 border-b border-gray-200 overflow-x-auto">
+    <form method="GET"
+          action="{{ route('payroll.index') }}"
+          id="tutorFilterForm"
+          class="flex flex-nowrap items-center gap-4 w-full">
 
-<div class="p-6 border-b border-gray-200">
-    <div class="flex items-center justify-between mb-4">
-        <h3 class="text-sm font-medium text-gray-700">Search Filters</h3>
-    </div>
-
-    <form method="GET" action="{{ route('payroll.index') }}" id="tutorFilterForm">
         <input type="hidden" name="filter_applied" value="employee_payroll">
-        <div class="flex justify-between items-center space-x-4">
-            <div class="flex items-center space-x-4 flex-1 max-w-lg">
-                <div class="relative flex-1">
-                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                    <input type="text" name="search" value="{{ request('search') }}"
-                        placeholder="Search tutor name..." id="tutorSearch"
-                        class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md text-sm 
-                                  focus:outline-none focus:border-[0.5px] focus:border-[#2A5382] 
-                                  focus:ring-0 focus:shadow-xl">
-                    <button type="button" id="clearSearch"
-                        class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
+
+        <!-- Title -->
+        <span class="text-sm font-medium text-gray-700 shrink-0">
+            Search Filters
+        </span>
+
+        <!-- Search Input -->
+        <div class="relative w-72 shrink-0">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+
+            <input type="text"
+                   name="search"
+                   value="{{ request('search') }}"
+                   placeholder="Search tutor name..."
+                   id="tutorSearch"
+                   class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md text-sm
+                          focus:outline-none focus:border-[#2A5382] focus:ring-0">
+
+            <button type="button"
+                    id="clearSearch"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
+
     </form>
 </div>
 

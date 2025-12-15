@@ -59,7 +59,7 @@
     <!-- Right Section - Login Form -->
     <div class="flex-1 flex items-center justify-center px-4 py-4 lg:py-6 lg:px-8 relative overflow-y-auto">
       <!-- Login Card -->
-      <div class="w-full max-w-md bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-5 lg:p-8 my-4">
+      <div class="w-full max-w-md bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-5 lg:p-8 my-4 flex flex-col max-h-[90vh]">
         <!-- Logo and Header -->
         <div class="w-full flex flex-col items-center mb-6">
           <!-- Mobile: Show welcome text with logo -->
@@ -95,8 +95,10 @@
           </p>
         </div>
 
+        <!-- Scrollable Content Wrapper -->
+        <div class="flex-1 overflow-y-auto">
         <!-- Dynamic Form Container -->
-        <form method="POST" action="{{ route('login') }}" class="space-y-3">
+        <form method="POST" action="{{ route('login') }}" class="space-y-3 flex flex-col min-h-full">
           @csrf
           
           <!-- Error Messages -->
@@ -167,7 +169,13 @@
               </button>
             </div>
           </div>
-
+          <!-- Dynamic Submit Button -->
+          <div class="pt-4 sticky bottom-0 bg-white">
+            <button type="submit" id="submitButton"
+                    class="w-full py-3 px-4 rounded-lg bg-mint hover:bg-teal text-ogs-navy font-bold text-sm shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]">
+              <i class="fas fa-sign-in-alt mr-2"></i>LOG IN
+            </button>
+          </div>
           <!-- Reset Mode Fields (Hidden by default) -->
           <div id="resetFields" class="hidden space-y-3">
             <div>
@@ -200,75 +208,102 @@
               <input type="hidden" id="user_type" name="user_type" value="">
             </div>
 
-            <div>
-              <label for="security_question" class="block text-xs font-medium text-gray-700 mb-1">
-                Security Question <span class="text-red-500">*</span>
-              </label>
-              <div id="security_question_display" class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700">
-                <span class="text-xs">Please enter your username first</span>
+            <div class="pt-2">
+              <label class="block text-xs font-medium text-gray-700 mb-1">Verification Method</label>
+              <div class="flex items-center gap-4 text-sm">
+                <label class="flex items-center"><input type="radio" name="reset_method" value="security" checked class="mr-2"> Security Questions</label>
+                <label class="flex items-center"><input type="radio" name="reset_method" value="otp" class="mr-2"> Email OTP</label>
               </div>
-              <input type="hidden" id="security_question" name="security_question" value="">
-              @error('security_question')
-                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-              @enderror
             </div>
 
-            <div>
-              <label for="security_answer1" class="block text-xs font-medium text-gray-700 mb-1">
-                Your Answer <span class="text-red-500">*</span>
-              </label>
-              <div class="relative">
-                <input type="password" 
-                       id="security_answer1" 
-                       name="security_answer1" 
-                       value="{{ old('security_answer1') }}"
-                       class="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @error('security_answer1') border-red-500 @enderror"
-                       placeholder="Enter your answer">
-                <button type="button" onclick="togglePasswordField(this)" class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <svg class="h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                  </svg>
-                </button>
+            <!-- Security Questions Section -->
+            <div id="securityQuestionsSection" class="space-y-3">
+              <div>
+                <label for="security_question" class="block text-xs font-medium text-gray-700 mb-1">
+                  Security Question <span class="text-red-500">*</span>
+                </label>
+                <div id="security_question_display" class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700">
+                  <span class="text-xs">Please enter your username first</span>
+                </div>
+                <input type="hidden" id="security_question" name="security_question" value="">
               </div>
-              @error('security_answer1')
-                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-              @enderror
+
+              <div>
+                <label for="security_answer1" class="block text-xs font-medium text-gray-700 mb-1">
+                  Your Answer <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                  <input type="password" 
+                         id="security_answer1" 
+                         name="security_answer1" 
+                         value="{{ old('security_answer1') }}"
+                         class="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent"
+                         placeholder="Enter your answer">
+                  <button type="button" onclick="togglePasswordField(this)" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <svg class="h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label for="security_question2" class="block text-xs font-medium text-gray-700 mb-1">
+                  Second Security Question <span class="text-red-500">*</span>
+                </label>
+                <div id="security_question_display2" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs text-gray-700">
+                  <span class="text-xs">Please enter your email/ID first</span>
+                </div>
+                <input type="hidden" id="security_question2" name="security_question2" value="">
+              </div>
+
+              <div>
+                <label for="security_answer2" class="block text-xs font-medium text-gray-700 mb-1">
+                  Your Answer <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                  <input type="password" 
+                         id="security_answer2" 
+                         name="security_answer2" 
+                         value="{{ old('security_answer2') }}"
+                         class="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent"
+                         placeholder="Enter your answer">
+                  <button type="button" onclick="togglePasswordField(this)" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <svg class="h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label for="security_question2" class="block text-xs font-medium text-gray-700 mb-1">
-                Second Security Question <span class="text-red-500">*</span>
-              </label>
-              <div id="security_question_display2" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs text-gray-700">
-                <span class="text-xs">Please enter your email/ID first</span>
-              </div>
-              <input type="hidden" id="security_question2" name="security_question2" value="">
+            <!-- Back to Login Button (Shared) -->
+            <div class="text-right pt-2">
+              <button type="button" onclick="switchToLoginMode()" class="text-ogs-navy font-semibold text-xs hover:underline">
+                <i class="fas fa-arrow-left mr-1"></i>
+                Back to Login
+              </button>
             </div>
 
-            <div>
-              <label for="security_answer2" class="block text-xs font-medium text-gray-700 mb-1">
-                Your Answer <span class="text-red-500">*</span>
-              </label>
-              <div class="relative">
-                <input type="password" 
-                       id="security_answer2" 
-                       name="security_answer2" 
-                       value="{{ old('security_answer2') }}"
-                       class="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @error('security_answer2') border-red-500 @enderror"
-                       placeholder="Enter your answer">
-                <button type="button" onclick="togglePasswordField(this)" class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <svg class="h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                  </svg>
-                </button>
-              </div>
-              @error('security_answer2')
-                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-              @enderror
+          <!-- OTP Section (Hidden by default) -->
+          <div id="otpSection" class="hidden space-y-3">
+            <div class="text-center py-4">
+              <i class="fas fa-envelope text-4xl text-blue-500 mb-2"></i>
+              <p class="text-sm font-medium text-gray-700">Email OTP Verification</p>
             </div>
-
+            <button type="button" id="sendOtpBtn" onclick="sendOtp()" class="w-full px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+              Send OTP to Email
+            </button>
+            <div id="otpStatus" class="text-sm text-center text-gray-600"></div>
+            <div id="otpInputRow" class="hidden space-y-2">
+              <label class="block text-xs font-medium text-gray-700">Enter 6-digit Code</label>
+              <div class="flex gap-2">
+                <input type="text" id="otp_code" maxlength="6" class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint" placeholder="000000">
+                <button type="button" onclick="verifyOtp()" class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">Verify</button>
+              </div>
+            </div>
             <div class="text-right pt-2">
               <button type="button" onclick="switchToLoginMode()" class="text-ogs-navy font-semibold text-xs hover:underline">
                 <i class="fas fa-arrow-left mr-1"></i>
@@ -367,11 +402,14 @@
           </div>
 
           <!-- Dynamic Submit Button -->
-          <button type="submit" id="submitButton"
-                  class="w-full py-2.5 rounded-lg bg-mint hover:bg-teal text-ogs-navy font-bold text-sm shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]">
-            <i class="fas fa-sign-in-alt mr-2"></i>LOG IN
-          </button>
+          <div class="pt-4 sticky bottom-0 bg-white">
+            <button type="submit" id="submitButton"
+                    class="w-full py-3 px-4 rounded-lg bg-mint hover:bg-teal text-ogs-navy font-bold text-sm shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]">
+              <i class="fas fa-sign-in-alt mr-2"></i>LOG IN
+            </button>
+          </div>
         </form>
+        </div><!-- End scrollable wrapper -->
       </div>
     </div>
   </div>
@@ -382,16 +420,76 @@
       console.log(`[LOGIN DEBUG] ${message}`, data || '');
     }
 
+    // Show form error message (replaces alert)
+    function showFormError(message) {
+      let errorDiv = document.getElementById('formErrorMessage');
+      if (!errorDiv) {
+        errorDiv = document.createElement('div');
+        errorDiv.id = 'formErrorMessage';
+        const form = document.querySelector('form');
+        if (form) {
+          form.parentElement.insertBefore(errorDiv, form);
+        }
+      }
+      errorDiv.innerHTML = `<div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+        <div class="flex items-start">
+          <div class="flex-shrink-0">
+            <svg class="h-4 w-4 text-red-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <div class="ml-2">
+            <h3 class="text-xs font-medium text-red-800">Error</h3>
+            <div class="mt-1 text-xs text-red-700">${message}</div>
+          </div>
+        </div>
+      </div>`;
+      errorDiv.style.display = 'block';
+    }
+
+    // Show success message
+    function showSecurityMessage(message, type = 'success') {
+      let msgDiv = document.getElementById('securitySuccessMessage');
+      if (!msgDiv) {
+        msgDiv = document.createElement('div');
+        msgDiv.id = 'securitySuccessMessage';
+        const form = document.querySelector('form');
+        if (form) {
+          form.parentElement.insertBefore(msgDiv, form);
+        }
+      }
+      const bgColor = type === 'success' ? 'bg-green-50' : 'bg-yellow-50';
+      const borderColor = type === 'success' ? 'border-green-200' : 'border-yellow-200';
+      const textColor = type === 'success' ? 'text-green-800' : 'text-yellow-800';
+      const msgColor = type === 'success' ? 'text-green-700' : 'text-yellow-700';
+      
+      msgDiv.innerHTML = `<div class="${bgColor} border ${borderColor} rounded-lg p-3 mb-3">
+        <div class="flex items-start">
+          <div class="flex-shrink-0">
+            <svg class="h-4 w-4 ${textColor} mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+          <div class="ml-2">
+            <div class="text-xs ${msgColor}">${message}</div>
+          </div>
+        </div>
+      </div>`;
+      msgDiv.style.display = 'block';
+      setTimeout(() => msgDiv.style.display = 'none', 3000);
+    }
+
     // Initialize debugging
     debugLog('Login page loaded');
     debugLog('Current form action:', '{{ route("login") }}');
     debugLog('CSRF token present:', document.querySelector('input[name="_token"]') ? 'Yes' : 'No');
 
-    // Add event listeners for security question fetching
+    // Add event listeners for security question fetching and method toggle
     document.addEventListener('DOMContentLoaded', function() {
       const usernameField = document.getElementById('reset_username');
       const userTypeField = document.getElementById('user_type');
       const loginIdField = document.getElementById('login_id');
+      const methodRadios = document.getElementsByName('reset_method');
       
       if (usernameField) {
         usernameField.addEventListener('input', fetchSecurityQuestion);
@@ -406,6 +504,21 @@
         loginIdField.addEventListener('input', validateLoginId);
         loginIdField.addEventListener('blur', validateLoginId);
       }
+
+      // Add listeners to verification method radio buttons
+      methodRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+          const secQuestionsDiv = document.getElementById('securityQuestionsSection');
+          const otpDiv = document.getElementById('otpSection');
+          if (this.value === 'security') {
+            if (secQuestionsDiv) secQuestionsDiv.classList.remove('hidden');
+            if (otpDiv) otpDiv.classList.add('hidden');
+          } else {
+            if (secQuestionsDiv) secQuestionsDiv.classList.add('hidden');
+            if (otpDiv) otpDiv.classList.remove('hidden');
+          }
+        });
+      });
     });
 
     // Function to validate login ID field
@@ -468,7 +581,7 @@
           loginFields: !!loginFields,
           resetFields: !!resetFields
         });
-        alert('Form elements not found. Please refresh the page and try again.');
+        showFormError('Form elements not found. Please refresh the page and try again.');
         return;
       }
       
@@ -492,7 +605,7 @@
       const mainDescription = document.getElementById('mainDescription');
       if (mainTitle && mainDescription) {
         mainTitle.textContent = 'Reset Your Password';
-        mainDescription.textContent = 'Answer the security question below to reset your password.';
+        mainDescription.textContent = 'Choose your verification method and follow the steps.';
         debugLog('Title and description updated');
       } else {
         debugLog('Title or description element not found');
@@ -501,14 +614,14 @@
       // Change submit button
       const submitButton = document.getElementById('submitButton');
       if (submitButton) {
-        submitButton.innerHTML = '<i class="fas fa-check mr-2"></i>VERIFY & RESET';
+        submitButton.innerHTML = '<i class="fas fa-check mr-2"></i>VERIFY';
         submitButton.type = 'button';
         submitButton.onclick = function(e) {
           e.preventDefault();
-          debugLog('Reset button clicked');
+          debugLog('Verify button clicked');
           verifyAndReset();
         };
-        debugLog('Submit button changed to reset mode');
+        debugLog('Submit button changed to verify mode');
       } else {
         debugLog('Submit button not found');
       }
@@ -650,24 +763,24 @@
       
       // Validate passwords
       if (!newPassword || !confirmPassword) {
-        alert('Please fill in both password fields.');
+        showFormError('Please fill in both password fields.');
         return;
       }
       
       if (newPassword !== confirmPassword) {
-        alert('Passwords do not match. Please check the confirmation field.');
+        showFormError('Passwords do not match. Please check the confirmation field.');
         document.getElementById('confirm_password').focus();
         return;
       }
       
       if (newPassword.length < 8) {
-        alert('Password must be at least 8 characters long.');
+        showFormError('Password must be at least 8 characters long.');
         document.getElementById('new_password').focus();
         return;
       }
       
       if (!window.passwordResetUser) {
-        alert('Session expired. Please try again.');
+        showFormError('Session expired. Please try again.');
         switchToLoginMode();
         return;
       }
@@ -835,7 +948,24 @@
     function verifyAndReset() {
       debugLog('Starting password reset verification');
       
-      // Get form elements with null checks
+      // Determine selected method
+      const methodEls = document.getElementsByName('reset_method');
+      let selectedMethod = 'security';
+      for (const el of methodEls) { if (el.checked) { selectedMethod = el.value; break; } }
+
+      if (selectedMethod === 'security') {
+        verifySecurityQuestions();
+      } else {
+        // OTP flow: show OTP controls and trigger sending OTP
+        const otpSection = document.getElementById('otpSection');
+        if (otpSection) otpSection.classList.remove('hidden');
+        sendOtp();
+      }
+    }
+
+    function verifySecurityQuestions() {
+      debugLog('Verifying security questions via AJAX');
+      
       const usernameEl = document.getElementById('reset_username');
       const userTypeEl = document.getElementById('user_type');
       const securityQuestionEl = document.getElementById('security_question');
@@ -843,57 +973,142 @@
       const securityQuestion2El = document.getElementById('security_question2');
       const securityAnswer2El = document.getElementById('security_answer2');
       
-      // Check if all elements exist
       if (!usernameEl || !userTypeEl || !securityQuestionEl || !securityAnswerEl || !securityQuestion2El || !securityAnswer2El) {
-        debugLog('Missing form elements:', {
-          usernameEl: !!usernameEl,
-          userTypeEl: !!userTypeEl,
-          securityQuestionEl: !!securityQuestionEl,
-          securityAnswerEl: !!securityAnswerEl,
-          securityQuestion2El: !!securityQuestion2El,
-          securityAnswer2El: !!securityAnswer2El
-        });
-        alert('Form elements not found. Please refresh the page and try again.');
+        showFormError('Form elements not found. Please refresh and try again.');
         return;
       }
       
-      const username = usernameEl.value;
-      const userType = userTypeEl.value;
-      const securityQuestion = securityQuestionEl.value;
-      const securityAnswer = securityAnswerEl.value;
-      const securityQuestion2 = securityQuestion2El.value;
-      const securityAnswer2 = securityAnswer2El.value;
+      const username = usernameEl?.value;
+      const userType = userTypeEl?.value;
+      const securityQuestion = securityQuestionEl?.value;
+      const securityAnswer = securityAnswerEl?.value;
+      const securityQuestion2 = securityQuestion2El?.value;
+      const securityAnswer2 = securityAnswer2El?.value;
 
-      debugLog('Form values:', {
-        username: username,
-        userType: userType,
-        securityQuestion: securityQuestion,
-        securityAnswer: securityAnswer,
-        securityQuestion2: securityQuestion2,
-        securityAnswer2: securityAnswer2
-      });
-
-      // Validate all fields
+      // Show errors inline for missing fields
       if (!username || !userType || !securityQuestion || !securityAnswer || !securityQuestion2 || !securityAnswer2) {
-        debugLog('Validation failed - missing fields');
-        alert('Please fill in all fields.');
+        const secQuestDiv = document.getElementById('securityQuestionsSection');
+        let errorEl = document.getElementById('securityQuestionsError');
+        if (!errorEl) {
+          errorEl = document.createElement('div');
+          errorEl.id = 'securityQuestionsError';
+          errorEl.className = 'bg-red-50 border border-red-200 rounded-lg p-3 mb-3';
+          if (secQuestDiv) secQuestDiv.insertBefore(errorEl, secQuestDiv.firstChild);
+        }
+        errorEl.innerHTML = '<p class="text-sm text-red-600">Please fill in all fields.</p>';
         return;
       }
 
-      debugLog('Validation passed, switching to password reset mode');
+      // Submit via AJAX to show errors inline
+      fetch('{{ route("password.reset.request") }}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': '{{ csrf_token() }}',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+          username: username,
+          user_type: userType,
+          security_question: securityQuestion,
+          security_answer1: securityAnswer,
+          security_question2: securityQuestion2,
+          security_answer2: securityAnswer2
+        })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          // Verified! Show password reset fields
+          window.passwordResetUser = { username: username, userType: userType };
+          switchToPasswordResetMode();
+        } else {
+          // Show errors inline
+          const secQuestDiv = document.getElementById('securityQuestionsSection');
+          let errorEl = document.getElementById('securityQuestionsError');
+          if (!errorEl) {
+            errorEl = document.createElement('div');
+            errorEl.id = 'securityQuestionsError';
+            errorEl.className = 'bg-red-50 border border-red-200 rounded-lg p-3 mb-3';
+            if (secQuestDiv) secQuestDiv.insertBefore(errorEl, secQuestDiv.firstChild);
+          }
+          let msg = data.message || 'Verification failed.';
+          errorEl.innerHTML = '<p class="text-sm text-red-600">' + msg + '</p>';
+          debugLog('Verification error:', msg);
+        }
+      })
+      .catch(err => {
+        debugLog('AJAX error', err);
+        showFormError('Server error. Please try again.');
+      });
+    }
 
-      // Store user info for password reset
-      window.passwordResetUser = {
-        username: username,
-        userType: userType,
-        securityQuestion: securityQuestion,
-        securityAnswer: securityAnswer,
-        securityQuestion2: securityQuestion2,
-        securityAnswer2: securityAnswer2
-      };
+    function sendOtp() {
+      const username = document.getElementById('reset_username').value;
+      const otpSection = document.getElementById('otpSection');
+      const status = document.getElementById('otpStatus');
+      
+      if (!username) {
+        if (status) status.innerHTML = '<p class="text-sm text-red-600">Please enter your email or ID first.</p>';
+        return;
+      }
 
-      // Switch to password reset fields
-      switchToPasswordResetMode();
+      if (status) status.textContent = 'Sending OTP...';
+
+      fetch('{{ route("password.reset.otp.send") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: JSON.stringify({ username: username })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          if (status) status.innerHTML = '<p class="text-sm text-green-600">✓ OTP sent to your email.</p>';
+          const otpInputRow = document.getElementById('otpInputRow');
+          if (otpInputRow) otpInputRow.classList.remove('hidden');
+        } else {
+          if (status) status.innerHTML = '<p class="text-sm text-red-600">' + (data.message || 'Failed to send OTP.') + '</p>';
+        }
+      })
+      .catch(err => { debugLog('OTP send error', err); if (status) status.innerHTML = '<p class="text-sm text-red-600">Server error sending OTP.</p>'; });
+    }
+
+    function verifyOtp() {
+      const username = document.getElementById('reset_username').value;
+      const otp = document.getElementById('otp_code').value;
+      const otpSection = document.getElementById('otpSection');
+      const status = document.getElementById('otpStatus');
+      
+      if (!username || !otp) {
+        if (status) status.innerHTML = '<p class="text-sm text-red-600">Please provide email/ID and OTP code.</p>';
+        return;
+      }
+
+      // Submit via AJAX to verify OTP and set session
+      fetch('{{ route("password.reset.otp.verify") }}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': '{{ csrf_token() }}',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+          username: username,
+          otp: otp
+        })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          // OTP verified! Show password reset fields
+          window.passwordResetUser = { username: username, userType: 'auto' };
+          if (otpSection) otpSection.classList.add('hidden');
+          switchToPasswordResetMode();
+        } else {
+          if (status) status.innerHTML = '<p class="text-sm text-red-600">' + (data.message || 'Invalid OTP. Please try again.') + '</p>';
+        }
+      })
+      .catch(err => { debugLog('OTP verify error', err); if (status) status.innerHTML = '<p class="text-sm text-red-600">Server error. Please try again.</p>'; });
     }
   </script>
 

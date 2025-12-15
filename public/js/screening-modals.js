@@ -378,32 +378,17 @@ function hidePassConfirmation() {
 async function submitPassForm() {
     const form = document.getElementById('passForm');
     if (!form) return;
-    
-    const interviewer = document.getElementById('pass_interviewer').value;
-    const nextStatus = document.getElementById('pass_next_status').value;
-    const schedule = document.getElementById('pass_demo_schedule').value;
-    
-    if (!interviewer) {
-        showPassModalError('Please enter interviewer name');
-        return;
-    }
-    
-    if (!nextStatus) {
-        showPassModalError('Please select next status');
-        return;
-    }
-    
-    if (nextStatus === 'demo' && !schedule) {
-        showPassModalError('Please select a schedule for demo');
-        return;
-    }
-    
-    const confirmButton = document.querySelector('button[onclick="submitPassForm()"]');
-    if (confirmButton) {
-        confirmButton.disabled = true;
-        confirmButton.innerHTML = 'Processing...';
-    }
-    
+
+    const confirmButton = document.getElementById('passConfirmBtn');
+    const originalHTML = confirmButton.innerHTML;
+
+    // 🔒 LOCK BUTTON + SHOW LOADER
+    confirmButton.disabled = true;
+    confirmButton.innerHTML = `
+        <i class="fas fa-spinner fa-spin mr-2"></i>
+        Processing...
+    `;
+
     try {
         const response = await fetch(form.action, {
             method: 'PATCH',
@@ -413,34 +398,32 @@ async function submitPassForm() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                next_status: nextStatus,
-                next_schedule: schedule,
+                next_status: document.getElementById('pass_next_status').value,
+                next_schedule: document.getElementById('pass_demo_schedule').value,
                 notes: document.getElementById('pass_notes').value
             })
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to process pass action');
-        }
-
         const data = await response.json();
-        if (data.success) {
-            hidePassConfirmation();
-            hidePassModal();
-            closeEditModal();
-            window.location.reload();
-        } else {
+
+        if (!response.ok || !data.success) {
             throw new Error(data.message || 'Failed to process pass action');
         }
+
+        // ✅ SUCCESS → CLOSE + RELOAD
+        hidePassConfirmation();
+        hidePassModal();
+        closeEditModal();
+        window.location.reload();
+
     } catch (error) {
-        console.error('Error:', error);
-        showPassModalError('Failed to process pass action: ' + error.message);
-        
-        if (confirmButton) {
-            confirmButton.disabled = false;
-            confirmButton.innerHTML = 'Confirm';
-        }
+        console.error(error);
+
+        showPassModalError(error.message);
+
+        // 🔓 RESTORE BUTTON ON ERROR
+        confirmButton.disabled = false;
+        confirmButton.innerHTML = originalHTML;
     }
 }
 
@@ -484,6 +467,16 @@ function showFailOptionsModal() {
 function hideFailOptionsModal() {
     hideModal('failOptionsModal');
     hideFailModalError();
+}
+
+function hidePassModal() {
+    hideModal('passModal');
+    hidePassModalError();
+}
+
+function hidePassConfirmation() {
+    hideModal('passConfirmationModal');
+    hidePassModalError();
 }
 
 function toggleFailFields() {
@@ -594,7 +587,7 @@ function updateFailConfirmationModal(failReason, interviewer, notes) {
             const newInterviewTime = document.getElementById('new_interview_time').value;
             titleElement.textContent = 'Confirm Missed Interview';
             messageElement.innerHTML = `
-                Are you sure you want to mark this applicant as <span class="font-bold text-red-600">missed interview</span>?
+                Are you sure you want to mark this applicant as <span class="font-bold text-gray-600">missed interview</span>?
                 <br>
             `;
             break;
@@ -602,7 +595,7 @@ function updateFailConfirmationModal(failReason, interviewer, notes) {
         case 'declined':
             titleElement.textContent = 'Confirm Declined';
             messageElement.innerHTML = `
-                Are you sure you want to mark this applicant as <span class="font-bold text-red-600">declined</span>?
+                Are you sure you want to mark this applicant as <span class="font-bold text-gray-600">declined</span>?
                 <br>
             `;
             break;
@@ -610,7 +603,7 @@ function updateFailConfirmationModal(failReason, interviewer, notes) {
         case 'not_recommended':
             titleElement.textContent = 'Confirm Not Recommended';
             messageElement.innerHTML = `
-                Are you sure you want to mark this applicant as <span class="font-bold text-red-600">not recommended</span>?
+                Are you sure you want to mark this applicant as <span class="font-bold text-gray-600">not recommended</span>?
                 <br>
             `;
             break;
@@ -621,7 +614,7 @@ function updateFailConfirmationModal(failReason, interviewer, notes) {
             const schedule = document.getElementById('transfer_schedule').value;
             titleElement.textContent = 'Confirm Account Transfer';
             messageElement.innerHTML = `
-                Are you sure you want to <span class="font-bold text-red-600">transfer</span> this applicant to a different account?
+                Are you sure you want to <span class="font-bold text-gray-600">transfer</span> this applicant to a different account?
                 <br>
             `;
             break;
@@ -642,38 +635,52 @@ async function submitFailAction() {
     const failReason = document.getElementById('fail_reason').value;
     const interviewer = document.getElementById('fail_interviewer').value;
     const notes = document.getElementById('fail_notes').value;
-    
-    try {
-        let requestData = {
-            fail_reason: failReason,
-            interviewer: interviewer,
-            notes: notes
-        };
-        
-        if (failReason === 'missed') {
-            const newInterviewTime = document.getElementById('new_interview_time').value;
-            if (!newInterviewTime) {
-                showFailModalError('Please select a new interview time');
-                return;
-            }
-            requestData.new_interview_time = newInterviewTime;
-        } else if (failReason === 'transfer_account') {
-            const assignedAccount = document.getElementById('transfer_assigned_account').value;
-            const newStatus = document.getElementById('transfer_status').value;
-            const schedule = document.getElementById('transfer_schedule').value;
-            
-            if (!assignedAccount || !newStatus || !schedule) {
-                showFailModalError('Please fill in all transfer account fields');
-                return;
-            }
-            
-            requestData.transfer_data = {
-                assigned_account: assignedAccount,
-                new_status: newStatus,
-                schedule: schedule
-            };
+
+    // =============================
+    // VALIDATION FIRST
+    // =============================
+    let requestData = {
+        fail_reason: failReason,
+        interviewer: interviewer,
+        notes: notes
+    };
+
+    if (failReason === 'missed') {
+        const newInterviewTime = document.getElementById('new_interview_time').value;
+        if (!newInterviewTime) {
+            showFailModalError('Please select a new interview time');
+            return;
         }
-        
+        requestData.new_interview_time = newInterviewTime;
+    }
+
+    if (failReason === 'transfer_account') {
+        const assignedAccount = document.getElementById('transfer_assigned_account').value;
+        const newStatus = document.getElementById('transfer_status').value;
+        const schedule = document.getElementById('transfer_schedule').value;
+
+        if (!assignedAccount || !newStatus || !schedule) {
+            showFailModalError('Please fill in all transfer account fields');
+            return;
+        }
+
+        requestData.transfer_data = {
+            assigned_account: assignedAccount,
+            new_status: newStatus,
+            schedule: schedule
+        };
+    }
+
+    // =============================
+    // NOW SHOW LOADING STATE
+    // =============================
+    const btn = document.getElementById('failConfirmBtn');
+    const originalHTML = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Processing...`;
+
+    try {
         const response = await fetch(`/demo/${currentDemoId}/fail`, {
             method: 'PATCH',
             headers: {
@@ -684,23 +691,25 @@ async function submitFailAction() {
             body: JSON.stringify(requestData)
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to process failure action');
-        }
-
         const data = await response.json();
-        if (data.success) {
-            hideFailConfirmation();
-            hideFailOptionsModal();
-            closeEditModal();
-            window.location.reload();
-        } else {
+
+        if (!response.ok || !data.success) {
             throw new Error(data.message || 'Failed to process failure action');
         }
+
+        // ✅ SUCCESS
+        hideFailConfirmation();
+        hideFailOptionsModal();
+        closeEditModal();
+        window.location.reload();
+
     } catch (error) {
         console.error('Error:', error);
-        showFailModalError('Failed to process failure action: ' + error.message);
+        showFailModalError(error.message);
+
+        // 🔓 RESTORE BUTTON ON ERROR
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
     }
 }
 

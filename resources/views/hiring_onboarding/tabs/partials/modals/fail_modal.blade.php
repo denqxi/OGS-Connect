@@ -75,7 +75,7 @@
             <!-- Confirm Fail Button -->
             <div class="flex justify-center">
                 <button type="button" onclick="showConfirmation()"
-                    class="bg-[#F65353] text-white px-8 py-2 rounded-full font-bold hover:opacity-90 transition-opacity">
+                    class="bg-[#F65353] text-white px-6 py-2 rounded-lg font-bold hover:opacity-90 transition-opacity">
                     Fail
                 </button>
             </div>
@@ -106,11 +106,11 @@
         <!-- Footer Buttons -->
         <div class="flex justify-center gap-4 pb-6">
             <button onclick="hideConfirmation()"
-                class="bg-gray-200 text-gray-700 px-6 py-2 rounded-full font-semibold hover:bg-gray-300 transition">
+                class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">
                 Cancel
             </button>
             <button onclick="submitForm()"
-                class="bg-[#F65353] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">
+                class="bg-[#F65353] text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">
                 Confirm
             </button>
         </div>
@@ -183,11 +183,11 @@ function updateConfirmationModal(status, interviewer, notes, interviewTime) {
         case 'declined':
             titleElement.textContent = 'Applicant Declined';
             messageElement.innerHTML = `
-                This applicant has been <span class="font-bold text-red-600">declined</span> and will be moved to the Archive.
+                This applicant has been <span class="font-bold text-gray-600">declined</span> and will be moved to the Archive.
                 <br><br>
             `;
             iconElement.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             `;
@@ -196,11 +196,11 @@ function updateConfirmationModal(status, interviewer, notes, interviewTime) {
         case 'not_recommended':
             titleElement.textContent = 'Applicant Not Recommended';
             messageElement.innerHTML = `
-                This applicant has been marked as <span class="font-bold text-red-600">not recommended</span> and will be moved to the Archive.
+                This applicant has been marked as <span class="font-bold text-gray-600">not recommended</span> and will be moved to the Archive.
                 <br><br>
             `;
             iconElement.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
             `;
@@ -215,11 +215,11 @@ function updateConfirmationModal(status, interviewer, notes, interviewTime) {
             messageElement.innerHTML = `
                 This call attempt (#${nextAttemptNumber}) will be recorded.
                 <br><br>
-                <span class="font-bold text-blue-800">${remainingAttempts} attempt${remainingAttempts === 1 ? '' : 's'} remaining</span> before automatic archiving.
+                <span class="font-bold">${remainingAttempts} attempt${remainingAttempts === 1 ? '' : 's'} remaining</span> before automatic archiving.
                 <br><br>
             `;
             iconElement.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                 </svg>
             `;
@@ -231,11 +231,11 @@ function updateConfirmationModal(status, interviewer, notes, interviewTime) {
             messageElement.innerHTML = `
                 This applicant has been rescheduled for a new interview.
                 <br><br>
-                <strong>New Interview Time:</strong> <span class="font-bold text-blue-600">${formattedTime}</span>
+                <strong>New Interview Time:</strong> <br> <span class=" text-gray-500">${formattedTime}</span>
                 <br><br>
             `;
             iconElement.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
             `;

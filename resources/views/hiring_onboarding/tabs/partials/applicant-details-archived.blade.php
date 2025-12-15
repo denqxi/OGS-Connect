@@ -13,13 +13,12 @@
 
 <!-- Header with Back Button -->
 <div class="flex items-center justify-between mb-4">
-    <h1 class="text-xl font-bold text-gray-800 dark:text-gray-200">Archived Applicant Details</h1>
     <a href="{{ route('hiring_onboarding.index', ['tab' => 'archive']) }}"
        class="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-md text-sm font-medium 
               hover:bg-gray-700 transition duration-200">
         <i class="fas fa-arrow-left"></i>
-        <span>Back to Archive</span>
     </a>
+    <h1 class="text-xl font-bold text-gray-800 dark:text-gray-200">Applicant Details</h1>
 </div>
 
 <!-- Progress Bar -->
@@ -460,7 +459,7 @@
     <!-- Navigation Buttons -->
     <div class="flex justify-between items-center mt-8 pt-6 border-t">
         <button @click="prevPage()" :disabled="currentPage === 1" 
-            class="px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-6 py-2 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             :class="currentPage === 1 ? 'bg-gray-300 text-gray-500' : 'bg-[#0E335D] text-white hover:opacity-90'">
             <i class="fas fa-chevron-left mr-2"></i>
             Previous
@@ -471,7 +470,7 @@
         </div>
         
         <button @click="nextPage()" :disabled="currentPage === totalPages" 
-            class="px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-6 py-2 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             :class="currentPage === totalPages ? 'bg-gray-300 text-gray-500' : 'bg-[#65DB7F] text-white hover:opacity-90'">
             Next
             <i class="fas fa-chevron-right ml-2"></i>
