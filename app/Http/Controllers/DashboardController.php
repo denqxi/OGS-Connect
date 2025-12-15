@@ -27,7 +27,9 @@ class DashboardController extends Controller
     {
         $stats = $this->getDashboardStats($request);
         
-        return view('dashboard.dashboard', compact('stats'));
+        $stats = $this->getDashboardStats($filters);
+        
+        return view('dashboard.dashboard', compact('stats', 'filters'));
     }
 
     /**
@@ -80,7 +82,7 @@ class DashboardController extends Controller
             'schedule_status_breakdown' => $this->getScheduleStatusBreakdown($currentWeek, $fromDate, $toDate, $account),
             
             // Recent activity
-            'recent_activity' => $this->getRecentActivity()
+            'recent_activity' => $this->getRecentActivity($filters)
         ];
     }
 
@@ -298,8 +300,8 @@ class DashboardController extends Controller
             $weeks[] = [
                 'week' => 'Week ' . (4 - $i),
                 'date_range' => $weekStart->format('M j') . ' – ' . $weekEnd->format('M j'),
-                'conducted' => $conducted,
-                'cancelled' => $cancelled
+                'conducted' => $conductedQuery->count(),
+                'cancelled' => $cancelledQuery->count()
             ];
         }
         
@@ -405,12 +407,18 @@ class DashboardController extends Controller
     /**
      * Get recent activity from schedule history
      */
-    private function getRecentActivity()
+    private function getRecentActivity($filters = [])
     {
-        return ScheduleHistory::with('dailyData')
+        $query = ScheduleHistory::with('dailyData')
             ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get()
+            ->limit(10);
+        
+        // Apply date filters
+        if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+            $query->whereBetween('created_at', [$filters['from_date'], $filters['to_date']]);
+        }
+        
+        return $query->get()
             ->map(function($activity) {
                 return [
                     'action' => $activity->action,
