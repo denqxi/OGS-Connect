@@ -25,9 +25,15 @@ class DashboardController extends Controller
      */
     public function index(Request $request)
     {
-        $stats = $this->getDashboardStats($request);
+        // Build filters array
+        $filters = [
+            'month' => $request->input('month') ?? Carbon::now()->format('Y-m'),
+            'from_date' => $request->input('from_date'),
+            'to_date' => $request->input('to_date'),
+            'account' => $request->input('account')
+        ];
         
-        $stats = $this->getDashboardStats($filters);
+        $stats = $this->getDashboardStats($request);
         
         return view('dashboard.dashboard', compact('stats', 'filters'));
     }
@@ -42,6 +48,14 @@ class DashboardController extends Controller
         $fromDate = $request?->input('from_date');
         $toDate = $request?->input('to_date');
         $account = $request?->input('account');
+        
+        // Build filters array for methods that need it
+        $filters = [
+            'month' => $month,
+            'from_date' => $fromDate,
+            'to_date' => $toDate,
+            'account' => $account
+        ];
         
         // Determine date range
         if ($fromDate && $toDate) {
