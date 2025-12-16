@@ -204,21 +204,32 @@ document.addEventListener('change', function (e) {
         document.getElementById('payroll-modal-start-time').textContent = startTime;
         document.getElementById('payroll-modal-end-time').textContent = endTime;
         
-        // Calculate and display hours
-        let hoursText = '—';
+        // Calculate and display hours in H:MM format
+        const formatHM = (mins) => {
+            if (typeof mins !== 'number' || isNaN(mins)) return '—';
+            const h = Math.floor(Math.abs(mins) / 60);
+            const m = Math.abs(mins) % 60;
+            return `${h}:${String(m).padStart(2, '0')}`;
+        };
+
+        let minutesTotal = null;
         if (detail.start_time && detail.end_time) {
             const start = new Date('1970-01-01 ' + detail.start_time);
             const end = new Date('1970-01-01 ' + detail.end_time);
-            const diffMs = end - start;
-            const diffHours = diffMs / (1000 * 60 * 60);
-            hoursText = diffHours.toFixed(2) + ' hours';
-        } else if (detail.duration) {
-            const hours = detail.duration / 60;
-            hoursText = hours.toFixed(2) + ' hours';
+            let diffMins = Math.round((end - start) / (1000 * 60));
+            if (diffMins < 0) diffMins += 24 * 60; // handle crossing midnight
+            minutesTotal = diffMins;
+        } else if (typeof detail.duration_minutes === 'number') {
+            minutesTotal = detail.duration_minutes;
+        } else if (typeof detail.duration === 'number') {
+            minutesTotal = detail.duration;
         }
-        document.getElementById('payroll-modal-hours').textContent = hoursText;
+
+        document.getElementById('payroll-modal-hours').textContent = minutesTotal !== null ? formatHM(minutesTotal) : '—';
         
-        const rate = detail.rate_per_class || detail.rate_per_hour || 'N/A';
+        const rate = (detail.rate_per_class && Number(detail.rate_per_class) > 0) 
+            ? detail.rate_per_class 
+            : ((detail.rate_per_hour && Number(detail.rate_per_hour) > 0) ? detail.rate_per_hour : 'N/A');
         document.getElementById('payroll-modal-rate').textContent = isNaN(rate) ? rate : '₱' + parseFloat(rate).toFixed(2);
         
         const amount = detail.computed_amount || '0';
@@ -728,9 +739,14 @@ document.addEventListener('change', function (e) {
         document.getElementById('modal-end-time').textContent = endTime;
         document.getElementById('modal-duration').textContent = schedule?.duration ? schedule.duration + ' min' : 'N/A';
         
-        // Get rate from workDetail first, fallback to schedule
-        const rate = workDetail?.rate_per_class || schedule?.rate;
-        document.getElementById('modal-rate').textContent = rate ? '₱' + parseFloat(rate).toFixed(2) : 'N/A';
+        // Get rate from workDetail (per-class or hourly), fallback to schedule rate
+        let rate = null;
+        if (workDetail) {
+            if (Number(workDetail.rate_per_class) > 0) rate = workDetail.rate_per_class;
+            else if (Number(workDetail.rate_per_hour) > 0) rate = workDetail.rate_per_hour;
+        }
+        if (rate === null && schedule && Number(schedule.rate) > 0) rate = schedule.rate;
+        document.getElementById('modal-rate').textContent = (rate !== null) ? '₱' + parseFloat(rate).toFixed(2) : 'N/A';
         
         // Populate proof and set context
         const proofContainer = document.getElementById('modal-proof-container');
@@ -759,7 +775,16 @@ document.addEventListener('change', function (e) {
         // Update proof upload button text and visibility
         const proofBtn = document.getElementById('modal-proof-upload-btn');
         if (proofBtn) {
-            if (!currentProofWorkDetailId) {
+            const isPendingAcceptance = assignment.class_status === 'pending_acceptance';
+            
+            if (isPendingAcceptance) {
+                // Disable button when assignment is pending acceptance
+                proofBtn.style.display = 'flex';
+                proofBtn.disabled = true;
+                proofBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+                proofBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                proofBtn.innerHTML = '<i class="fas fa-clock"></i> Awaiting Acceptance';
+            } else if (!currentProofWorkDetailId) {
                 proofBtn.style.display = 'flex';
                 proofBtn.disabled = false;
                 proofBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
@@ -795,6 +820,7 @@ document.addEventListener('change', function (e) {
         const actionButtons = document.getElementById('modal-action-buttons');
         const isApproved = workDetail && workDetail.status?.toLowerCase() === 'approved';
         const isPendingReview = workDetail && workDetail.status?.toLowerCase() === 'pending';
+        const isRejected = workDetail && workDetail.status?.toLowerCase() === 'rejected';
         const isPendingAcceptance = assignment.class_status === 'pending_acceptance';
         const isCancelled = assignment.is_cancelled || assignment.class_status === 'cancelled';
         
@@ -830,7 +856,19 @@ document.addEventListener('change', function (e) {
                 class: schedule?.class || ''
             };
             
-            if (isClassDatePassed) {
+            // If work detail was rejected, allow editing regardless of class date
+            if (hasSubmitted && isRejected) {
+                actionButtons.innerHTML = `
+                    <button type="button" onclick="closeTutorWorkDetailModal(); openWorkDetailForm(${assignment.id}, ${workDetail ? workDetail.id : 'null'}, ${assignment.schedule_daily_data_id});" 
+                        class="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
+                        <i class="fas fa-edit"></i> Edit Work Details
+                    </button>
+                    <button type="button" onclick="confirmDeleteWorkDetail(${workDetail.id}); closeTutorWorkDetailModal();" 
+                        class="px-6 py-2 bg-gray-600 text-white rounded-md font-medium hover:bg-gray-700 transition-colors flex items-center gap-2">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                `;
+            } else if (isClassDatePassed) {
                 // AFTER class date: Show Add/Edit Work Details (proof submission)
                 actionButtons.innerHTML = `
                     <button type="button" onclick="closeTutorWorkDetailModal(); openWorkDetailForm(${assignment.id}, ${workDetail ? workDetail.id : 'null'}, ${assignment.schedule_daily_data_id});" 

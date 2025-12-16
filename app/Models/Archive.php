@@ -13,7 +13,9 @@ class Archive extends Model
     protected $fillable = [
         'applicant_id',
         'archive_by',
+        'reason',
         'notes',
+        'archive_date',
         'archive_date_time',
         'category',
         'status',

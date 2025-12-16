@@ -1183,6 +1183,38 @@
     </div>
 </div>
 
+{{-- ======================================================================== --}}
+{{-- UNIFORM SUCCESS MODAL                                                    --}}
+{{-- ======================================================================== --}}
+<div id="uniformSuccessModal" style="display: none; position: fixed; inset: 0; z-index: 10006;"
+    class="flex justify-center items-center w-full h-full bg-black bg-opacity-50">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
+        <!-- Header -->
+        <div class="flex justify-between items-center px-6 py-3 bg-[#2A5382] rounded-t-lg">
+            <h2 class="text-white font-bold text-lg">Success</h2>
+            <button onclick="hideUniformSuccessModal()" class="text-white text-2xl font-bold hover:opacity-75">&times;</button>
+        </div>
+
+        <!-- Content -->
+        <div class="p-6 text-center">
+            <div class="flex justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <h3 class="font-bold text-lg text-gray-800" id="successModalTitle">Success!</h3>
+            <p class="text-gray-600 mt-2" id="successModalMessage">Action completed successfully.</p>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex justify-center gap-3 pb-6 px-6">
+            <button onclick="hideUniformSuccessModal()" class="bg-[#2A5382] text-white px-6 py-2 rounded-full font-semibold hover:opacity-90 transition">
+                OK
+            </button>
+        </div>
+    </div>
+</div>
+
 {{-- ============================================================================ --}}
 {{-- JAVASCRIPT - External file for better organization                          --}}
 {{-- All modal functions are now in: public/js/screening-modals.js               --}}

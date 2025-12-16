@@ -13,7 +13,7 @@
 
 <!-- Header with Back Button -->
 <div class="flex items-center justify-between mb-4">
-    <h1 class="text-xl font-bold text-gray-800 dark:text-gray-200">Applicant Details</h1>
+    <h1 class="text-xl font-bold text-gray-800 ">Applicant Details</h1>
     <a href="{{ route('hiring_onboarding.index', ['tab' => request('tab', 'demo')]) }}"
        class="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-md text-sm font-medium 
               hover:bg-gray-700 transition duration-200">
@@ -28,7 +28,7 @@
 </div>
 
 <!-- Form Container -->
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6" x-data="{ 
+<div class="bg-white  rounded-lg shadow-sm p-4 sm:p-6" x-data="{ 
     currentPage: 1,
     totalPages: 4,
     showModal: false, 
@@ -107,55 +107,55 @@
         <div class="grid md:grid-cols-3 gap-6">
                         <!-- Row 1 -->
                         <div class="flex flex-col space-y-1">
-                            <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">First Name</label>
-                            <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-gray-50 rounded-md">
+                            <label class="text-xs font-medium text-gray-600  uppercase">First Name</label>
+                            <div class="text-sm text-gray-900  px-3 py-2 bg-gray-50 rounded-md">
                                 {{ $demo->first_name }}
                             </div>
                         </div>
                         <div class="flex flex-col space-y-1">
-                            <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Middle Name</label>
-                            <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-gray-50 rounded-md">
+                            <label class="text-xs font-medium text-gray-600  uppercase">Middle Name</label>
+                            <div class="text-sm text-gray-900  px-3 py-2 bg-gray-50 rounded-md">
                                 {{ $demo->middle_name ?? 'N/A' }}
                             </div>
                         </div>
                         <div class="flex flex-col space-y-1">
-                            <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Last Name</label>
-                            <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-gray-50 rounded-md">
+                            <label class="text-xs font-medium text-gray-600  uppercase">Last Name</label>
+                            <div class="text-sm text-gray-900  px-3 py-2 bg-gray-50 rounded-md">
                                 {{ $demo->last_name }}
                             </div>
                         </div>
 
                         <!-- Row 2 -->
                         <div class="flex flex-col space-y-1">
-                            <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Birth Date</label>
-                            <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-gray-50 rounded-md">
+                            <label class="text-xs font-medium text-gray-600  uppercase">Birth Date</label>
+                            <div class="text-sm text-gray-900  px-3 py-2 bg-gray-50 rounded-md">
                                 {{ $demo->birth_date ? $demo->birth_date->format('F d, Y') : 'N/A' }}
                             </div>
                         </div>
                         <div class="flex flex-col space-y-1">
-                            <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Contact Number</label>
-                            <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-gray-50 rounded-md">
+                            <label class="text-xs font-medium text-gray-600  uppercase">Contact Number</label>
+                            <div class="text-sm text-gray-900  px-3 py-2 bg-gray-50 rounded-md">
                                 {{ $demo->contact_number }}
                             </div>
                         </div>
                         <div class="flex flex-col space-y-1">
-                            <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Email</label>
-                            <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-gray-50 rounded-md break-all">
+                            <label class="text-xs font-medium text-gray-600  uppercase">Email</label>
+                            <div class="text-sm text-gray-900  px-3 py-2 bg-gray-50 rounded-md break-all">
                                 {{ $demo->email }}
                             </div>
                         </div>
 
                         <!-- Row 3 -->
                         <div class="flex flex-col space-y-1 md:col-span-3">
-                            <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Address</label>
-                            <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-gray-50 rounded-md">
+                            <label class="text-xs font-medium text-gray-600  uppercase">Address</label>
+                            <div class="text-sm text-gray-900  px-3 py-2 bg-gray-50 rounded-md">
                                 {{ $demo->address }}
                             </div>
                         </div>
                         
                         <div class="flex flex-col space-y-1 md:col-span-3">
-                            <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">MS Teams</label>
-                            <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-gray-50 rounded-md">
+                            <label class="text-xs font-medium text-gray-600  uppercase">MS Teams</label>
+                            <div class="text-sm text-gray-900  px-3 py-2 bg-gray-50 rounded-md">
                                 {{ $demo->ms_teams ?? 'Not provided' }}
                             </div>
                         </div>
@@ -174,10 +174,10 @@
         <div class="grid md:grid-cols-2 gap-6">
             <!-- Highest Educational Attainment -->
             <div class="flex flex-col space-y-1">
-                <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">
+                <label class="text-xs font-medium text-gray-600  uppercase">
                     Highest Educational Attainment <span class="text-red-500">*</span>
                 </label>
-                <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-gray-50 rounded-md">
+                <div class="text-sm text-gray-900  px-3 py-2 bg-gray-50 rounded-md">
                     @switch($demo->education)
                         @case('shs')
                             Senior High School
@@ -202,10 +202,10 @@
 
             <!-- ESL Teaching Experience -->
             <div class="flex flex-col space-y-1">
-                <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">
+                <label class="text-xs font-medium text-gray-600  uppercase">
                     ESL Teaching Experience <span class="text-red-500">*</span>
                 </label>
-                <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-gray-50 rounded-md">
+                <div class="text-sm text-gray-900  px-3 py-2 bg-gray-50 rounded-md">
                     @switch($demo->esl_experience)
                         @case('na')
                             No Experience
@@ -240,7 +240,7 @@
             <!-- Document Links -->
             <div class="grid md:grid-cols-2 gap-6">
                 <div class="flex flex-col space-y-1">
-                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">
+                    <label class="text-xs font-medium text-gray-600  uppercase">
                         Resume Link (GDrive / GDocs) <span class="text-red-500">*</span>
                     </label>
                     <a href="{{ $demo->resume_link }}" target="_blank" 
@@ -249,7 +249,7 @@
                     </a>
                 </div>
                 <div class="flex flex-col space-y-1">
-                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">
+                    <label class="text-xs font-medium text-gray-600  uppercase">
                         Intro Video (GDrive Link) <span class="text-red-500">*</span>
                     </label>
                     <a href="{{ $demo->intro_video }}" target="_blank" 
@@ -261,8 +261,8 @@
 
             <!-- Work Setup -->
             <div class="flex flex-col space-y-1">
-                <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Work Setup <span class="text-red-500">*</span></label>
-                <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-gray-50 rounded-md">
+                <label class="text-xs font-medium text-gray-600  uppercase">Work Setup <span class="text-red-500">*</span></label>
+                <div class="text-sm text-gray-900  px-3 py-2 bg-gray-50 rounded-md">
                     {{ $demo->work_type === 'work_from_home' ? 'Work from Home' : 'Work at Site' }}
                 </div>
             </div>
@@ -271,7 +271,7 @@
             @if($demo->work_type === 'work_from_home')
             <div class="grid md:grid-cols-3 gap-6">
                 <div class="flex flex-col space-y-1">
-                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Ookla Speedtest (GDrive Link)</label>
+                    <label class="text-xs font-medium text-gray-600  uppercase">Ookla Speedtest (GDrive Link)</label>
                     @if($demo->speedtest)
                         <a href="{{ $demo->speedtest }}" target="_blank" 
                            class="text-base font-medium text-blue-600 hover:text-blue-800 px-3 py-2 bg-gray-50 rounded-md break-all">
@@ -282,9 +282,9 @@
                     @endif
                 </div>
                 <div class="flex flex-col space-y-1">
-                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Main Device Specs (dxdiag)</label>
+                    <label class="text-xs font-medium text-gray-600  uppercase">Main Device Specs (dxdiag)</label>
                     @if($demo->main_device)
-                        <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-gray-50 rounded-md break-all border border-gray-200">
+                        <div class="text-sm text-gray-900  px-3 py-2 bg-gray-50 rounded-md break-all border border-gray-200">
                             {{ $demo->main_device }}
                         </div>
                     @else
@@ -292,9 +292,9 @@
                     @endif
                 </div>
                 <div class="flex flex-col space-y-1">
-                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Backup Device Specs (dxdiag)</label>
+                    <label class="text-xs font-medium text-gray-600  uppercase">Backup Device Specs (dxdiag)</label>
                     @if($demo->backup_device)
-                        <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-gray-50 rounded-md break-all border border-gray-200">
+                        <div class="text-sm text-gray-900  px-3 py-2 bg-gray-50 rounded-md break-all border border-gray-200">
                             {{ $demo->backup_device }}
                         </div>
                     @else
@@ -306,16 +306,16 @@
 
             <!-- How Did You Hear About Us -->
             <div class="flex flex-col space-y-1">
-                <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">How Did You Hear About Us? <span class="text-red-500">*</span></label>
-                <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-gray-50 rounded-md">
+                <label class="text-xs font-medium text-gray-600  uppercase">How Did You Hear About Us? <span class="text-red-500">*</span></label>
+                <div class="text-sm text-gray-900  px-3 py-2 bg-gray-50 rounded-md">
                     {{ $demo->source === 'fb_boosting' ? 'FB Boosting' : 'Referral' }}
                 </div>
             </div>
 
             @if($demo->source === 'referral')
             <div class="flex flex-col space-y-1">
-                <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Referrer Name <span class="text-red-500">*</span></label>
-                <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-gray-50 rounded-md">
+                <label class="text-xs font-medium text-gray-600  uppercase">Referrer Name <span class="text-red-500">*</span></label>
+                <div class="text-sm text-gray-900  px-3 py-2 bg-gray-50 rounded-md">
                     {{ $demo->referrer_name }}
                 </div>
             </div>
@@ -338,21 +338,21 @@
                 <h4 class="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Working Availability</h4>
                 <div class="grid md:grid-cols-2 gap-6 mb-6">
                     <div class="flex flex-col space-y-1">
-                        <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Start Time</label>
-                        <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-white rounded-md">
+                        <label class="text-xs font-medium text-gray-600  uppercase">Start Time</label>
+                        <div class="text-sm text-gray-900  px-3 py-2 bg-white rounded-md">
                             {{ $demo->start_time ? \Carbon\Carbon::parse($demo->start_time)->format('h:i A') : 'N/A' }}
                         </div>
                     </div>
                     <div class="flex flex-col space-y-1">
-                        <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">End Time</label>
-                        <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-white rounded-md">
+                        <label class="text-xs font-medium text-gray-600  uppercase">End Time</label>
+                        <div class="text-sm text-gray-900  px-3 py-2 bg-white rounded-md">
                             {{ $demo->end_time ? \Carbon\Carbon::parse($demo->end_time)->format('h:i A') : 'N/A' }}
                         </div>
                     </div>
                 </div>
                 
                 <div class="flex flex-col space-y-1">
-                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase mb-2">Days Available</label>
+                    <label class="text-xs font-medium text-gray-600  uppercase mb-2">Days Available</label>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-md">
                             <input type="checkbox" {{ (is_array($demo->days) && in_array('monday', $demo->days)) ? 'checked' : '' }} disabled class="rounded">
@@ -434,8 +434,8 @@
 
             <!-- Preferred Interview Time -->
             <div class="flex flex-col space-y-1">
-                <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Preferred Time for Interview Call</label>
-                <div class="text-sm text-gray-900 dark:text-gray-200 px-3 py-2 bg-gray-50 rounded-md">
+                <label class="text-xs font-medium text-gray-600  uppercase">Preferred Time for Interview Call</label>
+                <div class="text-sm text-gray-900  px-3 py-2 bg-gray-50 rounded-md">
                     @if($demo->screening_date_time)
                         {{ $demo->screening_date_time->format('F d, Y - h:i A') }}
                     @elseif($demo->interview_time)
@@ -485,13 +485,13 @@
     </div>
 
     <!-- Demo Status & Action Section -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm mt-4 overflow-hidden border-t border-gray-200 dark:border-gray-700">
+    <div class="bg-white  rounded-lg shadow-sm mt-4 overflow-hidden border-t border-gray-200 ">
         <div class="p-4">
             <div class="flex items-center justify-between">
                 <!-- Status Information (Left Side) -->
                 <div class="flex items-center gap-6">
                     <div>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Current Status/Phase</p>
+                        <p class="text-xs text-gray-500  mb-2">Current Status/Phase</p>
                         <div class="flex items-center gap-2">
                             @php
                                 $statusColors = [
@@ -505,7 +505,7 @@
                                 $statusColor = $statusColors[$demo->status ?? 'screening'] ?? 'bg-gray-500';
                             @endphp
                             <span class="w-2.5 h-2.5 rounded-full {{ $statusColor }}"></span>
-                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <span class="text-sm font-medium text-gray-700 ">
                                 {{ ucwords(str_replace('_', ' ', $demo->status ?? 'Screening')) }}
                             </span>
                         </div>
@@ -513,8 +513,8 @@
 
                     @if(!empty($demo->assigned_account))
                     <div class="border-l pl-6">
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Assigned Account</p>
-                        <p class="text-sm font-medium text-gray-900 dark:text-gray-200">{{ ucwords(str_replace('_', ' ', $demo->assigned_account)) }}</p>
+                        <p class="text-xs text-gray-500  mb-1">Assigned Account</p>
+                        <p class="text-sm font-medium text-gray-900 ">{{ ucwords(str_replace('_', ' ', $demo->assigned_account)) }}</p>
                     </div>
                     @endif
                 </div>

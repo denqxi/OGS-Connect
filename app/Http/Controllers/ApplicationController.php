@@ -891,7 +891,9 @@ class ApplicationController extends Controller
         \App\Models\Archive::create([
             'applicant_id' => $demo->applicant_id ?? null,
             'archive_by' => $archiveBy,
+            'reason' => $finalStatus,
             'notes' => $notes ?? '',
+            'archive_date' => now()->toDateString(),
             'archive_date_time' => now(),
             'category' => 'demo',
             'status' => $finalStatus,

@@ -90,6 +90,8 @@ class TutorWorkDetailController extends Controller
             'ph_time' => 'nullable|string|max:100',
             'class_no' => 'nullable|string|max:50',
             'notes' => 'nullable|string|max:2000',
+            'start_time' => 'nullable|date_format:H:i',
+            'end_time' => 'nullable|date_format:H:i',
             'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'status' => 'nullable|string|in:pending,approved,rejected,cancelled',
         ]);
@@ -114,6 +116,23 @@ class TutorWorkDetailController extends Controller
 
         // Apply editable fields
         $detail->fill($request->only(['date', 'ph_time', 'class_no', 'notes', 'status']));
+
+        // Optionally update time fields and recompute duration
+        if ($request->filled('start_time') && $request->filled('end_time')) {
+            try {
+                $detail->start_time = $request->input('start_time');
+                $detail->end_time = $request->input('end_time');
+
+                $start = \Carbon\Carbon::createFromFormat('H:i', $request->input('start_time'));
+                $end = \Carbon\Carbon::createFromFormat('H:i', $request->input('end_time'));
+                if ($end->lessThanOrEqualTo($start)) {
+                    $end->addDay();
+                }
+                $detail->duration_minutes = abs($end->diffInMinutes($start));
+            } catch (\Exception $e) {
+                Log::warning('Failed to recompute duration on update: ' . $e->getMessage());
+            }
+        }
 
         // Determine if this is a resubmission (rejected -> pending)
         $newStatus = $detail->status;

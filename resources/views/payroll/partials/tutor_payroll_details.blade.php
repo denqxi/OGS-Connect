@@ -62,9 +62,14 @@
                         $EndTime = $detail->end_time ? \Carbon\Carbon::parse($detail->end_time)->format('g:i A') : '—';
                         $status = $detail->status ?? 'pending';
                         
-                        // Per Class and Rate
+                        // Per Class and Rate (prefer non-zero value)
                         $perClass = $detail->class_no ?? 'N/A';
-                        $rate = $detail->rate_per_class ?? $detail->rate_per_hour ?? 'N/A';
+                        $rate = null;
+                        if (!is_null($detail->rate_per_class) && (float)$detail->rate_per_class > 0) {
+                            $rate = $detail->rate_per_class;
+                        } elseif (!is_null($detail->rate_per_hour) && (float)$detail->rate_per_hour > 0) {
+                            $rate = $detail->rate_per_hour;
+                        }
                     @endphp
                     <tr class="hover:bg-gray-50 tutor-row" data-searchable="{{ strtolower(($tutor->tutorID ?? '') . ' ' . ($tutor->email ?? '')) }}">
                         <!-- Date -->
@@ -78,7 +83,7 @@
                         
                         <!-- Rate -->
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                            {{ is_numeric($rate) ? '₱' . number_format($rate, 2) : $rate }}
+                            {{ is_numeric($rate) ? '₱' . number_format($rate, 2) : 'N/A' }}
                         </td>
                         
                         <!-- Actions -->

@@ -146,21 +146,29 @@ class DashboardController extends Controller
      */
     private function getOnboardingApplicants($month = null, $fromDate = null, $toDate = null, $account = null)
     {
-        $query = Demo::where('phase', 'onboarding');
+        // Query from both Demo table (legacy) and Onboarding table (current)
+        $demoQuery = Demo::where('phase', 'onboarding');
+        $onboardingQuery = \App\Models\Onboarding::query();
         
         if ($fromDate && $toDate) {
-            $query->whereBetween('created_at', [Carbon::parse($fromDate), Carbon::parse($toDate)->endOfDay()]);
+            $demoQuery->whereBetween('created_at', [Carbon::parse($fromDate), Carbon::parse($toDate)->endOfDay()]);
+            $onboardingQuery->whereBetween('created_at', [Carbon::parse($fromDate), Carbon::parse($toDate)->endOfDay()]);
         }
         
         if ($account) {
             // Get account ID from account name
             $accountId = Account::where('account_name', $account)->first()?->account_id;
             if ($accountId) {
-                $query->where('account_id', $accountId);
+                $demoQuery->where('account_id', $accountId);
+                $onboardingQuery->where('account_id', $accountId);
             }
         }
         
-        return $query->count();
+        // Get count from both tables to avoid duplicates - use UNION to get unique records
+        $demoCount = $demoQuery->count();
+        $onboardingCount = $onboardingQuery->count();
+        
+        return $demoCount + $onboardingCount;
     }
 
     /**

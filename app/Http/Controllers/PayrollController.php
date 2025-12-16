@@ -296,15 +296,12 @@ class PayrollController extends Controller
 
     // display ang tutors work details para sa supervisor
 public function workDetails(Request $request)
-{
-    try {
-        $search = $request->input('search');
+    {
+        try {
+            $search = $request->input('search');
 
-        $workQuery = TutorWorkDetail::with(['tutor.applicant', 'assignment', 'schedule'])
-            ->where('status', '!=', 'approved') 
-            ->where('status', '!=', 'reject'); 
-
-        if (Auth::guard('supervisor')->check()) {
+            $workQuery = TutorWorkDetail::with(['tutor.applicant', 'assignment', 'schedule'])
+                ->where('status', '=', 'pending');        if (Auth::guard('supervisor')->check()) {
             $supervisor = Auth::guard('supervisor')->user();
             if ($supervisor->assigned_account) {
                 $workQuery->whereHas('tutor.account', function ($q) use ($supervisor) {
@@ -669,24 +666,35 @@ public function workDetails(Request $request)
     public function finalizePayroll(Request $request)
     {
         try {
+            Log::info('finalizePayroll called', ['request' => $request->all()]);
+            
             $tutorID = $request->input('tutor_id');
             $periodStart = $request->input('period_start');
             $periodEnd = $request->input('period_end');
 
+            Log::info('finalizePayroll params', ['tutorID' => $tutorID, 'periodStart' => $periodStart, 'periodEnd' => $periodEnd]);
+            
             $tutor = Tutor::where('tutorID', $tutorID)->first();
             if (!$tutor) {
+                Log::warning('finalizePayroll: Tutor not found', ['tutorID' => $tutorID]);
                 return response()->json(['success' => false, 'message' => 'Tutor not found'], 404);
             }
+            
+            Log::info('finalizePayroll: Tutor found', ['tutor_id' => $tutor->tutor_id, 'tutorID' => $tutor->tutorID]);
 
             // Check supervisor authorization
             if (Auth::guard('supervisor')->check()) {
                 $supervisor = Auth::guard('supervisor')->user();
+                Log::info('finalizePayroll: Supervisor check', ['supervisor_id' => $supervisor->id, 'supervisor_assigned_account' => $supervisor->assigned_account, 'tutor_account_id' => $tutor->account_id, 'tutor_account' => $tutor->account ? $tutor->account->account_name : 'null']);
+                
                 if ($supervisor->assigned_account && $tutor->account) {
                     if (strtolower($tutor->account->account_name) !== strtolower($supervisor->assigned_account)) {
+                        Log::warning('finalizePayroll: Authorization failed', ['supervisor_account' => $supervisor->assigned_account, 'tutor_account' => $tutor->account->account_name]);
                         return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
                     }
                 }
             }
+            Log::info('finalizePayroll: Authorization passed or not applicable');
 
             // Determine pay period using helper
             $startDate = Carbon::parse($periodStart);
@@ -746,8 +754,34 @@ public function workDetails(Request $request)
                     'notes' => "Manually finalized by supervisor " . (Auth::guard('supervisor')->user()->username ?? 'system'),
                 ]);
 
-                return ['already' => false, 'payPeriod' => $payPeriod, 'amount' => $totalAmount];
+                return ['already' => false, 'payPeriod' => $payPeriod, 'amount' => $totalAmount, 'tutor_id' => $tutor->tutor_id];
             });
+
+            // Create notification AFTER transaction completes successfully
+            if (!($result['already'] ?? false)) {
+                try {
+                    Log::info('About to create payroll finalized notification', ['result' => $result]);
+                    
+                    $notification = Notification::create([
+                        'user_id' => $result['tutor_id'],
+                        'user_type' => 'tutor',
+                        'type' => 'payroll_finalized',
+                        'title' => 'Payroll Finalized & Locked',
+                        'message' => "Your payroll for {$result['payPeriod']} has been finalized and locked. Amount: ₱" . number_format($result['amount'], 2),
+                        'icon' => 'fas fa-lock',
+                        'color' => 'blue',
+                        'is_read' => false,
+                        'data' => [
+                            'pay_period' => $result['payPeriod'],
+                            'total_amount' => $result['amount'],
+                        ]
+                    ]);
+                    
+                    Log::info('Payroll finalized notification created successfully', ['notification_id' => $notification->id ?? null]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to create finalize notification', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                }
+            }
 
             if ($result['already'] ?? false) {
                 return response()->json([
@@ -826,6 +860,27 @@ public function workDetails(Request $request)
                 $periodEnd
             ));
 
+            // Notify tutor that payslip email was sent
+            try {
+                Notification::create([
+                    'user_id' => $tutorModel->tutor_id,
+                    'user_type' => 'tutor',
+                    'type' => 'payslip_email_sent',
+                    'title' => 'Payslip Sent',
+                    'message' => "Your payslip for {$periodStart} to {$periodEnd} was sent to {$email}.",
+                    'icon' => 'fas fa-envelope',
+                    'color' => 'green',
+                    'is_read' => false,
+                    'data' => [
+                        'period_start' => $periodStart,
+                        'period_end' => $periodEnd,
+                        'recipient_email' => $email,
+                    ]
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('Failed to create payslip email notification: ' . $e->getMessage());
+            }
+
             return response()->json(['success' => true, 'message' => 'Payslip emailed successfully']);
 
         } catch (\Exception $e) {
@@ -862,6 +917,26 @@ public function workDetails(Request $request)
             ]);
 
             Log::info('PayrollHistory: Email record created', ['record_id' => $record->payroll_history_id]);
+
+            // Also notify tutor
+            try {
+                Notification::create([
+                    'user_id' => $validated['tutor_id'],
+                    'user_type' => 'tutor',
+                    'type' => 'payslip_email_logged',
+                    'title' => 'Payslip Email Logged',
+                    'message' => "Your payslip email was logged for period {$validated['pay_period']}.",
+                    'icon' => 'fas fa-paper-plane',
+                    'color' => 'green',
+                    'is_read' => false,
+                    'data' => [
+                        'pay_period' => $validated['pay_period'],
+                        'recipient_email' => $validated['recipient_email']
+                    ]
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('Failed to create payslip email logged notification: ' . $e->getMessage());
+            }
 
             return response()->json(['success' => true, 'message' => 'Payroll submission logged']);
         } catch (\Illuminate\Validation\ValidationException $e) {

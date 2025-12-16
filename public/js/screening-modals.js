@@ -956,10 +956,11 @@ async function confirmDemoPass() {
 
         const data = await response.json();
         if (data.success) {
-            console.log('Demo pass successful, reloading page...');
+            console.log('Demo pass successful, redirecting to hiring onboarding...');
             hideDemoPassConfirmation();
             hideDemoConfirmationModal();
-            window.location.reload();
+            // Redirect to hiring onboarding index instead of reloading current page
+            window.location.href = '/hiring-onboarding?tab=onboarding';
         } else {
             throw new Error(data.message || 'Failed to process demo pass');
         }
@@ -1887,6 +1888,41 @@ async function archiveApplication(applicationId, reason) {
     } catch (error) {
         console.error('Error:', error);
         alert('Error: ' + error.message);
+    }
+}
+
+// ============================================================================
+// UNIFORM SUCCESS MODAL FUNCTIONS
+// ============================================================================
+
+/**
+ * Show uniform success modal with custom title and message
+ * @param {string} title - Modal title (default: 'Success!')
+ * @param {string} message - Modal message (default: 'Action completed successfully.')
+ * @param {function} onClose - Optional callback function when modal is closed
+ */
+function showUniformSuccessModal(title = 'Success!', message = 'Action completed successfully.', onClose = null) {
+    document.getElementById('successModalTitle').textContent = title;
+    document.getElementById('successModalMessage').textContent = message;
+    
+    // Store callback if provided
+    if (onClose) {
+        window.successModalCallback = onClose;
+    }
+    
+    showModal('uniformSuccessModal');
+}
+
+/**
+ * Hide uniform success modal
+ */
+function hideUniformSuccessModal() {
+    hideModal('uniformSuccessModal');
+    
+    // Execute callback if exists
+    if (window.successModalCallback && typeof window.successModalCallback === 'function') {
+        window.successModalCallback();
+        window.successModalCallback = null;
     }
 }
 
