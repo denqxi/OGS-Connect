@@ -874,9 +874,17 @@
           document.getElementById('security_question_display2').innerHTML = `<span class="text-sm font-medium">${data.questions[1]}</span>`;
           document.getElementById('security_question2').value = data.questions[1];
         } else if (data.success === false && data.message) {
-          // Show error message
-          document.getElementById('user_type_display').innerHTML = '<span class="text-sm text-red-600">Account not found</span>';
-          document.getElementById('user_type').value = '';
+          // Differentiate between 'user not found' and 'user found but missing questions'
+          if (data.user_type) {
+            const accountTypeText = data.user_type === 'tutor' ? 'Tutor' : 'Supervisor';
+            document.getElementById('user_type_display').innerHTML = `<span class="text-sm font-medium text-green-600">${accountTypeText}</span>`;
+            document.getElementById('user_type').value = data.user_type;
+          } else {
+            document.getElementById('user_type_display').innerHTML = '<span class="text-sm text-red-600">Account not found</span>';
+            document.getElementById('user_type').value = '';
+          }
+
+          // Show server-provided message
           document.getElementById('security_question_display').innerHTML = '<span class="text-sm text-red-600">' + data.message + '</span>';
           document.getElementById('security_question_display2').innerHTML = '<span class="text-sm text-red-600">' + data.message + '</span>';
           document.getElementById('security_question').value = '';

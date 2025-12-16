@@ -377,9 +377,12 @@ class SimplePasswordResetController extends Controller
             $securityQuestions = SecurityQuestion::getAllForUser($userType, $user->getKey());
 
             if ($securityQuestions->count() < 2) {
+                // User exists, but lacks sufficient security questions
                 return response()->json([
                     'success' => false,
-                    'message' => 'Not enough security questions set up for this account. Please contact administrator.'
+                    'user_type' => $userType,
+                    'message' => 'Not enough security questions set up for this account. Please contact administrator.',
+                    'has_questions' => false
                 ]);
             }
 
