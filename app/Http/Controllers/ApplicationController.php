@@ -51,15 +51,27 @@ class ApplicationController extends Controller
                 ]);
 
                 // Try to find onboarding record first
-                $onboarding = \App\Models\Onboarding::find($id);
+                $onboarding = null;
+                $demo = null;
+                
+                // Check if Onboarding model exists
+                if (class_exists(\App\Models\Onboarding::class)) {
+                    $onboarding = \App\Models\Onboarding::find($id);
+                }
                 
                 if (!$onboarding) {
                     // Fallback to demo/screening table
-                    $demo = Demo::findOrFail($id);
+                    $demo = Demo::where('id', $id)->first();
+                    
+                    if (!$demo) {
+                        Log::warning('Demo not found with ID: ' . $id);
+                        throw new \Exception('Onboarding record not found. Please refresh the page and try again.');
+                    }
+                    
                     Log::info('Demo found (fallback):', ['demo' => $demo->toArray()]);
                     
-                    if ($demo->phase === 'onboarding') {
-                        throw new \Exception('This record should be in the onboarding table. Please refresh the page.');
+                    if (isset($demo->phase) && $demo->phase !== 'onboarding') {
+                        throw new \Exception('This record is not in onboarding phase. Current phase: ' . $demo->phase);
                     }
                 } else {
                     Log::info('Onboarding found:', ['onboarding' => $onboarding->toArray()]);
@@ -181,7 +193,12 @@ class ApplicationController extends Controller
                     'username' => 'required|unique:tutors,username',
                 ]);
 
-                $demo = Demo::findOrFail($id);
+                $demo = Demo::where('id', $id)->first();
+                
+                if (!$demo) {
+                    Log::warning('Demo not found with ID: ' . $id);
+                    throw new \Exception('Demo record not found. Please refresh the page and try again.');
+                }
                 
                 if ($demo->status === 'hired') {
                     throw new \Exception('This demo has already been hired.');
