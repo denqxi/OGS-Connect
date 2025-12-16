@@ -9,17 +9,120 @@ use App\Models\SecurityQuestion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
+use App\Mail\ResetOtpMail;
 
 class SimplePasswordResetController extends Controller
 {
+    private const OTP_TTL_MINUTES = 10;
+
     /**
      * Show the password reset request form.
      */
     public function showRequestForm()
     {
         return view('auth.forgot-password');
+    }
+
+    /**
+     * Send a time-bound OTP to the user's registered email.
+     */
+    public function sendOtp(Request $request)
+    {
+        $request->validate([
+            'username' => 'required|string|max:255',
+        ]);
+
+        $userData = $this->findUserByUsername($request->username);
+
+        if (!$userData) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No account found with the provided email or ID.',
+            ], 404);
+        }
+
+        $otp = random_int(100000, 999999);
+
+        Cache::put(
+            $this->otpCacheKey($userData['username']),
+            [
+                'otp' => $otp,
+                'user_type' => $userData['type'],
+                'email' => $userData['email'],
+                'username' => $userData['username'],
+                'name' => $userData['name'],
+            ],
+            now()->addMinutes(self::OTP_TTL_MINUTES)
+        );
+
+        try {
+            Mail::to($userData['email'])->send(new ResetOtpMail($otp, $userData['name']));
+        } catch (\Throwable $e) {
+            Log::error('Failed sending reset OTP email', [
+                'error' => $e->getMessage(),
+                'user' => $userData['username'],
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to send OTP email at the moment. Please try again shortly.',
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'OTP sent to your registered email.',
+            'user_type' => $userData['type'],
+            'name' => $userData['name'],
+        ]);
+    }
+
+    /**
+     * Verify the OTP and prepare the session for password reset.
+     */
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'username' => 'required|string|max:255',
+            'otp' => 'required|digits:6',
+        ]);
+
+        $cached = Cache::get($this->otpCacheKey($request->username));
+
+        if (!$cached) {
+            return response()->json([
+                'success' => false,
+                'message' => 'OTP expired or not found. Please request a new one.',
+            ], 410);
+        }
+
+        if ((string) $cached['otp'] !== (string) $request->otp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid OTP. Please double-check and try again.',
+            ], 422);
+        }
+
+        Cache::forget($this->otpCacheKey($request->username));
+
+        Session::put('password_reset_user', [
+            'id' => $cached['email'], // used only for session tracking
+            'type' => $cached['user_type'],
+            'username' => $cached['username'],
+            'name' => $cached['name'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'OTP verified. You can now set a new password.',
+            'user_type' => $cached['user_type'],
+            'username' => $cached['username'],
+            'name' => $cached['name'],
+        ]);
     }
 
     /**
@@ -294,4 +397,46 @@ class SimplePasswordResetController extends Controller
             ], 500);
         }
     }
+
+        /**
+         * Shared user lookup by username or email.
+         */
+        private function findUserByUsername(string $username): ?array
+        {
+            $tutor = Tutor::where('email', $username)
+                ->orWhere('tutorID', $username)
+                ->orWhere('username', $username)
+                ->first();
+
+            if ($tutor) {
+                return [
+                    'user' => $tutor,
+                    'type' => 'tutor',
+                    'email' => $tutor->email,
+                    'username' => $username,
+                    'name' => method_exists($tutor, 'getFullNameAttribute') ? $tutor->getFullNameAttribute() : $tutor->name,
+                ];
+            }
+
+            $supervisor = Supervisor::where('email', $username)
+                ->orWhere('supID', $username)
+                ->first();
+
+            if ($supervisor) {
+                return [
+                    'user' => $supervisor,
+                    'type' => 'supervisor',
+                    'email' => $supervisor->email,
+                    'username' => $username,
+                    'name' => method_exists($supervisor, 'getFullNameAttribute') ? $supervisor->getFullNameAttribute() : $supervisor->name,
+                ];
+            }
+
+            return null;
+        }
+
+        private function otpCacheKey(string $username): string
+        {
+            return 'reset_otp_' . sha1($username);
+        }
 }

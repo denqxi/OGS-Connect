@@ -51,6 +51,8 @@ Route::prefix('application-form')->name('application.form.')->group(function () 
 // PUBLIC API ROUTES
 // ============================================================================
 Route::post('/api/get-security-question', [SimplePasswordResetController::class, 'getSecurityQuestion']);
+Route::post('/api/send-reset-otp', [SimplePasswordResetController::class, 'sendOtp']);
+Route::post('/api/verify-reset-otp', [SimplePasswordResetController::class, 'verifyOtp']);
 
 // ============================================================================
 // AUTHENTICATED ROUTES (Supervisor & Web Users)

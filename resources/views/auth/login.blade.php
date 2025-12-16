@@ -170,6 +170,15 @@
 
           <!-- Reset Mode Fields (Hidden by default) -->
           <div id="resetFields" class="hidden space-y-3">
+            <div class="flex items-center justify-center gap-2 text-xs font-semibold text-ogs-navy">
+              <button type="button" id="methodSecurityBtn" class="flex-1 px-3 py-2 border border-ogs-navy rounded-lg bg-ogs-navy text-white" onclick="setResetMethod('security')">
+                <i class="fas fa-shield-alt mr-1"></i> Security Questions
+              </button>
+              <button type="button" id="methodOtpBtn" class="flex-1 px-3 py-2 border border-ogs-navy/40 rounded-lg bg-white text-ogs-navy" onclick="setResetMethod('otp')">
+                <i class="fas fa-envelope mr-1"></i> Email OTP
+              </button>
+            </div>
+
             <div>
               <label for="reset_username" class="block text-xs font-medium text-gray-700 mb-1">
                 Email or ID <span class="text-red-500">*</span>
@@ -200,7 +209,8 @@
               <input type="hidden" id="user_type" name="user_type" value="">
             </div>
 
-            <div>
+            <div id="securityQuestionSection" class="space-y-3">
+              <div>
               <label for="security_question" class="block text-xs font-medium text-gray-700 mb-1">
                 Security Question <span class="text-red-500">*</span>
               </label>
@@ -211,62 +221,80 @@
               @error('security_question')
                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
               @enderror
+              </div>
+
+              <div>
+                <label for="security_answer1" class="block text-xs font-medium text-gray-700 mb-1">
+                  Your Answer <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                  <input type="password" 
+                         id="security_answer1" 
+                         name="security_answer1" 
+                         value="{{ old('security_answer1') }}"
+                         class="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @error('security_answer1') border-red-500 @enderror"
+                         placeholder="Enter your answer">
+                  <button type="button" onclick="togglePasswordField(this)" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <svg class="h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                  </button>
+                </div>
+                @error('security_answer1')
+                  <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+              </div>
+
+              <div>
+                <label for="security_question2" class="block text-xs font-medium text-gray-700 mb-1">
+                  Second Security Question <span class="text-red-500">*</span>
+                </label>
+                <div id="security_question_display2" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs text-gray-700">
+                  <span class="text-xs">Please enter your email/ID first</span>
+                </div>
+                <input type="hidden" id="security_question2" name="security_question2" value="">
+              </div>
+
+              <div>
+                <label for="security_answer2" class="block text-xs font-medium text-gray-700 mb-1">
+                  Your Answer <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                  <input type="password" 
+                         id="security_answer2" 
+                         name="security_answer2" 
+                         value="{{ old('security_answer2') }}"
+                         class="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @error('security_answer2') border-red-500 @enderror"
+                         placeholder="Enter your answer">
+                  <button type="button" onclick="togglePasswordField(this)" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <svg class="h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                  </button>
+                </div>
+                @error('security_answer2')
+                  <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+              </div>
             </div>
 
-            <div>
-              <label for="security_answer1" class="block text-xs font-medium text-gray-700 mb-1">
-                Your Answer <span class="text-red-500">*</span>
-              </label>
-              <div class="relative">
-                <input type="password" 
-                       id="security_answer1" 
-                       name="security_answer1" 
-                       value="{{ old('security_answer1') }}"
-                       class="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @error('security_answer1') border-red-500 @enderror"
-                       placeholder="Enter your answer">
-                <button type="button" onclick="togglePasswordField(this)" class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <svg class="h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                  </svg>
+            <div id="otpSection" class="hidden space-y-3">
+              <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900">
+                <p class="font-semibold">Email OTP</p>
+                <p>We will send a 6-digit code to the registered email for this account.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="button" class="flex-1 py-2 rounded-lg bg-mint hover:bg-teal text-ogs-navy font-semibold text-xs shadow" onclick="sendResetOtp()">
+                  <i class="fas fa-paper-plane mr-1"></i> Send OTP
                 </button>
+                <div id="otpStatus" class="text-xs text-gray-600"></div>
               </div>
-              @error('security_answer1')
-                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-              @enderror
-            </div>
-
-            <div>
-              <label for="security_question2" class="block text-xs font-medium text-gray-700 mb-1">
-                Second Security Question <span class="text-red-500">*</span>
-              </label>
-              <div id="security_question_display2" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs text-gray-700">
-                <span class="text-xs">Please enter your email/ID first</span>
+              <div>
+                <label for="otp_code" class="block text-xs font-medium text-gray-700 mb-1">Enter OTP</label>
+                <input type="text" id="otp_code" maxlength="6" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent" placeholder="6-digit code">
               </div>
-              <input type="hidden" id="security_question2" name="security_question2" value="">
-            </div>
-
-            <div>
-              <label for="security_answer2" class="block text-xs font-medium text-gray-700 mb-1">
-                Your Answer <span class="text-red-500">*</span>
-              </label>
-              <div class="relative">
-                <input type="password" 
-                       id="security_answer2" 
-                       name="security_answer2" 
-                       value="{{ old('security_answer2') }}"
-                       class="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent @error('security_answer2') border-red-500 @enderror"
-                       placeholder="Enter your answer">
-                <button type="button" onclick="togglePasswordField(this)" class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <svg class="h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                  </svg>
-                </button>
-              </div>
-              @error('security_answer2')
-                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-              @enderror
             </div>
 
             <div class="text-right pt-2">
@@ -382,6 +410,9 @@
       console.log(`[LOGIN DEBUG] ${message}`, data || '');
     }
 
+    let resetMethod = 'security';
+    let otpSent = false;
+
     // Initialize debugging
     debugLog('Login page loaded');
     debugLog('Current form action:', '{{ route("login") }}');
@@ -456,6 +487,38 @@
       }
     }
 
+    function setResetMethod(method) {
+      resetMethod = method;
+
+      const securityBtn = document.getElementById('methodSecurityBtn');
+      const otpBtn = document.getElementById('methodOtpBtn');
+      const securitySection = document.getElementById('securityQuestionSection');
+      const otpSection = document.getElementById('otpSection');
+
+      if (method === 'security') {
+        securitySection.classList.remove('hidden');
+        otpSection.classList.add('hidden');
+        securityBtn.classList.add('bg-ogs-navy', 'text-white');
+        securityBtn.classList.remove('bg-white', 'text-ogs-navy');
+        otpBtn.classList.remove('bg-ogs-navy', 'text-white');
+        otpBtn.classList.add('bg-white', 'text-ogs-navy');
+      } else {
+        securitySection.classList.add('hidden');
+        otpSection.classList.remove('hidden');
+        otpBtn.classList.add('bg-ogs-navy', 'text-white');
+        otpBtn.classList.remove('bg-white', 'text-ogs-navy');
+        securityBtn.classList.remove('bg-ogs-navy', 'text-white');
+        securityBtn.classList.add('bg-white', 'text-ogs-navy');
+      }
+
+      const submitButton = document.getElementById('submitButton');
+      if (submitButton) {
+        submitButton.innerHTML = method === 'otp'
+          ? '<i class="fas fa-check mr-2"></i>VERIFY OTP'
+          : '<i class="fas fa-check mr-2"></i>VERIFY & RESET';
+      }
+    }
+
     function switchToResetMode() {
       debugLog('Switching to reset mode');
       
@@ -486,13 +549,16 @@
       // Show reset fields
       resetFields.classList.remove('hidden');
       debugLog('Reset fields shown');
+
+      // default method
+      setResetMethod('security');
       
       // Change title and description
       const mainTitle = document.getElementById('mainTitle');
       const mainDescription = document.getElementById('mainDescription');
       if (mainTitle && mainDescription) {
         mainTitle.textContent = 'Reset Your Password';
-        mainDescription.textContent = 'Answer the security question below to reset your password.';
+        mainDescription.textContent = 'Choose security questions or email OTP to verify your account.';
         debugLog('Title and description updated');
       } else {
         debugLog('Title or description element not found');
@@ -506,7 +572,7 @@
         submitButton.onclick = function(e) {
           e.preventDefault();
           debugLog('Reset button clicked');
-          verifyAndReset();
+          handleResetSubmit();
         };
         debugLog('Submit button changed to reset mode');
       } else {
@@ -762,6 +828,9 @@
     // Function to fetch security question for user
     function fetchSecurityQuestion() {
       const username = document.getElementById('reset_username').value;
+      if (resetMethod !== 'security') {
+        return;
+      }
       const userType = document.getElementById('user_type').value;
       
       if (!username) {
@@ -829,6 +898,106 @@
         document.getElementById('security_question_display2').innerHTML = '<span class="text-sm text-red-600">Error loading security questions</span>';
         document.getElementById('security_question').value = '';
         document.getElementById('security_question2').value = '';
+      });
+    }
+
+    function handleResetSubmit() {
+      if (resetMethod === 'otp') {
+        verifyOtpAndProceed();
+      } else {
+        verifyAndReset();
+      }
+    }
+
+    function showOtpStatus(message, isError = false) {
+      const otpStatus = document.getElementById('otpStatus');
+      if (otpStatus) {
+        otpStatus.textContent = message;
+        otpStatus.classList.toggle('text-red-600', isError);
+        otpStatus.classList.toggle('text-green-600', !isError);
+      }
+    }
+
+    function sendResetOtp() {
+      const username = document.getElementById('reset_username').value.trim();
+
+      if (!username) {
+        alert('Please enter your email or ID first.');
+        return;
+      }
+
+      showOtpStatus('Sending...');
+
+      fetch('/api/send-reset-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ username })
+      })
+      .then(resp => resp.json())
+      .then(data => {
+        debugLog('OTP send response', data);
+        if (data.success) {
+          otpSent = true;
+          document.getElementById('user_type').value = data.user_type;
+          document.getElementById('user_type_display').innerHTML = `<span class="text-sm font-medium text-green-600">${data.user_type === 'tutor' ? 'Tutor' : 'Supervisor'}</span>`;
+          showOtpStatus('OTP sent to your email.', false);
+        } else {
+          otpSent = false;
+          showOtpStatus(data.message || 'Unable to send OTP.', true);
+        }
+      })
+      .catch(err => {
+        debugLog('OTP send error', err);
+        otpSent = false;
+        showOtpStatus('Failed to send OTP. Please try again.', true);
+      });
+    }
+
+    function verifyOtpAndProceed() {
+      const username = document.getElementById('reset_username').value.trim();
+      const otpCode = document.getElementById('otp_code').value.trim();
+
+      if (!otpSent) {
+        alert('Please request an OTP first.');
+        return;
+      }
+
+      if (!otpCode || otpCode.length !== 6) {
+        alert('Enter the 6-digit OTP from your email.');
+        return;
+      }
+
+      showOtpStatus('Verifying...');
+
+      fetch('/api/verify-reset-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ username, otp: otpCode })
+      })
+      .then(resp => resp.json())
+      .then(data => {
+        debugLog('OTP verify response', data);
+        if (data.success) {
+          window.passwordResetUser = {
+            username: data.username,
+            userType: data.user_type
+          };
+          document.getElementById('user_type').value = data.user_type;
+          showOtpStatus('OTP verified. Set your new password.', false);
+          switchToPasswordResetMode();
+        } else {
+          showOtpStatus(data.message || 'Invalid OTP.', true);
+        }
+      })
+      .catch(err => {
+        debugLog('OTP verify error', err);
+        showOtpStatus('Failed to verify OTP. Try again.', true);
       });
     }
 
