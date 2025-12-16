@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Carbon\Carbon;
 
 class TutorAvailabilityController extends Controller
 {
@@ -703,13 +705,29 @@ public function updatePersonalInfo(Request $request)
             ], 401);
         }
 
+        $applicantId = $tutor->applicant?->applicant_id;
+
+        // Build validation rules dynamically - only validate email uniqueness if email changed
+        $emailRules = [
+            'required',
+            'email',
+            'max:255',
+        ];
+        
+        // Only check uniqueness if email is being changed
+        if ($tutor->applicant && $tutor->applicant->email !== $request->email) {
+            $emailRules[] = Rule::unique('applicants', 'email')->ignore($applicantId, 'applicant_id');
+            $emailRules[] = Rule::unique('tutors', 'email')->ignore($tutor->tutor_id, 'tutor_id');
+        }
+
         // Validate the request
         $validator = Validator::make($request->all(), [
             'first_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
             'date_of_birth' => 'required|date',
             'address' => 'required|string|max:500',
-            'email' => 'required|email|max:255',
+            'email' => $emailRules,
             'phone_number' => 'required|string|max:20',
             'ms_teams_id' => 'required|string|max:100',
         ]);
@@ -722,27 +740,80 @@ public function updatePersonalInfo(Request $request)
             ], 422);
         }
 
-        // Update tutor information
-        $tutor->update([
-            'first_name' => $request->first_name,
-            'last_name' => $request->last_name,
-            'date_of_birth' => $request->date_of_birth,
-            'email' => $request->email,
-            'phone_number' => $request->phone_number,
-        ]);
+        // Normalize date to Y-m-d for DB
+        $normalizedBirthDate = null;
+        if ($request->filled('date_of_birth')) {
+            try {
+                $normalizedBirthDate = Carbon::parse($request->date_of_birth)->format('Y-m-d');
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid date of birth format.',
+                ], 422);
+            }
+        }
 
-        // Update applicant details (tutor details are stored in applicant table)
+        // Update applicant details (source of truth for personal info)
         $applicant = $tutor->applicant;
+        $changedFields = [];
+
         if ($applicant) {
+            // Track what changed in applicant
+            if ($applicant->first_name !== $request->first_name) {
+                $changedFields['First Name'] = "{$applicant->first_name} → {$request->first_name}";
+            }
+            if (($applicant->middle_name ?? null) !== ($request->middle_name ?? null)) {
+                $changedFields['Middle Name'] = ($applicant->middle_name ?? 'empty') . " → " . ($request->middle_name ?? 'empty');
+            }
+            if ($applicant->last_name !== $request->last_name) {
+                $changedFields['Last Name'] = "{$applicant->last_name} → {$request->last_name}";
+            }
+            if (($applicant->birth_date ?? null) !== $normalizedBirthDate) {
+                $changedFields['Date of Birth'] = ($applicant->birth_date ?? 'N/A') . " → {$normalizedBirthDate}";
+            }
+            if (($applicant->address ?? null) !== $request->address) {
+                $changedFields['Address'] = ($applicant->address ?? 'empty') . " → {$request->address}";
+            }
+            if (($applicant->contact_number ?? null) !== $request->phone_number) {
+                $changedFields['Contact Number'] = ($applicant->contact_number ?? 'empty') . " → {$request->phone_number}";
+            }
+            if ($applicant->email !== $request->email) {
+                $changedFields['Email'] = "{$applicant->email} → {$request->email}";
+            }
+            if (($applicant->ms_teams ?? null) !== $request->ms_teams_id) {
+                $changedFields['MS Teams ID'] = ($applicant->ms_teams ?? 'empty') . " → {$request->ms_teams_id}";
+            }
+
             $applicant->update([
+                'first_name' => $request->first_name,
+                'middle_name' => $request->middle_name,
+                'last_name' => $request->last_name,
+                'birth_date' => $normalizedBirthDate,
                 'address' => $request->address,
+                'contact_number' => $request->phone_number,
+                'email' => $request->email,
                 'ms_teams' => $request->ms_teams_id,
             ]);
         }
 
+        // Keep tutor auth email in sync
+        $tutor->update([
+            'email' => $request->email,
+        ]);
+
+        // Build summary message
+        $message = 'Personal information updated successfully';
+        if (!empty($changedFields)) {
+            $message .= '. Updated fields: ' . implode(', ', array_keys($changedFields));
+        } else {
+            $message = 'No changes were made. All fields have the same values.';
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'Personal information updated successfully'
+            'message' => $message,
+            'changed_fields' => $changedFields,
+            'fields_count' => count($changedFields)
         ]);
 
     } catch (\Exception $e) {

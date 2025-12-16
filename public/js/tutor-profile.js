@@ -90,6 +90,7 @@ async function proceedWithPersonalInfoUpdate() {
     try {
         const formData = {
             first_name: document.getElementById('firstName').value,
+            middle_name: document.getElementById('middleName').value,
             last_name: document.getElementById('lastName').value,
             date_of_birth: document.getElementById('dateOfBirth').value,
             address: document.getElementById('address').value,
@@ -111,14 +112,23 @@ async function proceedWithPersonalInfoUpdate() {
         const result = await response.json();
         
         if (result.success) {
-            // Show success notification
-            showNotification('Personal information updated successfully!', 'success');
+            // Show success notification with details
+            let successMsg = result.message || 'Personal information updated successfully!';
+            if (result.fields_count > 0) {
+                successMsg += ` (${result.fields_count} field${result.fields_count !== 1 ? 's' : ''} updated)`;
+            }
+            showNotification(successMsg, 'success');
             
             // Disable editing mode
             cancelPersonalInfoEditing();
         } else {
-            // Show error notification
-            showNotification(result.message || 'Failed to update personal information. Please try again.', 'error');
+            // Show error notification with validation details if available
+            let errorMsg = result.message || 'Failed to update personal information. Please try again.';
+            if (result.errors) {
+                const errorMessages = Object.values(result.errors).flat().join(', ');
+                errorMsg = errorMessages || errorMsg;
+            }
+            showNotification(errorMsg, 'error');
         }
     } catch (error) {
         console.error('Error updating personal information:', error);
