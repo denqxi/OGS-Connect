@@ -1006,6 +1006,7 @@ public function workDetails(Request $request)
 
         $details = TutorWorkDetail::where('tutor_id', $tutorFormattedId)
             ->where('status', 'approved')
+            ->where('payment_blocked', false)
             ->whereBetween('created_at', [$start, $end])
             ->get();
 

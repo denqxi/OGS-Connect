@@ -11,12 +11,14 @@ use App\Models\WorkPreference;
 use App\Models\ArchivedApplication;
 use App\Models\Demo;
 use App\Models\Screening;
+use App\Models\Onboarding;
 use App\Models\Account;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ApplicationFormController extends Controller
 {
@@ -270,6 +272,11 @@ class ApplicationFormController extends Controller
             return $this->viewArchive($request);
         }
         
+        // Check if logs tab is requested
+        if ($request->get('tab') === 'logs') {
+            return $this->viewLogs($request);
+        }
+
         // Check if demo tab is requested
         if ($request->get('tab') === 'demo') {
             return $this->viewDemo($request);
@@ -928,6 +935,97 @@ class ApplicationFormController extends Controller
     /**
      * Archive an application
      */
+    /**
+     * View consolidated hiring logs across tabs (new, demo, onboarding).
+     */
+    private function viewLogs(Request $request)
+    {
+        $applicationLogs = Application::with('applicant', 'applicant.qualification', 'applicant.requirement', 'applicant.referral', 'applicant.workPreference')
+            ->select('application_id', 'applicant_id', 'status', 'updated_at', 'created_at', 'notes')
+            ->get()
+            ->map(function ($application) {
+                $name = trim(($application->applicant->first_name ?? '') . ' ' . ($application->applicant->last_name ?? ''));
+
+                return [
+                    'id' => $application->application_id,
+                    'name' => $name ?: 'Unknown applicant',
+                    'status' => $application->status ?? 'pending',
+                    'source' => 'New Applicant',
+                    'timestamp' => $application->updated_at ?? $application->created_at,
+                    'data' => $application,
+                ];
+            });
+
+        $demoLogs = Demo::with('applicant', 'applicant.qualification', 'applicant.requirement', 'applicant.workPreference', 'account')
+            ->select('screening_id', 'applicant_id', 'phase', 'results', 'updated_at', 'created_at', 'notes', 'screening_date_time', 'account_id')
+            ->get()
+            ->map(function ($demo) {
+                $name = trim(($demo->applicant->first_name ?? '') . ' ' . ($demo->applicant->last_name ?? ''));
+                $status = $demo->results ?: $demo->phase ?: 'pending';
+
+                return [
+                    'id' => $demo->screening_id,
+                    'name' => $name ?: 'Unknown applicant',
+                    'status' => $status,
+                    'source' => 'For Demo',
+                    'timestamp' => $demo->updated_at ?? $demo->created_at,
+                    'data' => $demo,
+                ];
+            });
+
+        $onboardingLogs = Onboarding::with('applicant', 'applicant.qualification', 'applicant.requirement', 'applicant.workPreference', 'account')
+            ->select('onboarding_id', 'applicant_id', 'phase', 'updated_at', 'created_at', 'notes', 'onboarding_date_time', 'account_id')
+            ->get()
+            ->map(function ($onboarding) {
+                $name = trim(($onboarding->applicant->first_name ?? '') . ' ' . ($onboarding->applicant->last_name ?? ''));
+                $status = $onboarding->phase ?? 'onboarding';
+
+                return [
+                    'id' => $onboarding->onboarding_id,
+                    'name' => $name ?: 'Unknown applicant',
+                    'status' => $status,
+                    'source' => 'Onboarding',
+                    'timestamp' => $onboarding->updated_at ?? $onboarding->created_at,
+                    'data' => $onboarding,
+                ];
+            });
+
+        $logs = $applicationLogs
+            ->concat($demoLogs)
+            ->concat($onboardingLogs)
+            ->filter(fn ($log) => !empty($log['timestamp']))
+            ->sortByDesc('timestamp');
+
+        // Optional filters
+        if ($request->filled('search')) {
+            $search = strtolower(trim($request->input('search')));
+            $logs = $logs->filter(function ($log) use ($search) {
+                return str_contains(strtolower($log['name']), $search)
+                    || str_contains(strtolower($log['status']), $search)
+                    || str_contains(strtolower($log['source']), $search);
+            });
+        }
+
+        if ($request->filled('status')) {
+            $statusFilter = strtolower(trim($request->input('status')));
+            $logs = $logs->filter(function ($log) use ($statusFilter) {
+                return str_contains(strtolower($log['status']), $statusFilter);
+            });
+        }
+
+        $perPage = 10;
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $paginated = new LengthAwarePaginator(
+            $logs->forPage($page, $perPage)->values(),
+            $logs->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return view('hiring_onboarding.index', ['logs' => $paginated]);
+    }
+
     private function archiveApplication(Application $application, string $finalStatus)
     {
         $applicant = $application->applicant;

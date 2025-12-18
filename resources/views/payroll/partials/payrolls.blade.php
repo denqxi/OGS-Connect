@@ -294,37 +294,44 @@
         };
 
         window.finalizePayroll = function(tutorID, periodStart, periodEnd) {
-            if (!confirm('Finalize and lock payroll for this period? This cannot be undone.')) {
-                return;
-            }
-
-            fetch('{{ url("payroll/finalize") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json'
+            showConfirmationModal(
+                'Finalize and lock payroll for this period? This action cannot be undone.',
+                function() {
+                    // Confirmed - proceed with finalization
+                    fetch('{{ url("payroll/finalize") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            tutor_id: tutorID,
+                            period_start: periodStart,
+                            period_end: periodEnd
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotificationModal('✓ ' + data.message, 'success');
+                            setTimeout(() => {
+                                closeTutorSummary();
+                                location.reload(); // Refresh to update totals
+                            }, 1000);
+                        } else {
+                            showNotificationModal('✗ ' + data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotificationModal('Error finalizing payroll', 'error');
+                    });
                 },
-                body: JSON.stringify({
-                    tutor_id: tutorID,
-                    period_start: periodStart,
-                    period_end: periodEnd
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('✓ ' + data.message);
-                    closeTutorSummary();
-                    location.reload(); // Refresh to update totals
-                } else {
-                    alert('✗ ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error finalizing payroll');
-            });
+                null,
+                'Finalize',
+                'Cancel'
+            );
         };
 
         // Close when clicking overlay or pressing ESC

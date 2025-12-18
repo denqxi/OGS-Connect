@@ -37,6 +37,15 @@
                 <span class="hidden sm:inline">Onboarding</span>
             </a>
 
+            <!-- Logs -->
+            <a href="{{ route('hiring_onboarding.index', ['tab' => 'logs']) }}"
+                class="flex-shrink-0 py-3 md:py-4 px-2 md:px-1 
+           {{ request('tab') == 'logs' ? 'border-b-2 border-[#4ADE80] text-[#16A34A] font-bold' : 'text-gray-600 hover:text-[#1E40AF]' }} 
+           text-sm md:text-base flex items-center space-x-2 transition-colors">
+                <i class="fas fa-clipboard-list"></i>
+                <span class="hidden sm:inline">Logs</span>
+            </a>
+
             <!-- Archive -->
             <a href="{{ route('hiring_onboarding.index', ['tab' => 'archive']) }}"
                 class="flex-shrink-0 py-3 md:py-4 px-2 md:px-1 
@@ -61,6 +70,8 @@
                     @include('hiring_onboarding.tabs.onboarding')
                 @elseif(request('tab') == 'archive')
                     @include('hiring_onboarding.tabs.archive')
+                @elseif(request('tab') == 'logs')
+                    @include('hiring_onboarding.tabs.logs')
                 @endif
             </div>
         </div>

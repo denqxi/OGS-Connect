@@ -113,9 +113,9 @@
                         $isFinalized = ($record->status === 'finalized');
                         
                         $typeColors = [
-                            'email' => 'bg-blue-100 text-blue-800',
-                            'pdf' => 'bg-purple-100 text-purple-800',
-                            'print' => 'bg-orange-100 text-orange-800'
+                            'email' => 'text-blue-800',
+                            'pdf' => 'text-purple-800',
+                            'print' => ' text-orange-800'
                         ];
                         $typeBadgeColor = $typeColors[$record->submission_type] ?? 'bg-gray-100 text-gray-800';
                         $typeLabel = $isFinalized ? '—' : match($record->submission_type) {
@@ -127,12 +127,12 @@
                         
                         // Determine status color
                         $statusColor = match($record->status ?? '') {
-                            'sent' => 'bg-green-100 text-green-800',
-                            'pending' => 'bg-yellow-100 text-yellow-800',
-                            'failed' => 'bg-red-100 text-red-800',
-                            'draft' => 'bg-gray-100 text-gray-800',
-                            'finalized' => 'bg-indigo-100 text-indigo-800',
-                            default => 'bg-gray-100 text-gray-800'
+                            'sent' => ' text-green-800',
+                            'pending' => ' text-yellow-800',
+                            'failed' => ' text-red-800',
+                            'draft' => ' text-gray-800',
+                            'finalized' => ' text-indigo-800',
+                            default => ' text-gray-800'
                         };
                         
                         $statusLabel = match($record->status ?? '') {

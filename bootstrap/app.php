@@ -16,10 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'prevent.back' => \App\Http\Middleware\PreventBackButton::class,
             'security.headers' => \App\Http\Middleware\SecurityHeaders::class,
             'input.validation' => \App\Http\Middleware\InputValidation::class,
+            'idle.timeout' => \App\Http\Middleware\IdleTimeout::class,
         ]);
         
         // Add security headers to all web routes
         $middleware->web(append: [
+            \App\Http\Middleware\IdleTimeout::class,
             \App\Http\Middleware\SecurityHeaders::class,
         ]);
         
